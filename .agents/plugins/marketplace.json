@@ -1,0 +1,20 @@
+﻿{
+  "name": "weekly-pay-marketplace",
+  "interface": {
+    "displayName": "Weekly Pay Plugins"
+  },
+  "plugins": [
+    {
+      "name": "weekly-pay-plugin",
+      "source": {
+        "source": "local",
+        "path": "./plugins/weekly-pay-plugin"
+      },
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_INSTALL"
+      },
+      "category": "Productivity"
+    }
+  ]
+}

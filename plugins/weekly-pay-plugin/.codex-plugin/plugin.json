@@ -1,0 +1,48 @@
+﻿{
+  "name": "weekly-pay-plugin",
+  "version": "0.1.0",
+  "description": "Codex plugin for maintaining the Onpoint Express Weekly Pay offline CRM.",
+  "author": {
+    "name": "Onpoint Express Team",
+    "email": "support@onpointexpress.com",
+    "url": "https://onpointexpress.com"
+  },
+  "homepage": "https://onpointexpress.com/weekly-pay-assistant",
+  "repository": "https://github.com/onpoint-express/weekly-pay",
+  "license": "Proprietary",
+  "keywords": [
+    "crm",
+    "weekly-pay"
+  ],
+  "skills": "./skills/",
+  "hooks": "./hooks.json",
+  "mcpServers": "./.mcp.json",
+  "apps": "./.app.json",
+  "interface": {
+    "displayName": "Weekly Pay Assistant",
+    "shortDescription": "Guided maintenance for the offline transport CRM.",
+    "longDescription": "Helps update drivers, trucks, roster, finance, logs, and auth flows with safe, consistent changes.",
+    "developerName": "Onpoint Express",
+    "category": "Productivity",
+    "capabilities": [
+      "Read",
+      "Write"
+    ],
+    "websiteURL": "https://onpointexpress.com",
+    "privacyPolicyURL": "https://onpointexpress.com/privacy",
+    "termsOfServiceURL": "https://onpointexpress.com/terms",
+    "defaultPrompt": [
+      "Add a new finance field and wire it to CSV export.",
+      "Audit auth.js permissions and list any risky gaps.",
+      "Fix a broken page flow and explain the root cause."
+    ],
+    "brandColor": "#1F6FEB",
+    "composerIcon": "./assets/icon.png",
+    "logo": "./assets/logo.png",
+    "screenshots": [
+      "./assets/screenshot1.png",
+      "./assets/screenshot2.png",
+      "./assets/screenshot3.png"
+    ]
+  }
+}

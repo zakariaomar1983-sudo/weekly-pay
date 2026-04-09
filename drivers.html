@@ -1,0 +1,83 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Onpoint Express Drivers</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=Manrope:wght@400;500;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="./style.css" />
+</head>
+<body>
+  <main class="app-shell">
+    <header class="topbar">
+      <div>
+        <p class="eyebrow">Drivers</p>
+        <h1>Driver Data</h1>
+      </div>
+      <div class="topbar-actions">
+        <span id="currentUserChip" class="user-chip"></span>
+        <a class="btn btn-outline" href="./index.html">Home</a>
+        <a class="btn btn-outline" href="./trucks.html">Trucks</a>
+        <a id="rosterLink" class="btn btn-outline" href="./roster.html">Roster</a>
+        <a id="financeLink" class="btn btn-outline" href="./finance.html">Finance</a>
+        <a class="btn btn-outline" href="./log.html">Logs</a>
+        <a id="controlPanelLink" class="btn btn-outline" href="./control-panel.html">Control Panel</a>
+        <button id="logoutBtn" class="btn btn-muted" type="button">Logout</button>
+      </div>
+    </header>
+
+    <section class="stats-grid" id="driversStats"></section>
+
+    <section class="panel" id="driversPanel">
+      <div class="panel-head">
+        <h2>Driver Details</h2>
+      </div>
+      <form class="form-grid" onsubmit="return false;">
+        <label class="full">Search History
+          <input id="driversSearch" type="text" placeholder="Search name, phone, license, status..." />
+        </label>
+        <div class="actions full">
+          <button id="clearDriversFilters" class="btn btn-outline" type="button">Clear Filters</button>
+        </div>
+      </form>
+      <form id="driversForm" class="form-grid">
+        <input type="hidden" id="driverDetailsId" />
+        <label>Driver Name<input id="driverDetailsName" type="text" required /></label>
+        <label>Phone<input id="driverPhone" type="text" placeholder="04xx xxx xxx" required /></label>
+        <label>License Number<input id="licenseNumber" type="text" required /></label>
+        <label>License Expiry<input id="licenseExpiry" type="date" required /></label>
+        <label>Hire Date<input id="hireDate" type="date" required /></label>
+        <label>Status
+          <select id="driverStatus" required>
+            <option value="Active">Active</option>
+            <option value="On Leave">On Leave</option>
+            <option value="Inactive">Inactive</option>
+          </select>
+        </label>
+        <label class="full">Address<input id="driverAddress" type="text" /></label>
+        <label class="full">Emergency Contact<input id="emergencyContact" type="text" placeholder="Name + phone" /></label>
+        <div class="actions full">
+          <button class="btn" type="submit">Save Driver</button>
+          <button id="cancelDriverEdit" class="btn btn-muted" type="button">Cancel Edit</button>
+          <button id="exportDrivers" class="btn btn-outline" type="button">Export CSV</button>
+        </div>
+      </form>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr><th>Name</th><th>Phone</th><th>License #</th><th>License Expiry</th><th>Status</th><th>Emergency Contact</th><th>Actions</th></tr>
+          </thead>
+          <tbody id="driversTableBody"></tbody>
+        </table>
+      </div>
+    </section>
+  </main>
+
+  <script src="./auth.js"></script>
+  <script src="./drivers.js"></script>
+</body>
+</html>
+
+

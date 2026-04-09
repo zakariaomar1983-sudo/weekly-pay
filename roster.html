@@ -1,0 +1,96 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Onpoint Express Weekly Roster</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=Manrope:wght@400;500;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="./style.css" />
+</head>
+<body>
+  <main class="app-shell">
+    <header class="topbar">
+      <div>
+        <p class="eyebrow">Operations</p>
+        <h1>Weekly Roster</h1>
+      </div>
+      <div class="topbar-actions">
+        <span id="currentUserChip" class="user-chip"></span>
+        <a class="btn btn-outline" href="./index.html">Home</a>
+        <a class="btn btn-outline" href="./drivers.html">Drivers</a>
+        <a class="btn btn-outline" href="./trucks.html">Trucks</a>
+        <a id="financeLink" class="btn btn-outline" href="./finance.html">Finance</a>
+        <a class="btn btn-outline" href="./log.html">Logs</a>
+        <a id="controlPanelLink" class="btn btn-outline" href="./control-panel.html">Control Panel</a>
+        <button id="logoutBtn" class="btn btn-muted" type="button">Logout</button>
+      </div>
+    </header>
+
+    <section class="stats-grid" id="rosterStats"></section>
+
+    <section class="panel">
+      <div class="panel-head">
+        <h2>Add Shift</h2>
+      </div>
+      <form id="rosterForm" class="form-grid">
+        <input type="hidden" id="rosterId" />
+        <label>Driver Name<input id="driverName" type="text" required /></label>
+        <label>Truck Number<input id="truckNumber" type="text" placeholder="Truck 12" required /></label>
+        <label>Shift Date<input id="shiftDate" type="date" required /></label>
+        <label>Shift Time<input id="shiftTime" type="text" placeholder="06:00 - 14:00" required /></label>
+        <label>Route<input id="route" type="text" placeholder="Sydney to Newcastle" required /></label>
+        <label>Status
+          <select id="rosterStatus" required>
+            <option value="Scheduled">Scheduled</option>
+            <option value="Completed">Completed</option>
+            <option value="Leave">Leave</option>
+          </select>
+        </label>
+        <div class="actions full">
+          <button class="btn" type="submit">Save Shift</button>
+          <button id="cancelRosterEdit" class="btn btn-muted" type="button">Cancel Edit</button>
+          <button id="exportRoster" class="btn btn-outline" type="button">Export CSV</button>
+        </div>
+      </form>
+    </section>
+
+    <section class="panel">
+      <div class="panel-head">
+        <h2>Week View</h2>
+      </div>
+      <form class="form-grid" onsubmit="return false;">
+        <label>Search
+          <input id="rosterSearch" type="text" placeholder="Driver, truck, route, time..." />
+        </label>
+        <label>Status
+          <select id="rosterFilterStatus">
+            <option value="">All</option>
+            <option value="Scheduled">Scheduled</option>
+            <option value="Completed">Completed</option>
+            <option value="Leave">Leave</option>
+          </select>
+        </label>
+        <label>Week Start (Monday)
+          <input id="weekStart" type="date" />
+        </label>
+        <div class="actions full">
+          <button id="clearRosterFilters" class="btn btn-outline" type="button">Clear Filters</button>
+        </div>
+      </form>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr><th>Day</th><th>Date</th><th>Driver</th><th>Truck</th><th>Time</th><th>Route</th><th>Status</th><th>Actions</th></tr>
+          </thead>
+          <tbody id="weeklyRosterTableBody"></tbody>
+        </table>
+      </div>
+    </section>
+  </main>
+
+  <script src="./auth.js"></script>
+  <script src="./roster.js"></script>
+</body>
+</html>

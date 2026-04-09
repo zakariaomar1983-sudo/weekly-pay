@@ -1,0 +1,100 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Onpoint Express Log Page</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=Manrope:wght@400;500;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="./style.css" />
+</head>
+<body>
+  <main class="app-shell">
+    <header class="topbar">
+      <div>
+        <p class="eyebrow">Operations Hub</p>
+        <h1>Onpoint Express Log Book</h1>
+      </div>
+      <div class="topbar-actions">
+        <span id="currentUserChip" class="user-chip"></span>
+        <a class="btn btn-outline" href="./index.html">Home</a>
+        <a id="financeLink" class="btn btn-outline" href="./finance.html">Finance</a>
+        <a id="rosterLink" class="btn btn-outline" href="./roster.html">Roster</a>
+        <a id="controlPanelLink" class="btn btn-outline" href="./control-panel.html">Control Panel</a>
+        <button id="logoutBtn" class="btn btn-muted" type="button">Logout</button>
+        <button id="clearLogsBtn" class="btn btn-danger" type="button">Clear Logs</button>
+      </div>
+    </header>
+
+    <section class="stats-grid" id="logStatsGrid"></section>
+
+    <section class="panel">
+      <div class="panel-head">
+        <h2>Daily Log</h2>
+      </div>
+      <form class="form-grid" onsubmit="return false;">
+        <label>Search
+          <input id="logsSearch" type="text" placeholder="Driver, truck, reference, description..." />
+        </label>
+        <label>Status
+          <select id="logsFilterStatus">
+            <option value="">All</option>
+            <option value="Open">Open</option>
+            <option value="Done">Done</option>
+            <option value="Follow-up">Follow-up</option>
+          </select>
+        </label>
+        <label>From Date<input id="logsFromDate" type="date" /></label>
+        <label>To Date<input id="logsToDate" type="date" /></label>
+        <div class="actions full">
+          <button id="clearLogsFilters" class="btn btn-outline" type="button">Clear Filters</button>
+        </div>
+      </form>
+      <form id="logForm" class="form-grid">
+        <input type="hidden" id="logId" />
+        <label>Log Date<input id="logDate" type="date" required /></label>
+        <label>Log Type
+          <select id="logType" required>
+            <option value="Operations">Operations</option>
+            <option value="Incident">Incident</option>
+            <option value="Maintenance">Maintenance</option>
+            <option value="Delivery">Delivery</option>
+            <option value="Admin">Admin</option>
+          </select>
+        </label>
+        <label>Driver<input id="logDriver" type="text" placeholder="Driver name" /></label>
+        <label>Truck Number<input id="logTruck" type="text" placeholder="Truck 12" /></label>
+        <label>Reference<input id="logReference" type="text" placeholder="Job #, Contract #, Invoice #" /></label>
+        <label>Status
+          <select id="logStatus" required>
+            <option value="Open">Open</option>
+            <option value="Done">Done</option>
+            <option value="Follow-up">Follow-up</option>
+          </select>
+        </label>
+        <label class="full">Description<textarea id="logDescription" rows="3" placeholder="What happened or what was completed" required></textarea></label>
+        <div class="actions full">
+          <button class="btn" type="submit">Save Log</button>
+          <button id="cancelLogEdit" class="btn btn-muted" type="button">Cancel Edit</button>
+          <button id="exportLogs" class="btn btn-outline" type="button">Export CSV</button>
+        </div>
+      </form>
+
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr><th>Date</th><th>Type</th><th>Driver</th><th>Truck</th><th>Reference</th><th>Status</th><th>Description</th><th>Actions</th></tr>
+          </thead>
+          <tbody id="logsTableBody"></tbody>
+        </table>
+      </div>
+    </section>
+  </main>
+
+  <script src="./auth.js"></script>
+  <script src="./log.js"></script>
+</body>
+</html>
+
+

@@ -1,0 +1,9 @@
+﻿{
+  "mcpServers": {
+    "weekly-pay-mcp": {
+      "type": "http",
+      "url": "https://mcp.onpointexpress.com",
+      "note": "Replace with your live MCP endpoint if different."
+    }
+  }
+}
