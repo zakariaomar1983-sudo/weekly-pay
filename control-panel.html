@@ -84,6 +84,20 @@
         </table>
       </div>
     </section>
+
+    <section class="panel">
+      <div class="panel-head">
+        <h2>Backup & Restore</h2>
+      </div>
+      <p class="muted">Download all CRM + role/user data to a file and restore it anytime on this device.</p>
+      <div class="actions">
+        <button id="downloadBackupBtn" class="btn" type="button">Download Backup</button>
+        <button id="downloadCategoryBackupsBtn" class="btn btn-outline" type="button">Download Category Files</button>
+        <button id="restoreBackupBtn" class="btn btn-outline" type="button">Restore Backup</button>
+        <input id="backupFileInput" type="file" accept=".json,application/json" style="display:none" />
+      </div>
+      <p id="backupStatus" class="muted"></p>
+    </section>
   </main>
 
   <script src="./auth.js"></script>

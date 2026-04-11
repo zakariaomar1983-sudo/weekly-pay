@@ -25,6 +25,7 @@
     { key: "editPayslips", label: "Edit Payslips" },
     { key: "viewStats", label: "View Dashboard Stats" },
     { key: "editLogs", label: "Edit Logs" },
+    { key: "backupRestore", label: "Backup and Restore Data" },
     { key: "adminData", label: "Clear all data" }
   ];
 
@@ -59,13 +60,14 @@
     return out;
   }
 
-  function buildDefaults() {
+  function buildSystemRoleDefinitions() {
     const adminPerms = allPermissions(true);
 
     const managerPerms = allPermissions(false);
     [
       "accessCRM",
       "accessLogs",
+      "accessControlPanel",
       "viewDrivers",
       "editDrivers",
       "viewTrucks",
@@ -81,7 +83,8 @@
       "viewPayslips",
       "editPayslips",
       "viewStats",
-      "editLogs"
+      "editLogs",
+      "backupRestore"
     ].forEach((key) => {
       managerPerms[key] = true;
     });
@@ -102,32 +105,56 @@
       viewerPerms[key] = true;
     });
 
-    const roles = [
+    return [
       { id: SYSTEM_ROLE_IDS.admin, name: "Admin", system: true, permissions: adminPerms },
-      { id: SYSTEM_ROLE_IDS.manager, name: "Manager", system: true, permissions: managerPerms },
-      { id: SYSTEM_ROLE_IDS.viewer, name: "Viewer", system: true, permissions: viewerPerms }
+      { id: SYSTEM_ROLE_IDS.manager, name: "Ops Manager", system: true, permissions: managerPerms },
+      { id: SYSTEM_ROLE_IDS.viewer, name: "GM", system: true, permissions: viewerPerms }
     ];
+  }
 
-    const users = [
-      { id: "user_admin", username: "admin", password: "admin123", roleId: SYSTEM_ROLE_IDS.admin, active: true }
-    ];
+  function migrateSystemRoles(existingRoles) {
+    const systemRoles = buildSystemRoleDefinitions();
+    const systemIds = new Set(systemRoles.map((r) => r.id));
+    const customRoles = existingRoles.filter((r) => !systemIds.has(r.id));
+    return [...systemRoles, ...customRoles];
+  }
+
+  function buildDefaults() {
+    const roles = buildSystemRoleDefinitions();
+
+    const users = [];
 
     write(STORAGE.roles, roles);
     write(STORAGE.users, users);
   }
 
+  function removeLegacyDefaultAdmin(users) {
+    return users.filter((u) => !(u.username === "admin" && u.password === "admin123"));
+  }
+
   function init() {
     const roles = read(STORAGE.roles, null);
     const users = read(STORAGE.users, null);
-    if (!Array.isArray(roles) || !roles.length || !Array.isArray(users) || !users.length) {
+    if (!Array.isArray(roles) || !roles.length || !Array.isArray(users)) {
+      buildDefaults();
+    }
+
+    const nextRoles = read(STORAGE.roles, []);
+    const nextUsers = read(STORAGE.users, []);
+    const hasAdminRole = nextRoles.some((r) => r.id === SYSTEM_ROLE_IDS.admin);
+    if (!hasAdminRole) {
       buildDefaults();
       return;
     }
 
-    const hasAdminRole = roles.some((r) => r.id === SYSTEM_ROLE_IDS.admin);
-    const hasAdminUser = users.some((u) => u.roleId === SYSTEM_ROLE_IDS.admin && u.active);
-    if (!hasAdminRole || !hasAdminUser) {
-      buildDefaults();
+    const migratedRoles = migrateSystemRoles(nextRoles);
+    if (JSON.stringify(migratedRoles) !== JSON.stringify(nextRoles)) {
+      write(STORAGE.roles, migratedRoles);
+    }
+
+    const cleanedUsers = removeLegacyDefaultAdmin(nextUsers);
+    if (cleanedUsers.length !== nextUsers.length) {
+      write(STORAGE.users, cleanedUsers);
     }
   }
 
@@ -184,6 +211,10 @@
   function canUser(user, permission) {
     const permissions = getPermissionsForUser(user);
     return Boolean(permissions[permission]);
+  }
+
+  function hasUsers() {
+    return getUsers().length > 0;
   }
 
   function login(username, password) {
@@ -269,6 +300,93 @@
     return { ok: true, user: payload };
   }
 
+  function createFirstAdmin(input) {
+    init();
+    const users = getUsers();
+    if (users.length > 0) {
+      return { ok: false, message: "Users already exist. Use Control Panel to create additional users." };
+    }
+
+    const username = String(input.username || "").trim();
+    const password = String(input.password || "");
+    if (!username || !password) {
+      return { ok: false, message: "Username and password are required." };
+    }
+
+    const payload = {
+      id: uid("user"),
+      username,
+      password,
+      roleId: SYSTEM_ROLE_IDS.admin,
+      active: true
+    };
+
+    setUsers([payload]);
+    return { ok: true, user: payload };
+  }
+
+  function createInitialUsers(input) {
+    init();
+    const users = getUsers();
+    if (users.length > 0) {
+      return { ok: false, message: "Users already exist. Use Control Panel to create additional users." };
+    }
+
+    const adminUsername = String(input.adminUsername || "").trim();
+    const adminPassword = String(input.adminPassword || "");
+    if (!adminUsername || !adminPassword) {
+      return { ok: false, message: "Admin username and password are required." };
+    }
+
+    const payload = [
+      {
+        id: uid("user"),
+        username: adminUsername,
+        password: adminPassword,
+        roleId: SYSTEM_ROLE_IDS.admin,
+        active: true
+      }
+    ];
+
+    const optionalUsers = [
+      { username: String(input.opsManagerUsername || input.managerUsername || "").trim(), password: String(input.opsManagerPassword || input.managerPassword || ""), roleId: SYSTEM_ROLE_IDS.manager },
+      { username: String(input.gmUsername || input.viewerUsername || "").trim(), password: String(input.gmPassword || input.viewerPassword || ""), roleId: SYSTEM_ROLE_IDS.viewer }
+    ];
+
+    optionalUsers.forEach((entry) => {
+      if (!entry.username && !entry.password) return;
+      if (!entry.username || !entry.password) return;
+      payload.push({
+        id: uid("user"),
+        username: entry.username,
+        password: entry.password,
+        roleId: entry.roleId,
+        active: true
+      });
+    });
+
+    const partialOptional =
+      (input.opsManagerUsername && !input.opsManagerPassword) ||
+      (!input.opsManagerUsername && input.opsManagerPassword) ||
+      (input.gmUsername && !input.gmPassword) ||
+      (!input.gmUsername && input.gmPassword) ||
+      (input.managerUsername && !input.managerPassword) ||
+      (!input.managerUsername && input.managerPassword) ||
+      (input.viewerUsername && !input.viewerPassword) ||
+      (!input.viewerUsername && input.viewerPassword);
+    if (partialOptional) {
+      return { ok: false, message: "Ops Manager/GM requires both username and password." };
+    }
+
+    const names = payload.map((u) => u.username.toLowerCase());
+    if (new Set(names).size !== names.length) {
+      return { ok: false, message: "Usernames must be unique." };
+    }
+
+    setUsers(payload);
+    return { ok: true, users: payload };
+  }
+
   function updateUser(userId, input) {
     const users = getUsers();
     const user = users.find((u) => u.id === userId);
@@ -316,8 +434,11 @@
     getSessionUser,
     getPermissionsForUser,
     canUser,
+    hasUsers,
     getRoles,
     getUsers,
+    createFirstAdmin,
+    createInitialUsers,
     createRole,
     updateRole,
     deleteRole,

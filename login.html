@@ -24,8 +24,23 @@
         </div>
       </form>
 
+      <section id="firstRunPanel" style="display:none; margin-top: 1rem;">
+        <h2 style="margin-bottom: 0.5rem;">Create Admin Account</h2>
+        <p class="muted">No users found on this device yet. Create Admin, and optionally Ops Manager + GM logins.</p>
+        <form id="firstRunForm" class="form-grid" autocomplete="off">
+          <label>Admin Username<input id="firstRunUsername" type="text" required /></label>
+          <label>Admin Password<input id="firstRunPassword" type="password" required /></label>
+          <label>Ops Manager Username (optional)<input id="firstRunOpsManagerUsername" type="text" /></label>
+          <label>Ops Manager Password (optional)<input id="firstRunOpsManagerPassword" type="password" /></label>
+          <label>GM Username (optional)<input id="firstRunGmUsername" type="text" /></label>
+          <label>GM Password (optional)<input id="firstRunGmPassword" type="password" /></label>
+          <div class="actions full">
+            <button class="btn" type="submit">Create Users & Login</button>
+          </div>
+        </form>
+      </section>
+
       <p id="loginError" class="error-text"></p>
-      <p class="muted">Default admin login: <strong>admin</strong> / <strong>admin123</strong></p>
     </section>
   </main>
 

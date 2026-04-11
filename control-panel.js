@@ -155,6 +155,181 @@ function refresh() {
   renderUsersTable();
 }
 
+const BACKUP_PREFIXES = ["transport_crm_", "opx_auth_"];
+const BACKUP_EXCLUDE_KEYS = new Set([window.OPXAuth.STORAGE.session]);
+const CATEGORY_BACKUPS = [
+  { category: "drivers", key: "transport_crm_drivers", filename: "drivers-backup.json" },
+  { category: "trucks", key: "transport_crm_trucks", filename: "trucks-backup.json" },
+  { category: "roster", key: "transport_crm_roster", filename: "roster-backup.json" },
+  { category: "truck_income", key: "transport_crm_truck_income", filename: "truck-income-backup.json" },
+  { category: "spending", key: "transport_crm_spending", filename: "spending-backup.json" },
+  { category: "payslips", key: "transport_crm_payslips", filename: "payslips-backup.json" },
+  { category: "logs", key: "transport_crm_logs", filename: "logs-backup.json" },
+  { category: "roles", key: window.OPXAuth.STORAGE.roles, filename: "roles-backup.json" },
+  { category: "users", key: window.OPXAuth.STORAGE.users, filename: "users-backup.json" }
+];
+
+function isBackupKey(key) {
+  return BACKUP_PREFIXES.some((prefix) => key.startsWith(prefix)) && !BACKUP_EXCLUDE_KEYS.has(key);
+}
+
+function setBackupStatus(message, isError = false) {
+  const status = document.getElementById("backupStatus");
+  if (!status) return;
+  status.textContent = message;
+  status.className = isError ? "error-text" : "muted";
+}
+
+function collectBackupData() {
+  const data = {};
+  for (let i = 0; i < localStorage.length; i += 1) {
+    const key = localStorage.key(i);
+    if (!key || !isBackupKey(key)) continue;
+    data[key] = localStorage.getItem(key);
+  }
+  return data;
+}
+
+function downloadBackup() {
+  if (!(auth.can("backupRestore") || auth.can("adminData"))) return;
+
+  const payload = {
+    type: "onpoint_express_backup",
+    version: 1,
+    createdAt: new Date().toISOString(),
+    data: collectBackupData()
+  };
+
+  const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json;charset=utf-8;" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  const stamp = payload.createdAt.replaceAll(":", "-").replaceAll(".", "-");
+  a.href = url;
+  a.download = `onpoint-backup-${stamp}.json`;
+  a.click();
+  URL.revokeObjectURL(url);
+
+  setBackupStatus("Backup downloaded successfully.");
+}
+
+function triggerJsonDownload(filename, payload) {
+  const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json;charset=utf-8;" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+function downloadCategoryBackups() {
+  if (!(auth.can("backupRestore") || auth.can("adminData"))) return;
+
+  const createdAt = new Date().toISOString();
+  const available = CATEGORY_BACKUPS.filter((item) => localStorage.getItem(item.key) !== null);
+
+  if (!available.length) {
+    setBackupStatus("No category data found to export.", true);
+    return;
+  }
+
+  available.forEach((item, index) => {
+    const payload = {
+      type: "onpoint_express_category_backup",
+      version: 1,
+      createdAt,
+      category: item.category,
+      key: item.key,
+      value: localStorage.getItem(item.key)
+    };
+    setTimeout(() => triggerJsonDownload(item.filename, payload), index * 120);
+  });
+
+  setBackupStatus(`Category backup files downloaded (${available.length}).`);
+}
+
+function restoreBackupFromText(text) {
+  let parsed;
+  try {
+    parsed = JSON.parse(text);
+  } catch {
+    setBackupStatus("Invalid backup file: JSON parse failed.", true);
+    return;
+  }
+
+  let keys = [];
+  let valuesByKey = {};
+
+  if (parsed?.type === "onpoint_express_backup" && typeof parsed.data === "object") {
+    keys = Object.keys(parsed.data).filter((key) => isBackupKey(key));
+    valuesByKey = parsed.data;
+  } else if (parsed?.type === "onpoint_express_category_backup" && typeof parsed.key === "string") {
+    if (!isBackupKey(parsed.key)) {
+      setBackupStatus("Category backup key is not valid for restore.", true);
+      return;
+    }
+    keys = [parsed.key];
+    valuesByKey = { [parsed.key]: parsed.value };
+  } else {
+    setBackupStatus("Invalid backup file format.", true);
+    return;
+  }
+
+  if (!keys.length) {
+    setBackupStatus("Backup file has no valid CRM/auth data.", true);
+    return;
+  }
+
+  const ok = confirm(`Restore ${keys.length} key(s)? This will overwrite current local data on this browser.`);
+  if (!ok) return;
+
+  keys.forEach((key) => {
+    const value = valuesByKey[key];
+    localStorage.setItem(key, typeof value === "string" ? value : JSON.stringify(value));
+  });
+
+  window.OPXAuth.init();
+  resetRoleForm();
+  resetUserForm();
+  refresh();
+  setBackupStatus(`Restore complete. ${keys.length} key(s) imported.`);
+}
+
+function hookBackupActions() {
+  const downloadBtn = document.getElementById("downloadBackupBtn");
+  const downloadCategoryBtn = document.getElementById("downloadCategoryBackupsBtn");
+  const restoreBtn = document.getElementById("restoreBackupBtn");
+  const fileInput = document.getElementById("backupFileInput");
+
+  if (!downloadBtn || !downloadCategoryBtn || !restoreBtn || !fileInput) return;
+
+  if (!(auth.can("backupRestore") || auth.can("adminData"))) {
+    downloadBtn.style.display = "none";
+    downloadCategoryBtn.style.display = "none";
+    restoreBtn.style.display = "none";
+    fileInput.style.display = "none";
+    setBackupStatus("Backup/restore is available to users with backup permission.");
+    return;
+  }
+
+  downloadBtn.addEventListener("click", downloadBackup);
+  downloadCategoryBtn.addEventListener("click", downloadCategoryBackups);
+  restoreBtn.addEventListener("click", () => fileInput.click());
+
+  fileInput.addEventListener("change", async () => {
+    const file = fileInput.files?.[0];
+    if (!file) return;
+    try {
+      const text = await file.text();
+      restoreBackupFromText(text);
+    } catch {
+      setBackupStatus("Failed to read backup file.", true);
+    } finally {
+      fileInput.value = "";
+    }
+  });
+}
+
 document.getElementById("roleForm").addEventListener("submit", (e) => {
   e.preventDefault();
 
@@ -268,3 +443,4 @@ renderPermissionChecklist();
 resetRoleForm();
 resetUserForm();
 refresh();
+hookBackupActions();

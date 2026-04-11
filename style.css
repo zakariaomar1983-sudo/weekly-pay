@@ -96,6 +96,33 @@ h2 {
   font-size: 1.3rem;
 }
 
+.stat-card.profit-positive {
+  border-color: #85c7a4;
+  background: #edf9f1;
+}
+
+.stat-card.profit-positive h3 {
+  color: #0f6a3a;
+}
+
+.stat-card.profit-negative {
+  border-color: #e6a4a4;
+  background: #fff1f1;
+}
+
+.stat-card.profit-negative h3 {
+  color: #ad3030;
+}
+
+.stat-card.profit-neutral {
+  border-color: #cfd8de;
+  background: #f6f8fa;
+}
+
+.stat-card.profit-neutral h3 {
+  color: #41505a;
+}
+
 .panel {
   background: var(--panel);
   border: 1px solid var(--line);
@@ -221,6 +248,14 @@ th {
   border-radius: 8px;
   padding: 0.3rem 0.55rem;
   cursor: pointer;
+}
+
+tr.row-rego-overdue td {
+  background: #fff1f1;
+}
+
+tr.row-rego-soon td {
+  background: #fff7ea;
 }
 
 .empty {

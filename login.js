@@ -9,6 +9,13 @@ if (sessionUser) {
 
 const loginForm = document.getElementById("loginForm");
 const loginError = document.getElementById("loginError");
+const firstRunPanel = document.getElementById("firstRunPanel");
+const firstRunForm = document.getElementById("firstRunForm");
+
+if (!window.OPXAuth.hasUsers()) {
+  loginForm.style.display = "none";
+  firstRunPanel.style.display = "block";
+}
 
 loginForm.addEventListener("submit", (e) => {
   e.preventDefault();
@@ -44,4 +51,36 @@ loginForm.addEventListener("submit", (e) => {
 
   loginError.textContent = "This account has no page access assigned.";
   window.OPXAuth.logout();
+});
+
+firstRunForm?.addEventListener("submit", (e) => {
+  e.preventDefault();
+
+  const username = document.getElementById("firstRunUsername").value.trim();
+  const password = document.getElementById("firstRunPassword").value;
+  const opsManagerUsername = document.getElementById("firstRunOpsManagerUsername").value.trim();
+  const opsManagerPassword = document.getElementById("firstRunOpsManagerPassword").value;
+  const gmUsername = document.getElementById("firstRunGmUsername").value.trim();
+  const gmPassword = document.getElementById("firstRunGmPassword").value;
+
+  const created = window.OPXAuth.createInitialUsers({
+    adminUsername: username,
+    adminPassword: password,
+    opsManagerUsername,
+    opsManagerPassword,
+    gmUsername,
+    gmPassword
+  });
+  if (!created.ok) {
+    loginError.textContent = created.message;
+    return;
+  }
+
+  const result = window.OPXAuth.login(username, password);
+  if (!result.ok) {
+    loginError.textContent = result.message;
+    return;
+  }
+
+  window.location.href = "./index.html";
 });
