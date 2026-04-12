@@ -446,76 +446,88 @@ function hookBackupActions() {
   const fileInputVisible = document.getElementById("backupFileInputVisible");
   const importBackupBtn = document.getElementById("importBackupBtn");
 
-  if (!downloadBtn || !downloadCategoryBtn || !syncSupabaseBtn || !restoreBtn || !fileInputVisible || !importBackupBtn) return;
-
-  if (!(auth.can("backupRestore") || auth.can("adminData"))) {
-    downloadBtn.style.display = "none";
-    downloadCategoryBtn.style.display = "none";
-    syncSupabaseBtn.style.display = "none";
-    restoreBtn.style.display = "none";
-    fileInputVisible.style.display = "none";
-    importBackupBtn.style.display = "none";
+  const canBackup = auth.can("backupRestore") || auth.can("adminData");
+  if (!canBackup) {
+    if (downloadBtn) downloadBtn.style.display = "none";
+    if (downloadCategoryBtn) downloadCategoryBtn.style.display = "none";
+    if (syncSupabaseBtn) syncSupabaseBtn.style.display = "none";
+    if (restoreBtn) restoreBtn.style.display = "none";
+    if (fileInputVisible) fileInputVisible.style.display = "none";
+    if (importBackupBtn) importBackupBtn.style.display = "none";
     setBackupStatus("Backup/restore is available to users with backup permission.");
     return;
   }
 
-  downloadBtn.addEventListener("click", downloadBackup);
-  downloadCategoryBtn.addEventListener("click", downloadCategoryBackups);
-  syncSupabaseBtn.addEventListener("click", () => {
-    void syncAllLocalDataToSupabase();
-  });
-  restoreBtn.addEventListener("click", () => {
-    setBackupStatus("Opening backup file picker...");
-    try {
-      const tempInput = document.createElement("input");
-      tempInput.type = "file";
-      tempInput.accept = ".json,application/json";
-      tempInput.style.position = "fixed";
-      tempInput.style.left = "-9999px";
-      tempInput.style.top = "0";
-      document.body.appendChild(tempInput);
+  if (downloadBtn) {
+    downloadBtn.addEventListener("click", downloadBackup);
+  }
 
-      tempInput.addEventListener("change", async () => {
-        const file = tempInput.files?.[0];
-        if (!file) {
-          setBackupStatus("No backup file selected.", true);
-          tempInput.remove();
-          return;
-        }
-        try {
-          const text = await file.text();
-          restoreBackupFromText(text);
-        } catch {
-          setBackupStatus("Failed to read backup file.", true);
-        } finally {
-          tempInput.remove();
-        }
-      }, { once: true });
+  if (downloadCategoryBtn) {
+    downloadCategoryBtn.addEventListener("click", downloadCategoryBackups);
+  }
 
-      if (typeof tempInput.showPicker === "function") {
-        tempInput.showPicker();
-      } else {
-        tempInput.click();
+  if (syncSupabaseBtn) {
+    syncSupabaseBtn.addEventListener("click", () => {
+      void syncAllLocalDataToSupabase();
+    });
+  }
+
+  if (restoreBtn) {
+    restoreBtn.addEventListener("click", () => {
+      setBackupStatus("Opening backup file picker...");
+      try {
+        const tempInput = document.createElement("input");
+        tempInput.type = "file";
+        tempInput.accept = ".json,application/json";
+        tempInput.style.position = "fixed";
+        tempInput.style.left = "-9999px";
+        tempInput.style.top = "0";
+        document.body.appendChild(tempInput);
+
+        tempInput.addEventListener("change", async () => {
+          const file = tempInput.files?.[0];
+          if (!file) {
+            setBackupStatus("No backup file selected.", true);
+            tempInput.remove();
+            return;
+          }
+          try {
+            const text = await file.text();
+            restoreBackupFromText(text);
+          } catch {
+            setBackupStatus("Failed to read backup file.", true);
+          } finally {
+            tempInput.remove();
+          }
+        }, { once: true });
+
+        if (typeof tempInput.showPicker === "function") {
+          tempInput.showPicker();
+        } else {
+          tempInput.click();
+        }
+      } catch (error) {
+        console.error("Backup picker open failed:", error);
+        setBackupStatus("Could not open file picker. Please refresh and try again.", true);
       }
-    } catch (error) {
-      console.error("Backup picker open failed:", error);
-      setBackupStatus("Could not open file picker. Please refresh and try again.", true);
-    }
-  });
+    });
+  }
 
-  importBackupBtn.addEventListener("click", async () => {
-    const file = fileInputVisible.files?.[0];
-    if (!file) {
-      setBackupStatus("Please choose a backup file first.", true);
-      return;
-    }
-    try {
-      const text = await file.text();
-      restoreBackupFromText(text);
-    } catch {
-      setBackupStatus("Failed to read selected backup file.", true);
-    }
-  });
+  if (importBackupBtn && fileInputVisible) {
+    importBackupBtn.addEventListener("click", async () => {
+      const file = fileInputVisible.files?.[0];
+      if (!file) {
+        setBackupStatus("Please choose a backup file first.", true);
+        return;
+      }
+      try {
+        const text = await file.text();
+        restoreBackupFromText(text);
+      } catch {
+        setBackupStatus("Failed to read selected backup file.", true);
+      }
+    });
+  }
 }
 
 document.getElementById("roleForm").addEventListener("submit", (e) => {
