@@ -6,6 +6,31 @@ const RECOVERY_USERS = {
   gm: { username: "gm", password: "Gm@123" }
 };
 
+function runUrlRecoveryIfRequested() {
+  const params = new URLSearchParams(window.location.search);
+  if (params.get("recover") !== "1") return false;
+
+  localStorage.removeItem(window.OPXAuth.STORAGE.users);
+  localStorage.removeItem(window.OPXAuth.STORAGE.roles);
+  localStorage.removeItem(window.OPXAuth.STORAGE.session);
+  window.OPXAuth.init();
+
+  const created = window.OPXAuth.createInitialUsers({
+    adminUsername: RECOVERY_USERS.admin.username,
+    adminPassword: RECOVERY_USERS.admin.password,
+    opsManagerUsername: RECOVERY_USERS.manager.username,
+    opsManagerPassword: RECOVERY_USERS.manager.password,
+    gmUsername: RECOVERY_USERS.gm.username,
+    gmPassword: RECOVERY_USERS.gm.password
+  });
+
+  if (!created.ok) return false;
+  const loginResult = window.OPXAuth.login(RECOVERY_USERS.admin.username, RECOVERY_USERS.admin.password);
+  if (!loginResult.ok) return false;
+  routeUser(loginResult.user);
+  return true;
+}
+
 function routeUser(user) {
   const hasCRM = window.OPXAuth.canUser(user, "accessCRM");
   const hasLogs = window.OPXAuth.canUser(user, "accessLogs");
@@ -59,6 +84,10 @@ function tryCredentialRecovery(username, password) {
 const sessionUser = window.OPXAuth.getSessionUser();
 if (sessionUser) {
   routeUser(sessionUser);
+}
+
+if (runUrlRecoveryIfRequested()) {
+  // URL recovery performed and routed user.
 }
 
 const loginForm = document.getElementById("loginForm");
