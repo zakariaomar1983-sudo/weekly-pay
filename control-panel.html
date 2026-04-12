@@ -89,56 +89,19 @@
       </div>
     </section>
 
-    <section class="panel">
-      <div class="panel-head">
-        <h2>Backup & Restore</h2>
-      </div>
-      <p class="muted">Download all CRM + role/user data to a file and restore it anytime on this device.</p>
-      <div class="actions">
-        <button id="downloadBackupBtn" class="btn" type="button">Download Backup</button>
-        <button id="downloadCategoryBackupsBtn" class="btn btn-outline" type="button">Download Category Files</button>
-        <button id="syncSupabaseBtn" class="btn btn-outline" type="button">Sync Local Data to Supabase</button>
-        <button id="restoreBackupBtn" class="btn btn-outline" type="button">Restore Backup</button>
-      </div>
-      <div class="actions" style="margin-top: 0.6rem;">
-        <input id="backupFileInputVisible" type="file" accept=".json,application/json" />
-        <input id="backupFileInput" type="file" accept=".json,application/json" style="display:none" />
-        <button id="importBackupBtn" class="btn btn-outline" type="button">Import Selected Backup</button>
-      </div>
-      <div class="panel" style="margin-top: 0.8rem;">
-        <div class="panel-head">
-          <h3 style="margin: 0;">Supabase Connection</h3>
-        </div>
-        <form id="supabaseConfigForm" class="form-grid" autocomplete="off">
-          <label class="full">Supabase URL
-            <input id="supabaseUrlInput" type="text" placeholder="https://your-project.supabase.co" />
-          </label>
-          <label class="full">Anon Public Key
-            <input id="supabaseAnonKeyInput" type="text" placeholder="eyJ..." />
-          </label>
-          <div class="actions full">
-            <button id="saveSupabaseConfigBtn" class="btn btn-outline" type="button">Save Connection</button>
-            <button id="testSupabaseBtn" class="btn btn-outline" type="button">Test Connection</button>
-            <button id="clearSupabaseConfigBtn" class="btn btn-muted" type="button">Clear Connection</button>
-          </div>
-        </form>
-        <p id="supabaseConfigStatus" class="muted"></p>
-      </div>
-      <p id="backupStatus" class="muted"></p>
-    </section>
   </main>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="./supabase-config.js?v=20260413n"></script>
-  <script src="./supabase-client.js?v=20260413n"></script>
-  <script src="./seed-data.js?v=20260413n"></script>
-  <script src="./auth.js?v=20260413n"></script>
+  <script src="./supabase-config.js?v=20260413o"></script>
+  <script src="./supabase-client.js?v=20260413o"></script>
+  <script src="./seed-data.js?v=20260413o"></script>
+  <script src="./auth.js?v=20260413o"></script>
   <script>
     if (window.OPXAuth?.healCoreAccess) {
       window.OPXAuth.healCoreAccess();
     }
   </script>
-  <script src="./control-panel.js?v=20260413n"></script>
-  <script src="./emergency-fill.js?v=20260413n"></script>
+  <script src="./control-panel.js?v=20260413o"></script>
+  <script src="./emergency-fill.js?v=20260413o"></script>
 </body>
 </html>
