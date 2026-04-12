@@ -150,13 +150,13 @@ function renderSecurityStats() {
 }
 
 function renderRoleOptions() {
-  const roles = window.OPXAuth.getRoles();
+  const roles = getEffectiveRoles();
   const select = document.getElementById("userRole");
   select.innerHTML = roles.map((role) => `<option value="${role.id}">${role.name}</option>`).join("");
 }
 
 function renderRolesTable() {
-  const roles = window.OPXAuth.getRoles();
+  const roles = getEffectiveRoles();
   const tbody = document.getElementById("rolesTableBody");
 
   if (!roles.length) {
@@ -175,6 +175,36 @@ function renderRolesTable() {
       return `<tr><td>${role.name}</td><td>${typeLabel}</td><td>${enabledCount} enabled</td><td>${actions}</td></tr>`;
     })
     .join("");
+}
+
+function getEffectiveRoles() {
+  const roles = window.OPXAuth.getRoles();
+  if (Array.isArray(roles) && roles.length) return roles;
+
+  const ids = window.OPXAuth.SYSTEM_ROLE_IDS;
+  const adminPerms = allPerms(true);
+  const managerPerms = allPerms(false);
+  [
+    "accessCRM", "accessLogs", "accessControlPanel", "viewDrivers", "editDrivers",
+    "viewTrucks", "editTrucks", "viewTruckIncome", "editTruckIncome", "viewContracts",
+    "editContracts", "viewSpending", "editSpending", "viewRoster", "editRoster",
+    "viewPayslips", "editPayslips", "viewStats", "editLogs", "backupRestore"
+  ].forEach((k) => { managerPerms[k] = true; });
+
+  const viewerPerms = allPerms(false);
+  [
+    "accessCRM", "accessLogs", "viewDrivers", "viewTrucks", "viewTruckIncome",
+    "viewContracts", "viewSpending", "viewRoster", "viewPayslips", "viewStats"
+  ].forEach((k) => { viewerPerms[k] = true; });
+
+  const fallbackRoles = [
+    { id: ids.admin, name: "Admin", system: true, permissions: adminPerms },
+    { id: ids.manager, name: "Ops Manager", system: true, permissions: managerPerms },
+    { id: ids.viewer, name: "GM", system: true, permissions: viewerPerms }
+  ];
+
+  localStorage.setItem(window.OPXAuth.STORAGE.roles, JSON.stringify(fallbackRoles));
+  return fallbackRoles;
 }
 
 function renderUsersTable() {
