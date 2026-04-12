@@ -12,6 +12,70 @@ const PERMISSIONS = window.OPXAuth.PERMISSIONS;
 const supabase = window.OPXSupabase?.client || null;
 const useSupabase = Boolean(window.OPXSupabase?.isReady && supabase);
 
+function allPerms(value) {
+  const out = {};
+  PERMISSIONS.forEach((p) => { out[p.key] = value; });
+  return out;
+}
+
+function enforceSystemRolesAndUsers() {
+  const storage = window.OPXAuth?.STORAGE;
+  const ids = window.OPXAuth?.SYSTEM_ROLE_IDS;
+  if (!storage || !ids) return;
+
+  const read = (k, fb) => {
+    try {
+      const v = JSON.parse(localStorage.getItem(k) || "null");
+      return v == null ? fb : v;
+    } catch {
+      return fb;
+    }
+  };
+  const write = (k, v) => localStorage.setItem(k, JSON.stringify(v));
+
+  const roles = read(storage.roles, []);
+  const users = read(storage.users, []);
+
+  const adminPerms = allPerms(true);
+  const managerPerms = allPerms(false);
+  [
+    "accessCRM", "accessLogs", "accessControlPanel", "viewDrivers", "editDrivers",
+    "viewTrucks", "editTrucks", "viewTruckIncome", "editTruckIncome", "viewContracts",
+    "editContracts", "viewSpending", "editSpending", "viewRoster", "editRoster",
+    "viewPayslips", "editPayslips", "viewStats", "editLogs", "backupRestore"
+  ].forEach((k) => { managerPerms[k] = true; });
+
+  const viewerPerms = allPerms(false);
+  [
+    "accessCRM", "accessLogs", "viewDrivers", "viewTrucks", "viewTruckIncome",
+    "viewContracts", "viewSpending", "viewRoster", "viewPayslips", "viewStats"
+  ].forEach((k) => { viewerPerms[k] = true; });
+
+  const required = [
+    { id: ids.admin, name: "Admin", system: true, permissions: adminPerms },
+    { id: ids.manager, name: "Ops Manager", system: true, permissions: managerPerms },
+    { id: ids.viewer, name: "GM", system: true, permissions: viewerPerms }
+  ];
+
+  const custom = Array.isArray(roles)
+    ? roles.filter((r) => r && ![ids.admin, ids.manager, ids.viewer].includes(r.id))
+    : [];
+  const nextRoles = [...required, ...custom];
+  write(storage.roles, nextRoles);
+
+  const roleSet = new Set(nextRoles.map((r) => r.id));
+  const nextUsers = (Array.isArray(users) ? users : []).map((u) => {
+    if (!u || !u.roleId || !roleSet.has(u.roleId)) {
+      return { ...u, roleId: ids.admin, active: true };
+    }
+    return u;
+  });
+  write(storage.users, nextUsers);
+}
+
+enforceSystemRolesAndUsers();
+window.OPXAuth?.init?.();
+
 document.getElementById("currentUserChip").textContent = `User: ${auth.user.username}`;
 
 document.getElementById("logoutBtn").addEventListener("click", () => {
