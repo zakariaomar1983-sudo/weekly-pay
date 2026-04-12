@@ -24,7 +24,7 @@ document.getElementById("logoutBtn").addEventListener("click", () => {
   } catch {
     localStorage.removeItem("opx_auth_session");
   }
-  window.location.href = "./login.html";
+  window.location.href = "./login.html?logout=1";
 });
 
 if (!auth.can("accessCRM")) {

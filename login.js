@@ -1,5 +1,11 @@
 window.OPXAuth.init();
 
+const loginParams = new URLSearchParams(window.location.search);
+if (loginParams.get("logout") === "1") {
+  localStorage.removeItem(window.OPXAuth.STORAGE.session);
+  if (window.OPXAuth?.logout) window.OPXAuth.logout();
+}
+
 const RECOVERY_USERS = {
   admin: { username: "admin", password: "Admin@123" },
   manager: { username: "opsmanager", password: "Ops@123" },
@@ -7,7 +13,7 @@ const RECOVERY_USERS = {
 };
 
 function runUrlRecoveryIfRequested() {
-  const params = new URLSearchParams(window.location.search);
+  const params = loginParams;
   if (params.get("recover") !== "1") return false;
 
   localStorage.removeItem(window.OPXAuth.STORAGE.users);
