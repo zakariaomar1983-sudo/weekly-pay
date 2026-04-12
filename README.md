@@ -1,33 +1,14 @@
-﻿# Onpoint Express Operations CRM (Offline)
+﻿# Onpoint Express CRM
 
-Simple CRM for Onpoint Express with separate secured pages for:
-- Driver details
-- Truck details (including truck number)
-- Weekly roster
-- Finance and driver pay
+Transport operations CRM with pages for:
+- Drivers
+- Trucks
+- Weekly Roster
+- Finance and Payslips
 - Logs
-- Role and user control panel
+- Control Panel (roles, users, backup/restore)
 
-## How to use
-1. Open `login.html` in your browser.
-2. Login with default admin: `admin` / `admin123`.
-3. Use `Control Panel` to create roles and users with access levels.
-4. Open Home (`index.html`) and navigate to:
-   - `drivers.html`
-   - `trucks.html`
-   - `roster.html`
-   - `finance.html`
-   - `log.html`
-   - `control-panel.html`
-5. Use `Edit` / `Delete` / `Export CSV` where the role allows it.
-6. Use the `Search` boxes on Drivers, Trucks, Weekly Roster, Logs, and Finance history tables to find records quickly.
-
-## Notes
-- Data is saved in your browser `localStorage` on this computer.
-- If you clear browser storage, data is removed.
-- Password and roles are local to this browser (offline mode).
-
-## Files
+## Project Files
 - `index.html` home page
 - `index.js` home page logic
 - `login.html` login page
@@ -46,3 +27,60 @@ Simple CRM for Onpoint Express with separate secured pages for:
 - `control-panel.js` control panel logic
 - `auth.js` authentication and role-permission engine
 - `style.css` shared design
+- `supabase-config.js` Supabase URL/key configuration
+- `supabase-client.js` Supabase client bootstrap and fallback loader
+- `seed-data.js` emergency local data seed (loads only when storage is empty)
+
+## First Run
+1. Open `login.html`.
+2. If no users exist, use the first-run form to create:
+- Admin user
+- Optional Ops Manager user
+- Optional GM user
+3. Sign in and open `Control Panel` to manage roles/users.
+
+## Data Storage Behavior
+- Primary: browser `localStorage` per device.
+- Supabase sync is available when configured.
+- If local storage is empty, `seed-data.js` can preload base data snapshot.
+
+## Local Development
+1. Install dependencies:
+```bash
+npm install
+```
+2. Run local server (example):
+```bash
+npx vite
+```
+3. Open local URL shown in terminal.
+
+## Vercel Deploy (Production)
+1. Link this folder to the correct Vercel project:
+```bash
+npx vercel link
+```
+Choose project: `weekly-pay`.
+
+2. Deploy production:
+```bash
+npx vercel --prod
+```
+
+3. Open production:
+- `https://weekly-pay.vercel.app/control-panel.html`
+- `https://weekly-pay.vercel.app/drivers.html`
+- `https://weekly-pay.vercel.app/trucks.html`
+- `https://weekly-pay.vercel.app/finance.html`
+
+## Supabase Setup
+1. Set values in `supabase-config.js`:
+- `url` = your project URL (for example `https://xxxxx.supabase.co`)
+- `anonKey` = anon public key
+2. Ensure tables exist:
+- `drivers`
+- `trucks`
+- `truck_income`
+- `truck_expense`
+- `payslips`
+3. If data still does not appear, verify RLS/policies for anon access.
