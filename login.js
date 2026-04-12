@@ -7,9 +7,7 @@ if (loginParams.get("logout") === "1") {
 }
 
 const RECOVERY_USERS = {
-  admin: { username: "admin", password: "Admin@123" },
-  manager: { username: "opsmanager", password: "Ops@123" },
-  gm: { username: "gm", password: "Gm@123" }
+  admin: { username: "admin", password: "Admin@123" }
 };
 
 function runUrlRecoveryIfRequested() {
@@ -23,11 +21,7 @@ function runUrlRecoveryIfRequested() {
 
   const created = window.OPXAuth.createInitialUsers({
     adminUsername: RECOVERY_USERS.admin.username,
-    adminPassword: RECOVERY_USERS.admin.password,
-    opsManagerUsername: RECOVERY_USERS.manager.username,
-    opsManagerPassword: RECOVERY_USERS.manager.password,
-    gmUsername: RECOVERY_USERS.gm.username,
-    gmPassword: RECOVERY_USERS.gm.password
+    adminPassword: RECOVERY_USERS.admin.password
   });
 
   if (!created.ok) return false;
@@ -59,9 +53,7 @@ function routeUser(user) {
 
 function tryCredentialRecovery(username, password) {
   const isKnownDefault =
-    (username === RECOVERY_USERS.admin.username && password === RECOVERY_USERS.admin.password) ||
-    (username === RECOVERY_USERS.manager.username && password === RECOVERY_USERS.manager.password) ||
-    (username === RECOVERY_USERS.gm.username && password === RECOVERY_USERS.gm.password);
+    (username === RECOVERY_USERS.admin.username && password === RECOVERY_USERS.admin.password);
 
   if (!isKnownDefault) return null;
 
@@ -73,11 +65,7 @@ function tryCredentialRecovery(username, password) {
 
     const created = window.OPXAuth.createInitialUsers({
       adminUsername: RECOVERY_USERS.admin.username,
-      adminPassword: RECOVERY_USERS.admin.password,
-      opsManagerUsername: RECOVERY_USERS.manager.username,
-      opsManagerPassword: RECOVERY_USERS.manager.password,
-      gmUsername: RECOVERY_USERS.gm.username,
-      gmPassword: RECOVERY_USERS.gm.password
+      adminPassword: RECOVERY_USERS.admin.password
     });
     if (!created.ok) return null;
 

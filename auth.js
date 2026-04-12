@@ -36,9 +36,7 @@
   };
 
   const CORE_DEFAULT_USERS = {
-    admin: { username: "admin", password: "Admin@123", roleId: SYSTEM_ROLE_IDS.admin },
-    manager: { username: "opsmanager", password: "Ops@123", roleId: SYSTEM_ROLE_IDS.manager },
-    viewer: { username: "gm", password: "Gm@123", roleId: SYSTEM_ROLE_IDS.viewer }
+    admin: { username: "admin", password: "Admin@123", roleId: SYSTEM_ROLE_IDS.admin }
   };
 
   const DEFAULT_CUSTOM_ROLE_IDS = {
@@ -196,12 +194,10 @@
     const next = [...users];
 
     const rolePresence = {
-      [SYSTEM_ROLE_IDS.admin]: next.some((u) => u.roleId === SYSTEM_ROLE_IDS.admin && u.active),
-      [SYSTEM_ROLE_IDS.manager]: next.some((u) => u.roleId === SYSTEM_ROLE_IDS.manager && u.active),
-      [SYSTEM_ROLE_IDS.viewer]: next.some((u) => u.roleId === SYSTEM_ROLE_IDS.viewer && u.active)
+      [SYSTEM_ROLE_IDS.admin]: next.some((u) => u.roleId === SYSTEM_ROLE_IDS.admin && u.active)
     };
 
-    const required = [CORE_DEFAULT_USERS.admin, CORE_DEFAULT_USERS.manager, CORE_DEFAULT_USERS.viewer];
+    const required = [CORE_DEFAULT_USERS.admin];
     required.forEach((core) => {
       if (rolePresence[core.roleId]) return;
       const username = uniqueUsername(core.username, next);
