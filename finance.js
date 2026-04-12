@@ -209,22 +209,37 @@ async function hydrateFinanceFromSupabase() {
   ]);
 
   if (!incomeRes.error && Array.isArray(incomeRes.data)) {
-    state.income = incomeRes.data.map(fromDbIncome);
-    localStorage.setItem(KEYS.income, JSON.stringify(state.income));
+    if (!incomeRes.data.length && state.income.length) {
+      console.warn("Supabase truck_income table is empty; keeping local income and seeding Supabase.");
+      await syncRowsToSupabase(KEYS.income, state.income);
+    } else {
+      state.income = incomeRes.data.map(fromDbIncome);
+      localStorage.setItem(KEYS.income, JSON.stringify(state.income));
+    }
   } else if (incomeRes.error) {
     console.error("Supabase load failed for truck_income:", incomeRes.error.message);
   }
 
   if (!expenseRes.error && Array.isArray(expenseRes.data)) {
-    state.expense = expenseRes.data.map(fromDbExpense);
-    localStorage.setItem(KEYS.expense, JSON.stringify(state.expense));
+    if (!expenseRes.data.length && state.expense.length) {
+      console.warn("Supabase truck_expense table is empty; keeping local expense and seeding Supabase.");
+      await syncRowsToSupabase(KEYS.expense, state.expense);
+    } else {
+      state.expense = expenseRes.data.map(fromDbExpense);
+      localStorage.setItem(KEYS.expense, JSON.stringify(state.expense));
+    }
   } else if (expenseRes.error) {
     console.error("Supabase load failed for truck_expense:", expenseRes.error.message);
   }
 
   if (!payRes.error && Array.isArray(payRes.data)) {
-    state.pay = payRes.data.map(fromDbPay);
-    localStorage.setItem(KEYS.pay, JSON.stringify(state.pay));
+    if (!payRes.data.length && state.pay.length) {
+      console.warn("Supabase payslips table is empty; keeping local payslips and seeding Supabase.");
+      await syncRowsToSupabase(KEYS.pay, state.pay);
+    } else {
+      state.pay = payRes.data.map(fromDbPay);
+      localStorage.setItem(KEYS.pay, JSON.stringify(state.pay));
+    }
   } else if (payRes.error) {
     console.error("Supabase load failed for payslips:", payRes.error.message);
   }

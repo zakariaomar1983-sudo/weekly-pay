@@ -114,6 +114,12 @@ async function hydrateTrucksFromSupabase() {
     return;
   }
   if (!Array.isArray(data)) return;
+  if (!data.length && state.trucks.length) {
+    console.warn("Supabase trucks table is empty; keeping local data and seeding Supabase.");
+    await syncTrucksToSupabase();
+    refresh();
+    return;
+  }
   state.trucks = data.map(fromDbTruck);
   localStorage.setItem(KEY, JSON.stringify(state.trucks));
   refresh();

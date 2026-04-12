@@ -112,6 +112,12 @@ async function hydrateDriversFromSupabase() {
     return;
   }
   if (!Array.isArray(data)) return;
+  if (!data.length && state.drivers.length) {
+    console.warn("Supabase drivers table is empty; keeping local data and seeding Supabase.");
+    await syncDriversToSupabase();
+    refresh();
+    return;
+  }
   state.drivers = data.map(fromDbDriver);
   localStorage.setItem(KEY, JSON.stringify(state.drivers));
   refresh();
