@@ -30,10 +30,11 @@
 
     <section class="stats-grid" id="securityStats"></section>
 
-    <section class="panel">
+    <section class="panel" id="roleTablePanel">
       <div class="panel-head">
-        <h2>Roles (Access Levels)</h2>
+        <h2>Role Table</h2>
       </div>
+      <p class="muted">Create and manage CRM staff roles and permissions.</p>
       <form id="roleForm" class="form-grid">
         <input type="hidden" id="roleId" />
         <label class="full">Role Name<input id="roleName" type="text" placeholder="Dispatcher" required /></label>
@@ -109,7 +110,7 @@
       window.OPXAuth.healCoreAccess();
     }
   </script>
-  <script src="./control-panel.js?v=20260413w"></script>
+  <script src="./control-panel.js?v=20260413x"></script>
   <script src="./emergency-fill.js?v=20260413s"></script>
 </body>
 </html>
