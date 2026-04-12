@@ -173,9 +173,7 @@ function renderRolesTable() {
     .map((role) => {
       const enabledCount = Object.values(role.permissions || {}).filter(Boolean).length;
       const typeLabel = role.system ? "System" : "Custom";
-      const actions = role.system
-        ? "<span class='muted'>System role</span>"
-        : `<div class='table-actions'><button data-action='edit-role' data-id='${role.id}'>Edit</button><button data-action='delete-role' data-id='${role.id}'>Delete</button></div>`;
+      const actions = "<span class='muted'>Locked</span>";
 
       return `<tr><td>${role.name}</td><td>${typeLabel}</td><td>${enabledCount} enabled</td><td>${actions}</td></tr>`;
     })
@@ -737,28 +735,7 @@ function hookBackupActions() {
 
 document.getElementById("roleForm").addEventListener("submit", (e) => {
   e.preventDefault();
-
-  const roleId = document.getElementById("roleId").value;
-  const roleName = document.getElementById("roleName").value.trim();
-  if (!roleName) return;
-
-  const payload = {
-    name: roleName,
-    permissions: checkedPermissionsFromForm()
-  };
-
-  if (roleId) {
-    const updated = window.OPXAuth.updateRole(roleId, payload);
-    if (!updated) {
-      alert("System roles cannot be edited.");
-      return;
-    }
-  } else {
-    window.OPXAuth.createRole(payload);
-  }
-
-  resetRoleForm();
-  refresh();
+  alert("Roles are locked to: Admin, Ops Manager, GM.");
 });
 
 document.getElementById("userForm").addEventListener("submit", (e) => {
@@ -797,6 +774,13 @@ document.getElementById("userForm").addEventListener("submit", (e) => {
 
 document.getElementById("cancelRoleEdit").addEventListener("click", resetRoleForm);
 document.getElementById("cancelUserEdit").addEventListener("click", resetUserForm);
+
+// Lock role editing UI (view only).
+document.getElementById("roleName").disabled = true;
+PERMISSIONS.forEach((perm) => {
+  const checkbox = document.getElementById(`perm_${perm.key}`);
+  if (checkbox) checkbox.disabled = true;
+});
 
 document.body.addEventListener("click", (e) => {
   const button = e.target.closest("button[data-action]");
