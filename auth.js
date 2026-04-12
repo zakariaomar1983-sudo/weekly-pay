@@ -120,7 +120,9 @@
 
   function migrateSystemRoles(existingRoles) {
     const systemRoles = buildSystemRoleDefinitions();
-    return systemRoles;
+    const systemIds = new Set(systemRoles.map((r) => r.id));
+    const customRoles = existingRoles.filter((r) => !systemIds.has(r.id));
+    return [...systemRoles, ...customRoles];
   }
 
   function buildDefaults() {
@@ -317,15 +319,40 @@
   }
 
   function createRole(input) {
-    return null;
+    const roles = getRoles();
+    const payload = {
+      id: uid("role"),
+      name: input.name.trim(),
+      system: false,
+      permissions: { ...allPermissions(false), ...input.permissions }
+    };
+    roles.push(payload);
+    setRoles(roles);
+    return payload;
   }
 
   function updateRole(roleId, input) {
-    return null;
+    const roles = getRoles();
+    const role = roles.find((r) => r.id === roleId);
+    if (!role || role.system) return null;
+
+    role.name = input.name.trim();
+    role.permissions = { ...allPermissions(false), ...input.permissions };
+    setRoles(roles);
+    return role;
   }
 
   function deleteRole(roleId) {
-    return { ok: false, message: "Roles are locked." };
+    const roles = getRoles();
+    const role = roles.find((r) => r.id === roleId);
+    if (!role || role.system) return { ok: false, message: "System role cannot be deleted." };
+
+    const users = getUsers();
+    const inUse = users.some((u) => u.roleId === roleId);
+    if (inUse) return { ok: false, message: "Role is assigned to users. Reassign users first." };
+
+    setRoles(roles.filter((r) => r.id !== roleId));
+    return { ok: true };
   }
 
   function createUser(input) {
