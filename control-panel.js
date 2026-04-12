@@ -158,13 +158,14 @@ function renderRoleOptions() {
 
 function renderRolesTable() {
   const roles = getEffectiveRoles();
+  const users = window.OPXAuth.getUsers();
   const tbody = document.getElementById("rolesTableBody");
 
   if (!roles.length) {
     tbody.innerHTML = [
-      "<tr><td>Admin</td><td>System</td><td>All enabled</td><td><span class='muted'>System role</span></td></tr>",
-      "<tr><td>Ops Manager</td><td>System</td><td>Operational enabled</td><td><span class='muted'>System role</span></td></tr>",
-      "<tr><td>GM</td><td>System</td><td>View enabled</td><td><span class='muted'>System role</span></td></tr>"
+      "<tr><td>role_admin</td><td>Admin</td><td>System</td><td>All enabled</td><td>0</td><td><span class='muted'>System role</span></td></tr>",
+      "<tr><td>role_manager</td><td>Ops Manager</td><td>System</td><td>Operational enabled</td><td>0</td><td><span class='muted'>System role</span></td></tr>",
+      "<tr><td>role_viewer</td><td>GM</td><td>System</td><td>View enabled</td><td>0</td><td><span class='muted'>System role</span></td></tr>"
     ].join("");
     return;
   }
@@ -172,12 +173,13 @@ function renderRolesTable() {
   tbody.innerHTML = roles
     .map((role) => {
       const enabledCount = Object.values(role.permissions || {}).filter(Boolean).length;
+      const assignedUsers = users.filter((u) => u.roleId === role.id).length;
       const typeLabel = role.system ? "System" : "Custom";
       const actions = role.system
         ? "<span class='muted'>System role</span>"
         : `<div class='table-actions'><button data-action='edit-role' data-id='${role.id}'>Edit</button><button data-action='delete-role' data-id='${role.id}'>Delete</button></div>`;
 
-      return `<tr><td>${role.name}</td><td>${typeLabel}</td><td>${enabledCount} enabled</td><td>${actions}</td></tr>`;
+      return `<tr><td>${role.id}</td><td>${role.name}</td><td>${typeLabel}</td><td>${enabledCount} enabled</td><td>${assignedUsers}</td><td>${actions}</td></tr>`;
     })
     .join("");
 }

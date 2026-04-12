@@ -46,12 +46,12 @@
       <div class="table-wrap">
         <table>
           <thead>
-            <tr><th>Role</th><th>Type</th><th>Permissions</th><th>Actions</th></tr>
+            <tr><th>Role ID</th><th>Role Name</th><th>Type</th><th>Permissions</th><th>Assigned Users</th><th>Actions</th></tr>
           </thead>
           <tbody id="rolesTableBody">
-            <tr><td>Admin</td><td>System</td><td>All enabled</td><td><span class="muted">System role</span></td></tr>
-            <tr><td>Ops Manager</td><td>System</td><td>Operational enabled</td><td><span class="muted">System role</span></td></tr>
-            <tr><td>GM</td><td>System</td><td>View enabled</td><td><span class="muted">System role</span></td></tr>
+            <tr><td>role_admin</td><td>Admin</td><td>System</td><td>All enabled</td><td>0</td><td><span class="muted">System role</span></td></tr>
+            <tr><td>role_manager</td><td>Ops Manager</td><td>System</td><td>Operational enabled</td><td>0</td><td><span class="muted">System role</span></td></tr>
+            <tr><td>role_viewer</td><td>GM</td><td>System</td><td>View enabled</td><td>0</td><td><span class="muted">System role</span></td></tr>
           </tbody>
         </table>
       </div>
@@ -105,7 +105,7 @@
       window.OPXAuth.healCoreAccess();
     }
   </script>
-  <script src="./control-panel.js?v=20260413s"></script>
+  <script src="./control-panel.js?v=20260413v"></script>
   <script src="./emergency-fill.js?v=20260413s"></script>
 </body>
 </html>
