@@ -191,6 +191,90 @@ function setBackupStatus(message, isError = false) {
   status.className = isError ? "error-text" : "muted";
 }
 
+function setSupabaseConfigStatus(message, isError = false) {
+  const status = document.getElementById("supabaseConfigStatus");
+  if (!status) return;
+  status.textContent = message;
+  status.className = isError ? "error-text" : "muted";
+}
+
+function readSupabaseConfigInputs() {
+  const url = String(document.getElementById("supabaseUrlInput")?.value || "").trim();
+  const anonKey = String(document.getElementById("supabaseAnonKeyInput")?.value || "").trim();
+  return { url, anonKey };
+}
+
+async function testSupabaseConnection(url, anonKey) {
+  if (!url || !anonKey) {
+    setSupabaseConfigStatus("Enter both Supabase URL and anon key.", true);
+    return;
+  }
+
+  if (!window.supabase?.createClient) {
+    setSupabaseConfigStatus("Supabase SDK not loaded.", true);
+    return;
+  }
+
+  try {
+    const client = window.supabase.createClient(url, anonKey);
+    const { count, error } = await client.from("trucks").select("*", { count: "exact", head: true });
+    if (error) {
+      setSupabaseConfigStatus(`Connection failed: ${error.message}`, true);
+      return;
+    }
+    setSupabaseConfigStatus(`Connected. Trucks rows available: ${count ?? 0}.`);
+  } catch (error) {
+    setSupabaseConfigStatus(`Connection failed: ${error.message || "Unknown error"}`, true);
+  }
+}
+
+function initSupabaseConfigPanel() {
+  const urlInput = document.getElementById("supabaseUrlInput");
+  const anonInput = document.getElementById("supabaseAnonKeyInput");
+  const saveBtn = document.getElementById("saveSupabaseConfigBtn");
+  const testBtn = document.getElementById("testSupabaseBtn");
+  const clearBtn = document.getElementById("clearSupabaseConfigBtn");
+
+  if (!urlInput || !anonInput || !saveBtn || !testBtn || !clearBtn) return;
+
+  const savedUrl = localStorage.getItem("OPX_SUPABASE_URL") || window.OPX_SUPABASE?.url || "";
+  const savedAnon = localStorage.getItem("OPX_SUPABASE_ANON_KEY") || window.OPX_SUPABASE?.anonKey || "";
+
+  urlInput.value = savedUrl;
+  anonInput.value = savedAnon;
+
+  if (savedUrl && savedAnon) {
+    setSupabaseConfigStatus("Supabase credentials are saved in this browser.");
+  } else {
+    setSupabaseConfigStatus("Supabase credentials are not set yet.", true);
+  }
+
+  saveBtn.addEventListener("click", () => {
+    const { url, anonKey } = readSupabaseConfigInputs();
+    if (!url || !anonKey) {
+      setSupabaseConfigStatus("Please enter both URL and anon key before saving.", true);
+      return;
+    }
+    localStorage.setItem("OPX_SUPABASE_URL", url);
+    localStorage.setItem("OPX_SUPABASE_ANON_KEY", anonKey);
+    setSupabaseConfigStatus("Saved. Reloading page to apply connection...");
+    setTimeout(() => window.location.reload(), 500);
+  });
+
+  testBtn.addEventListener("click", () => {
+    const { url, anonKey } = readSupabaseConfigInputs();
+    void testSupabaseConnection(url, anonKey);
+  });
+
+  clearBtn.addEventListener("click", () => {
+    localStorage.removeItem("OPX_SUPABASE_URL");
+    localStorage.removeItem("OPX_SUPABASE_ANON_KEY");
+    urlInput.value = "";
+    anonInput.value = "";
+    setSupabaseConfigStatus("Supabase credentials cleared for this browser.");
+  });
+}
+
 function collectBackupData() {
   const data = {};
   for (let i = 0; i < localStorage.length; i += 1) {
@@ -644,6 +728,7 @@ resetRoleForm();
 resetUserForm();
 refresh();
 hookBackupActions();
+initSupabaseConfigPanel();
 
 if (document.getElementById("restoreBackupBtn")) {
   setBackupStatus("Backup actions ready.");
