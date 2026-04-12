@@ -15,7 +15,15 @@ const useSupabase = Boolean(window.OPXSupabase?.isReady && supabase);
 document.getElementById("currentUserChip").textContent = `User: ${auth.user.username}`;
 
 document.getElementById("logoutBtn").addEventListener("click", () => {
-  window.OPXAuth.logout();
+  try {
+    if (window.OPXAuth?.logout) {
+      window.OPXAuth.logout();
+    } else {
+      localStorage.removeItem("opx_auth_session");
+    }
+  } catch {
+    localStorage.removeItem("opx_auth_session");
+  }
   window.location.href = "./login.html";
 });
 
