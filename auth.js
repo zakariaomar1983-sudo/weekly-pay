@@ -37,7 +37,11 @@
 
   const STARTER_CUSTOM_ROLE_IDS = {
     dispatcher: "role_dispatcher",
-    finance: "role_finance"
+    finance: "role_finance",
+    fleet: "role_fleet_manager",
+    payroll: "role_payroll",
+    compliance: "role_compliance",
+    dataEntry: "role_data_entry"
   };
 
   const LEGACY_DISABLED_DEFAULTS = [
@@ -149,9 +153,69 @@
       financePerms[key] = true;
     });
 
+    const fleetPerms = allPermissions(false);
+    [
+      "accessCRM",
+      "accessLogs",
+      "viewDrivers",
+      "viewTrucks",
+      "editTrucks",
+      "viewRoster",
+      "editRoster",
+      "viewStats"
+    ].forEach((key) => {
+      fleetPerms[key] = true;
+    });
+
+    const payrollPerms = allPermissions(false);
+    [
+      "accessCRM",
+      "viewPayslips",
+      "editPayslips",
+      "viewTruckIncome",
+      "viewSpending",
+      "viewStats"
+    ].forEach((key) => {
+      payrollPerms[key] = true;
+    });
+
+    const compliancePerms = allPermissions(false);
+    [
+      "accessCRM",
+      "accessLogs",
+      "viewDrivers",
+      "viewTrucks",
+      "editTrucks",
+      "viewContracts",
+      "viewStats"
+    ].forEach((key) => {
+      compliancePerms[key] = true;
+    });
+
+    const dataEntryPerms = allPermissions(false);
+    [
+      "accessCRM",
+      "viewDrivers",
+      "editDrivers",
+      "viewTrucks",
+      "editTrucks",
+      "viewRoster",
+      "editRoster",
+      "viewTruckIncome",
+      "editTruckIncome",
+      "viewSpending",
+      "editSpending"
+    ].forEach((key) => {
+      dataEntryPerms[key] = true;
+    });
+
     return [
       { id: STARTER_CUSTOM_ROLE_IDS.dispatcher, name: "Dispatcher", system: false, permissions: dispatcherPerms },
-      { id: STARTER_CUSTOM_ROLE_IDS.finance, name: "Finance Officer", system: false, permissions: financePerms }
+      { id: STARTER_CUSTOM_ROLE_IDS.finance, name: "Finance Officer", system: false, permissions: financePerms },
+      { id: STARTER_CUSTOM_ROLE_IDS.fleet, name: "Fleet Manager", system: false, permissions: fleetPerms },
+      { id: STARTER_CUSTOM_ROLE_IDS.payroll, name: "Payroll Officer", system: false, permissions: payrollPerms },
+      { id: STARTER_CUSTOM_ROLE_IDS.compliance, name: "Compliance Officer", system: false, permissions: compliancePerms },
+      { id: STARTER_CUSTOM_ROLE_IDS.dataEntry, name: "Data Entry", system: false, permissions: dataEntryPerms }
     ];
   }
 

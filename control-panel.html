@@ -39,6 +39,10 @@
         <label class="full">Role Name<input id="roleName" type="text" placeholder="Dispatcher" required /></label>
         <div class="full perms-grid" id="permissionsGrid"></div>
         <div class="actions full">
+          <button id="roleSelectAllBtn" class="btn btn-outline" type="button">Select All</button>
+          <button id="roleClearAllBtn" class="btn btn-outline" type="button">Clear All</button>
+        </div>
+        <div class="actions full">
           <button class="btn" type="submit">Save Role</button>
           <button id="cancelRoleEdit" class="btn btn-muted" type="button">Cancel Edit</button>
         </div>
@@ -99,15 +103,16 @@
   <script src="./supabase-config.js?v=20260413s"></script>
   <script src="./supabase-client.js?v=20260413s"></script>
   <script src="./seed-data.js?v=20260413s"></script>
-  <script src="./auth.js?v=20260413u"></script>
+  <script src="./auth.js?v=20260413w"></script>
   <script>
     if (window.OPXAuth?.healCoreAccess) {
       window.OPXAuth.healCoreAccess();
     }
   </script>
-  <script src="./control-panel.js?v=20260413v"></script>
+  <script src="./control-panel.js?v=20260413w"></script>
   <script src="./emergency-fill.js?v=20260413s"></script>
 </body>
 </html>
+
 
 

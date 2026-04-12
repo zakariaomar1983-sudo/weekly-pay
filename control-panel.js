@@ -131,6 +131,14 @@ function renderPermissionChecklist() {
   grid.innerHTML = PERMISSIONS
     .map((perm) => `<label class="perm-item"><input type="checkbox" id="perm_${perm.key}" /> ${perm.label}</label>`)
     .join("");
+
+  // Safety: force these checkboxes interactive even after browser/state quirks.
+  PERMISSIONS.forEach((perm) => {
+    const checkbox = document.getElementById(`perm_${perm.key}`);
+    if (!checkbox) return;
+    checkbox.disabled = false;
+    checkbox.style.pointerEvents = "auto";
+  });
 }
 
 function renderSecurityStats() {
@@ -799,6 +807,18 @@ document.getElementById("userForm").addEventListener("submit", (e) => {
 
 document.getElementById("cancelRoleEdit").addEventListener("click", resetRoleForm);
 document.getElementById("cancelUserEdit").addEventListener("click", resetUserForm);
+document.getElementById("roleSelectAllBtn")?.addEventListener("click", () => {
+  PERMISSIONS.forEach((perm) => {
+    const checkbox = document.getElementById(`perm_${perm.key}`);
+    if (checkbox) checkbox.checked = true;
+  });
+});
+document.getElementById("roleClearAllBtn")?.addEventListener("click", () => {
+  PERMISSIONS.forEach((perm) => {
+    const checkbox = document.getElementById(`perm_${perm.key}`);
+    if (checkbox) checkbox.checked = false;
+  });
+});
 
 document.body.addEventListener("click", (e) => {
   const button = e.target.closest("button[data-action]");
