@@ -416,17 +416,41 @@ async function syncRestoredKeysToSupabase(keys) {
   return syncedAny;
 }
 
+async function syncAllLocalDataToSupabase() {
+  if (!(auth.can("backupRestore") || auth.can("adminData"))) return;
+  if (!useSupabase) {
+    setBackupStatus("Supabase is not configured on this page.", true);
+    return;
+  }
+
+  const keys = Object.keys(TABLE_BY_KEY).filter((key) => localStorage.getItem(key) !== null);
+  if (!keys.length) {
+    setBackupStatus("No local CRM data found to sync.", true);
+    return;
+  }
+
+  setBackupStatus("Syncing local data to Supabase...");
+  const synced = await syncRestoredKeysToSupabase(keys);
+  if (synced) {
+    setBackupStatus(`Sync complete. ${keys.length} data group(s) uploaded to Supabase.`);
+  } else {
+    setBackupStatus("Sync attempted, but no data groups were uploaded.", true);
+  }
+}
+
 function hookBackupActions() {
   const downloadBtn = document.getElementById("downloadBackupBtn");
   const downloadCategoryBtn = document.getElementById("downloadCategoryBackupsBtn");
+  const syncSupabaseBtn = document.getElementById("syncSupabaseBtn");
   const restoreBtn = document.getElementById("restoreBackupBtn");
   const fileInput = document.getElementById("backupFileInput");
 
-  if (!downloadBtn || !downloadCategoryBtn || !restoreBtn || !fileInput) return;
+  if (!downloadBtn || !downloadCategoryBtn || !syncSupabaseBtn || !restoreBtn || !fileInput) return;
 
   if (!(auth.can("backupRestore") || auth.can("adminData"))) {
     downloadBtn.style.display = "none";
     downloadCategoryBtn.style.display = "none";
+    syncSupabaseBtn.style.display = "none";
     restoreBtn.style.display = "none";
     fileInput.style.display = "none";
     setBackupStatus("Backup/restore is available to users with backup permission.");
@@ -435,6 +459,9 @@ function hookBackupActions() {
 
   downloadBtn.addEventListener("click", downloadBackup);
   downloadCategoryBtn.addEventListener("click", downloadCategoryBackups);
+  syncSupabaseBtn.addEventListener("click", () => {
+    void syncAllLocalDataToSupabase();
+  });
   restoreBtn.addEventListener("click", () => fileInput.click());
 
   fileInput.addEventListener("change", async () => {
