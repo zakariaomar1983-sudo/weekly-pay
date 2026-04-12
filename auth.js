@@ -1,4 +1,4 @@
-﻿(function authBootstrap() {
+(function authBootstrap() {
   const STORAGE = {
     roles: "opx_auth_roles",
     users: "opx_auth_users",
@@ -35,14 +35,15 @@
     viewer: "role_viewer"
   };
 
-  const CORE_DEFAULT_USERS = {
-    admin: { username: "admin", password: "Admin@123", roleId: SYSTEM_ROLE_IDS.admin }
-  };
-
-  const DEFAULT_CUSTOM_ROLE_IDS = {
+  const STARTER_CUSTOM_ROLE_IDS = {
     dispatcher: "role_dispatcher",
     finance: "role_finance"
   };
+
+  const LEGACY_DISABLED_DEFAULTS = [
+    { username: "opsmanager", password: "Ops@123" },
+    { username: "gm", password: "Gm@123" }
+  ];
 
   function read(key, fallback) {
     try {
@@ -92,8 +93,7 @@
       "viewPayslips",
       "editPayslips",
       "viewStats",
-      "editLogs",
-      "backupRestore"
+      "editLogs"
     ].forEach((key) => {
       managerPerms[key] = true;
     });
@@ -121,17 +121,16 @@
     ];
   }
 
-  function buildDefaultCustomRoleDefinitions() {
+  function buildStarterCustomRoleDefinitions() {
     const dispatcherPerms = allPermissions(false);
     [
       "accessCRM",
+      "accessLogs",
       "viewDrivers",
       "editDrivers",
       "viewTrucks",
       "viewRoster",
-      "editRoster",
-      "viewTruckIncome",
-      "accessLogs"
+      "editRoster"
     ].forEach((key) => {
       dispatcherPerms[key] = true;
     });
@@ -151,122 +150,99 @@
     });
 
     return [
-      { id: DEFAULT_CUSTOM_ROLE_IDS.dispatcher, name: "Dispatcher", system: false, permissions: dispatcherPerms },
-      { id: DEFAULT_CUSTOM_ROLE_IDS.finance, name: "Finance Officer", system: false, permissions: financePerms }
+      { id: STARTER_CUSTOM_ROLE_IDS.dispatcher, name: "Dispatcher", system: false, permissions: dispatcherPerms },
+      { id: STARTER_CUSTOM_ROLE_IDS.finance, name: "Finance Officer", system: false, permissions: financePerms }
     ];
   }
 
-  function migrateSystemRoles(existingRoles) {
+  function normalizeRoles(inputRoles) {
     const systemRoles = buildSystemRoleDefinitions();
     const systemIds = new Set(systemRoles.map((r) => r.id));
-    const customRoles = existingRoles.filter((r) => !systemIds.has(r.id));
+    const starter = buildStarterCustomRoleDefinitions();
 
-    const defaults = buildDefaultCustomRoleDefinitions();
-    const customIds = new Set(customRoles.map((r) => r.id));
-    const missingDefaults = defaults.filter((r) => !customIds.has(r.id));
+    const safeInput = Array.isArray(inputRoles) ? inputRoles : [];
+    const custom = [];
+    const seen = new Set();
 
-    return [...systemRoles, ...customRoles, ...missingDefaults];
-  }
+    safeInput.forEach((role) => {
+      if (!role || typeof role !== "object") return;
+      if (!role.id || typeof role.id !== "string") return;
+      if (systemIds.has(role.id)) return;
+      if (seen.has(role.id)) return;
+      seen.add(role.id);
 
-  function buildDefaults() {
-    const roles = buildSystemRoleDefinitions();
-
-    const users = [];
-
-    write(STORAGE.roles, roles);
-    write(STORAGE.users, users);
-  }
-
-  function removeLegacyDefaultAdmin(users) {
-    return users.filter((u) => !(u.username === "admin" && u.password === "admin123"));
-  }
-
-  function uniqueUsername(base, users) {
-    const existing = new Set(users.map((u) => String(u.username || "").toLowerCase()));
-    if (!existing.has(base.toLowerCase())) return base;
-
-    let i = 2;
-    while (existing.has(`${base}${i}`.toLowerCase())) i += 1;
-    return `${base}${i}`;
-  }
-
-  function ensureCoreUsers(users) {
-    const next = [...users];
-
-    const rolePresence = {
-      [SYSTEM_ROLE_IDS.admin]: next.some((u) => u.roleId === SYSTEM_ROLE_IDS.admin && u.active)
-    };
-
-    const required = [CORE_DEFAULT_USERS.admin];
-    required.forEach((core) => {
-      if (rolePresence[core.roleId]) return;
-      const username = uniqueUsername(core.username, next);
-      next.push({
-        id: uid("user"),
-        username,
-        password: core.password,
-        roleId: core.roleId,
-        active: true
+      custom.push({
+        id: role.id,
+        name: String(role.name || "Custom Role"),
+        system: false,
+        permissions: { ...allPermissions(false), ...(role.permissions || {}) }
       });
-      rolePresence[core.roleId] = true;
     });
 
-    return next;
+    const missingStarter = starter.filter((r) => !seen.has(r.id));
+    return [...systemRoles, ...custom, ...missingStarter];
   }
 
-  function healCoreAccess() {
-    const currentRoles = read(STORAGE.roles, []);
-    const currentUsers = read(STORAGE.users, []);
+  function isLegacyDisabledUser(user) {
+    return LEGACY_DISABLED_DEFAULTS.some((x) => x.username === user.username && x.password === user.password);
+  }
 
-    const nextRoles = migrateSystemRoles(Array.isArray(currentRoles) ? currentRoles : []);
-    const cleanedUsers = removeLegacyDefaultAdmin(Array.isArray(currentUsers) ? currentUsers : []);
-    const nextUsers = ensureCoreUsers(cleanedUsers);
+  function normalizeUsers(inputUsers, roles) {
+    const safeInput = Array.isArray(inputUsers) ? inputUsers : [];
+    const roleIds = new Set(roles.map((r) => r.id));
+    const seenNames = new Set();
+    const users = [];
 
-    if (JSON.stringify(nextRoles) !== JSON.stringify(currentRoles)) {
-      write(STORAGE.roles, nextRoles);
-    }
-    if (JSON.stringify(nextUsers) !== JSON.stringify(currentUsers)) {
-      write(STORAGE.users, nextUsers);
-    }
+    safeInput.forEach((raw) => {
+      if (!raw || typeof raw !== "object") return;
+      const username = String(raw.username || "").trim();
+      const password = String(raw.password || "");
+      if (!username || !password) return;
+      const lowered = username.toLowerCase();
+      if (seenNames.has(lowered)) return;
 
-    return { roles: nextRoles, users: nextUsers };
+      const normalized = {
+        id: typeof raw.id === "string" && raw.id ? raw.id : uid("user"),
+        username,
+        password,
+        roleId: roleIds.has(raw.roleId) ? raw.roleId : SYSTEM_ROLE_IDS.admin,
+        active: raw.active !== false
+      };
+
+      if (normalized.username === "admin" && normalized.password === "admin123") return;
+      if (isLegacyDisabledUser(normalized)) return;
+
+      seenNames.add(lowered);
+      users.push(normalized);
+    });
+
+    return users;
   }
 
   function init() {
-    const roles = read(STORAGE.roles, null);
-    const users = read(STORAGE.users, null);
-    if (!Array.isArray(roles) || !roles.length || !Array.isArray(users)) {
-      buildDefaults();
+    const currentRoles = read(STORAGE.roles, []);
+    const nextRoles = normalizeRoles(currentRoles);
+    if (JSON.stringify(nextRoles) !== JSON.stringify(currentRoles)) {
+      write(STORAGE.roles, nextRoles);
     }
 
-    const nextRoles = read(STORAGE.roles, []);
-    const nextUsers = read(STORAGE.users, []);
-    const hasAdminRole = nextRoles.some((r) => r.id === SYSTEM_ROLE_IDS.admin);
-    if (!hasAdminRole) {
-      buildDefaults();
-      return;
+    const currentUsers = read(STORAGE.users, []);
+    const nextUsers = normalizeUsers(currentUsers, nextRoles);
+    if (JSON.stringify(nextUsers) !== JSON.stringify(currentUsers)) {
+      write(STORAGE.users, nextUsers);
     }
+  }
 
-    const migratedRoles = migrateSystemRoles(nextRoles);
-    if (JSON.stringify(migratedRoles) !== JSON.stringify(nextRoles)) {
-      write(STORAGE.roles, migratedRoles);
-    }
-
-    const cleanedUsers = removeLegacyDefaultAdmin(nextUsers);
-    const ensuredUsers = ensureCoreUsers(cleanedUsers);
-    if (JSON.stringify(ensuredUsers) !== JSON.stringify(nextUsers)) {
-      write(STORAGE.users, ensuredUsers);
-    }
-
-    // Final safety net: always heal core system roles/users if anything is missing.
-    healCoreAccess();
+  function healCoreAccess() {
+    init();
+    return { roles: getRoles(), users: getUsers() };
   }
 
   function recoverRolesFromUrl() {
     try {
       const params = new URLSearchParams(window.location.search || "");
       if (params.get("recoverRoles") !== "1") return;
-      healCoreAccess();
+      init();
     } catch {
       // ignore
     }
@@ -277,7 +253,7 @@
   }
 
   function setRoles(roles) {
-    write(STORAGE.roles, roles);
+    write(STORAGE.roles, normalizeRoles(roles));
   }
 
   function getUsers() {
@@ -285,7 +261,7 @@
   }
 
   function setUsers(users) {
-    write(STORAGE.users, users);
+    write(STORAGE.users, normalizeUsers(users, getRoles()));
   }
 
   function getSession() {
@@ -333,8 +309,10 @@
 
   function login(username, password) {
     init();
+    const name = String(username || "").trim();
+    const pass = String(password || "");
     const users = getUsers();
-    const user = users.find((u) => u.username === username && u.password === password && u.active);
+    const user = users.find((u) => u.username === name && u.password === pass && u.active);
     if (!user) return { ok: false, message: "Invalid username or password." };
     setSession({ userId: user.id, loginAt: new Date().toISOString() });
     return { ok: true, user };
@@ -360,12 +338,15 @@
   }
 
   function createRole(input) {
+    const name = String(input?.name || "").trim();
+    if (!name) return null;
+
     const roles = getRoles();
     const payload = {
       id: uid("role"),
-      name: input.name.trim(),
+      name,
       system: false,
-      permissions: { ...allPermissions(false), ...input.permissions }
+      permissions: { ...allPermissions(false), ...(input?.permissions || {}) }
     };
     roles.push(payload);
     setRoles(roles);
@@ -377,8 +358,8 @@
     const role = roles.find((r) => r.id === roleId);
     if (!role || role.system) return null;
 
-    role.name = input.name.trim();
-    role.permissions = { ...allPermissions(false), ...input.permissions };
+    role.name = String(input?.name || "").trim() || role.name;
+    role.permissions = { ...allPermissions(false), ...(input?.permissions || {}) };
     setRoles(roles);
     return role;
   }
@@ -398,15 +379,19 @@
 
   function createUser(input) {
     const users = getUsers();
-    const usernameExists = users.some((u) => u.username.toLowerCase() === input.username.trim().toLowerCase());
+    const username = String(input?.username || "").trim();
+    const password = String(input?.password || "");
+    if (!username || !password) return { ok: false, message: "Username and password are required." };
+
+    const usernameExists = users.some((u) => u.username.toLowerCase() === username.toLowerCase());
     if (usernameExists) return { ok: false, message: "Username already exists." };
 
     const payload = {
       id: uid("user"),
-      username: input.username.trim(),
-      password: input.password,
-      roleId: input.roleId,
-      active: Boolean(input.active)
+      username,
+      password,
+      roleId: String(input?.roleId || SYSTEM_ROLE_IDS.admin),
+      active: Boolean(input?.active)
     };
 
     users.push(payload);
@@ -416,13 +401,12 @@
 
   function createFirstAdmin(input) {
     init();
-    const users = getUsers();
-    if (users.length > 0) {
+    if (getUsers().length > 0) {
       return { ok: false, message: "Users already exist. Use Control Panel to create additional users." };
     }
 
-    const username = String(input.username || "").trim();
-    const password = String(input.password || "");
+    const username = String(input?.username || "").trim();
+    const password = String(input?.password || "");
     if (!username || !password) {
       return { ok: false, message: "Username and password are required." };
     }
@@ -441,13 +425,12 @@
 
   function createInitialUsers(input) {
     init();
-    const users = getUsers();
-    if (users.length > 0) {
+    if (getUsers().length > 0) {
       return { ok: false, message: "Users already exist. Use Control Panel to create additional users." };
     }
 
-    const adminUsername = String(input.adminUsername || "").trim();
-    const adminPassword = String(input.adminPassword || "");
+    const adminUsername = String(input?.adminUsername || "").trim();
+    const adminPassword = String(input?.adminPassword || "");
     if (!adminUsername || !adminPassword) {
       return { ok: false, message: "Admin username and password are required." };
     }
@@ -463,13 +446,23 @@
     ];
 
     const optionalUsers = [
-      { username: String(input.opsManagerUsername || input.managerUsername || "").trim(), password: String(input.opsManagerPassword || input.managerPassword || ""), roleId: SYSTEM_ROLE_IDS.manager },
-      { username: String(input.gmUsername || input.viewerUsername || "").trim(), password: String(input.gmPassword || input.viewerPassword || ""), roleId: SYSTEM_ROLE_IDS.viewer }
+      {
+        username: String(input?.opsManagerUsername || "").trim(),
+        password: String(input?.opsManagerPassword || ""),
+        roleId: SYSTEM_ROLE_IDS.manager
+      },
+      {
+        username: String(input?.gmUsername || "").trim(),
+        password: String(input?.gmPassword || ""),
+        roleId: SYSTEM_ROLE_IDS.viewer
+      }
     ];
 
-    optionalUsers.forEach((entry) => {
-      if (!entry.username && !entry.password) return;
-      if (!entry.username || !entry.password) return;
+    for (const entry of optionalUsers) {
+      if (!entry.username && !entry.password) continue;
+      if (!entry.username || !entry.password) {
+        return { ok: false, message: "Ops Manager/GM requires both username and password." };
+      }
       payload.push({
         id: uid("user"),
         username: entry.username,
@@ -477,19 +470,6 @@
         roleId: entry.roleId,
         active: true
       });
-    });
-
-    const partialOptional =
-      (input.opsManagerUsername && !input.opsManagerPassword) ||
-      (!input.opsManagerUsername && input.opsManagerPassword) ||
-      (input.gmUsername && !input.gmPassword) ||
-      (!input.gmUsername && input.gmPassword) ||
-      (input.managerUsername && !input.managerPassword) ||
-      (!input.managerUsername && input.managerPassword) ||
-      (input.viewerUsername && !input.viewerPassword) ||
-      (!input.viewerUsername && input.viewerPassword);
-    if (partialOptional) {
-      return { ok: false, message: "Ops Manager/GM requires both username and password." };
     }
 
     const names = payload.map((u) => u.username.toLowerCase());
@@ -506,15 +486,16 @@
     const user = users.find((u) => u.id === userId);
     if (!user) return { ok: false, message: "User not found." };
 
-    const duplicate = users.some((u) => u.id !== userId && u.username.toLowerCase() === input.username.trim().toLowerCase());
+    const username = String(input?.username || "").trim();
+    if (!username) return { ok: false, message: "Username is required." };
+
+    const duplicate = users.some((u) => u.id !== userId && u.username.toLowerCase() === username.toLowerCase());
     if (duplicate) return { ok: false, message: "Username already exists." };
 
-    user.username = input.username.trim();
-    if (input.password) {
-      user.password = input.password;
-    }
-    user.roleId = input.roleId;
-    user.active = Boolean(input.active);
+    user.username = username;
+    if (input?.password) user.password = String(input.password);
+    user.roleId = String(input?.roleId || user.roleId);
+    user.active = Boolean(input?.active);
 
     setUsers(users);
     return { ok: true, user };
@@ -525,18 +506,18 @@
     const user = users.find((u) => u.id === userId);
     if (!user) return { ok: false, message: "User not found." };
 
-    const remainingAdmin = users.filter((u) => u.id !== userId && u.active).some((u) => u.roleId === SYSTEM_ROLE_IDS.admin);
-    if (user.roleId === SYSTEM_ROLE_IDS.admin && !remainingAdmin) {
+    const remainingActiveAdmins = users
+      .filter((u) => u.id !== userId && u.active)
+      .some((u) => u.roleId === SYSTEM_ROLE_IDS.admin);
+
+    if (user.roleId === SYSTEM_ROLE_IDS.admin && !remainingActiveAdmins) {
       return { ok: false, message: "At least one active admin user is required." };
     }
 
     setUsers(users.filter((u) => u.id !== userId));
 
     const session = getSession();
-    if (session?.userId === userId) {
-      clearSession();
-    }
-
+    if (session?.userId === userId) clearSession();
     return { ok: true };
   }
 

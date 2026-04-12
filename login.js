@@ -1,87 +1,29 @@
 window.OPXAuth.init();
 
-const loginParams = new URLSearchParams(window.location.search);
-if (loginParams.get("logout") === "1") {
-  localStorage.removeItem(window.OPXAuth.STORAGE.session);
-  if (window.OPXAuth?.logout) window.OPXAuth.logout();
-}
-
-const RECOVERY_USERS = {
-  admin: { username: "admin", password: "Admin@123" }
-};
-
-function runUrlRecoveryIfRequested() {
-  const params = loginParams;
-  if (params.get("recover") !== "1") return false;
-
-  localStorage.removeItem(window.OPXAuth.STORAGE.users);
-  localStorage.removeItem(window.OPXAuth.STORAGE.roles);
-  localStorage.removeItem(window.OPXAuth.STORAGE.session);
-  window.OPXAuth.init();
-
-  const created = window.OPXAuth.createInitialUsers({
-    adminUsername: RECOVERY_USERS.admin.username,
-    adminPassword: RECOVERY_USERS.admin.password
-  });
-
-  if (!created.ok) return false;
-  const loginResult = window.OPXAuth.login(RECOVERY_USERS.admin.username, RECOVERY_USERS.admin.password);
-  if (!loginResult.ok) return false;
-  routeUser(loginResult.user);
-  return true;
+const params = new URLSearchParams(window.location.search);
+if (params.get("logout") === "1") {
+  window.OPXAuth.logout();
 }
 
 function routeUser(user) {
-  const hasCRM = window.OPXAuth.canUser(user, "accessCRM");
-  const hasLogs = window.OPXAuth.canUser(user, "accessLogs");
-  const hasCP = window.OPXAuth.canUser(user, "accessControlPanel");
-
-  if (hasCRM) {
+  if (window.OPXAuth.canUser(user, "accessCRM")) {
     window.location.href = "./index.html";
     return true;
   }
-  if (hasLogs) {
+  if (window.OPXAuth.canUser(user, "accessLogs")) {
     window.location.href = "./log.html";
     return true;
   }
-  if (hasCP) {
+  if (window.OPXAuth.canUser(user, "accessControlPanel")) {
     window.location.href = "./control-panel.html";
     return true;
   }
   return false;
 }
 
-function tryCredentialRecovery(username, password) {
-  const isKnownDefault =
-    (username === RECOVERY_USERS.admin.username && password === RECOVERY_USERS.admin.password);
-
-  if (!isKnownDefault) return null;
-
-  try {
-    localStorage.removeItem(window.OPXAuth.STORAGE.users);
-    localStorage.removeItem(window.OPXAuth.STORAGE.roles);
-    localStorage.removeItem(window.OPXAuth.STORAGE.session);
-    window.OPXAuth.init();
-
-    const created = window.OPXAuth.createInitialUsers({
-      adminUsername: RECOVERY_USERS.admin.username,
-      adminPassword: RECOVERY_USERS.admin.password
-    });
-    if (!created.ok) return null;
-
-    return window.OPXAuth.login(username, password);
-  } catch {
-    return null;
-  }
-}
-
 const sessionUser = window.OPXAuth.getSessionUser();
 if (sessionUser) {
   routeUser(sessionUser);
-}
-
-if (runUrlRecoveryIfRequested()) {
-  // URL recovery performed and routed user.
 }
 
 const loginForm = document.getElementById("loginForm");
@@ -96,28 +38,18 @@ if (!window.OPXAuth.hasUsers()) {
 
 loginForm.addEventListener("submit", (e) => {
   e.preventDefault();
+  loginError.textContent = "";
 
   const username = document.getElementById("username").value.trim();
   const password = document.getElementById("password").value;
 
   const result = window.OPXAuth.login(username, password);
   if (!result.ok) {
-    const recovered = tryCredentialRecovery(username, password);
-    if (!recovered?.ok) {
-      loginError.textContent = result.message;
-      return;
-    }
-
-    const recoveredRouted = routeUser(recovered.user);
-    if (!recoveredRouted) {
-      loginError.textContent = "This account has no page access assigned.";
-      window.OPXAuth.logout();
-    }
+    loginError.textContent = result.message;
     return;
   }
 
-  const routed = routeUser(result.user);
-  if (!routed) {
+  if (!routeUser(result.user)) {
     loginError.textContent = "This account has no page access assigned.";
     window.OPXAuth.logout();
   }
@@ -125,28 +57,30 @@ loginForm.addEventListener("submit", (e) => {
 
 firstRunForm?.addEventListener("submit", (e) => {
   e.preventDefault();
+  loginError.textContent = "";
 
-  const username = document.getElementById("firstRunUsername").value.trim();
-  const password = document.getElementById("firstRunPassword").value;
+  const adminUsername = document.getElementById("firstRunUsername").value.trim();
+  const adminPassword = document.getElementById("firstRunPassword").value;
   const opsManagerUsername = document.getElementById("firstRunOpsManagerUsername").value.trim();
   const opsManagerPassword = document.getElementById("firstRunOpsManagerPassword").value;
   const gmUsername = document.getElementById("firstRunGmUsername").value.trim();
   const gmPassword = document.getElementById("firstRunGmPassword").value;
 
   const created = window.OPXAuth.createInitialUsers({
-    adminUsername: username,
-    adminPassword: password,
+    adminUsername,
+    adminPassword,
     opsManagerUsername,
     opsManagerPassword,
     gmUsername,
     gmPassword
   });
+
   if (!created.ok) {
     loginError.textContent = created.message;
     return;
   }
 
-  const result = window.OPXAuth.login(username, password);
+  const result = window.OPXAuth.login(adminUsername, adminPassword);
   if (!result.ok) {
     loginError.textContent = result.message;
     return;
