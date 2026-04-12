@@ -221,6 +221,16 @@
     healCoreAccess();
   }
 
+  function recoverRolesFromUrl() {
+    try {
+      const params = new URLSearchParams(window.location.search || "");
+      if (params.get("recoverRoles") !== "1") return;
+      healCoreAccess();
+    } catch {
+      // ignore
+    }
+  }
+
   function getRoles() {
     return read(STORAGE.roles, []);
   }
@@ -499,6 +509,7 @@
     canUser,
     hasUsers,
     healCoreAccess,
+    recoverRolesFromUrl,
     getRoles,
     getUsers,
     createFirstAdmin,
@@ -515,4 +526,5 @@
   };
 
   init();
+  recoverRolesFromUrl();
 })();
