@@ -152,6 +152,7 @@ function renderSecurityStats() {
 function renderRoleOptions() {
   const roles = getEffectiveRoles();
   const select = document.getElementById("userRole");
+  if (!roles.length) return;
   select.innerHTML = roles.map((role) => `<option value="${role.id}">${role.name}</option>`).join("");
 }
 
@@ -160,7 +161,11 @@ function renderRolesTable() {
   const tbody = document.getElementById("rolesTableBody");
 
   if (!roles.length) {
-    tbody.innerHTML = `<tr><td colspan="4" class="empty">No roles yet.</td></tr>`;
+    tbody.innerHTML = [
+      "<tr><td>Admin</td><td>System</td><td>All enabled</td><td><span class='muted'>System role</span></td></tr>",
+      "<tr><td>Ops Manager</td><td>System</td><td>Operational enabled</td><td><span class='muted'>System role</span></td></tr>",
+      "<tr><td>GM</td><td>System</td><td>View enabled</td><td><span class='muted'>System role</span></td></tr>"
+    ].join("");
     return;
   }
 
