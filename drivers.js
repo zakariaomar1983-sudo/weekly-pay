@@ -7,11 +7,36 @@ if (!auth.can("accessCRM") || !auth.can("viewDrivers")) {
 }
 
 const KEY = "transport_crm_drivers";
+const DRIVERS_TABLE = "drivers";
+const supabase = window.OPXSupabase?.client || null;
+const useSupabase = Boolean(window.OPXSupabase?.isReady && supabase);
 const state = { drivers: readData() };
+
+function isUuid(value) {
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(String(value || ""));
+}
+
+function newId() {
+  if (typeof crypto !== "undefined" && crypto.randomUUID) return crypto.randomUUID();
+  return `${Date.now()}${Math.random().toString(16).slice(2, 10)}`.slice(0, 32);
+}
+
+function ensureUuidDrivers(rows) {
+  let changed = false;
+  const normalized = rows.map((row) => {
+    if (isUuid(row.id)) return row;
+    changed = true;
+    return { ...row, id: newId() };
+  });
+  if (changed) {
+    localStorage.setItem(KEY, JSON.stringify(normalized));
+  }
+  return normalized;
+}
 
 function readData() {
   try {
-    return JSON.parse(localStorage.getItem(KEY) || "[]");
+    return ensureUuidDrivers(JSON.parse(localStorage.getItem(KEY) || "[]"));
   } catch {
     return [];
   }
@@ -19,10 +44,77 @@ function readData() {
 
 function saveData() {
   localStorage.setItem(KEY, JSON.stringify(state.drivers));
+  if (useSupabase) {
+    void syncDriversToSupabase();
+  }
 }
 
 function uid() {
-  return `${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+  return newId();
+}
+
+function toDbDriver(item) {
+  return {
+    id: item.id,
+    name: item.name || "",
+    phone: item.phone || "",
+    license_number: item.licenseNumber || "",
+    license_expiry: item.licenseExpiry || null,
+    hire_date: item.hireDate || null,
+    status: item.status || "",
+    address: item.address || "",
+    emergency_contact: item.emergencyContact || ""
+  };
+}
+
+function fromDbDriver(row) {
+  return {
+    id: row.id,
+    name: row.name || "",
+    phone: row.phone || "",
+    licenseNumber: row.license_number || "",
+    licenseExpiry: row.license_expiry || "",
+    hireDate: row.hire_date || "",
+    status: row.status || "",
+    address: row.address || "",
+    emergencyContact: row.emergency_contact || ""
+  };
+}
+
+async function syncDriversToSupabase() {
+  if (!useSupabase) return;
+  const rows = state.drivers.map(toDbDriver);
+  const { error } = await supabase.from(DRIVERS_TABLE).upsert(rows, { onConflict: "id" });
+  if (error) {
+    console.error("Supabase sync failed for drivers:", error.message);
+    return;
+  }
+
+  const ids = rows.map((r) => r.id);
+  if (!ids.length) {
+    const wipe = await supabase.from(DRIVERS_TABLE).delete().not("id", "is", null);
+    if (wipe.error) console.error("Supabase delete sync failed for drivers:", wipe.error.message);
+    return;
+  }
+
+  const inList = `(${ids.map((id) => `"${String(id).replaceAll('"', "")}"`).join(",")})`;
+  const cleanup = await supabase.from(DRIVERS_TABLE).delete().not("id", "in", inList);
+  if (cleanup.error) {
+    console.error("Supabase cleanup failed for drivers:", cleanup.error.message);
+  }
+}
+
+async function hydrateDriversFromSupabase() {
+  if (!useSupabase) return;
+  const { data, error } = await supabase.from(DRIVERS_TABLE).select("*");
+  if (error) {
+    console.error("Supabase load failed for drivers:", error.message);
+    return;
+  }
+  if (!Array.isArray(data)) return;
+  state.drivers = data.map(fromDbDriver);
+  localStorage.setItem(KEY, JSON.stringify(state.drivers));
+  refresh();
 }
 
 function toCsv(rows) {
@@ -189,4 +281,5 @@ document.body.addEventListener("click", (e) => {
 
 applyAccessControl();
 refresh();
+void hydrateDriversFromSupabase();
 

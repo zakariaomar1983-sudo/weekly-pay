@@ -12,6 +12,13 @@ const KEYS = {
   expense: "transport_crm_spending",
   pay: "transport_crm_payslips"
 };
+const TABLE_BY_KEY = {
+  [KEYS.income]: "truck_income",
+  [KEYS.expense]: "truck_expense",
+  [KEYS.pay]: "payslips"
+};
+const supabase = window.OPXSupabase?.client || null;
+const useSupabase = Boolean(window.OPXSupabase?.isReady && supabase);
 
 const state = {
   income: readData(KEYS.income),
@@ -33,7 +40,7 @@ const DAILY_RATE_BY_TRUCK_NUMBER = {
 
 function readData(key) {
   try {
-    return JSON.parse(localStorage.getItem(key) || "[]");
+    return ensureUuidRows(JSON.parse(localStorage.getItem(key) || "[]"), key);
   } catch {
     return [];
   }
@@ -41,10 +48,188 @@ function readData(key) {
 
 function saveData(key, data) {
   localStorage.setItem(key, JSON.stringify(data));
+  if (useSupabase) {
+    void syncRowsToSupabase(key, data);
+  }
 }
 
 function uid() {
-  return `${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+  return newId();
+}
+
+function isUuid(value) {
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(String(value || ""));
+}
+
+function newId() {
+  if (typeof crypto !== "undefined" && crypto.randomUUID) return crypto.randomUUID();
+  return `${Date.now()}${Math.random().toString(16).slice(2, 10)}`.slice(0, 32);
+}
+
+function ensureUuidRows(rows, key) {
+  let changed = false;
+  const normalized = rows.map((row) => {
+    if (isUuid(row.id)) return row;
+    changed = true;
+    return { ...row, id: newId() };
+  });
+  if (changed && key) {
+    localStorage.setItem(key, JSON.stringify(normalized));
+  }
+  return normalized;
+}
+
+function toDbIncome(item) {
+  return {
+    id: item.id,
+    income_date: item.incomeDate || null,
+    truck_number: item.truckNumber || "",
+    job_ref: item.jobRef || "",
+    client: item.client || "",
+    amount: Number(item.amount || 0),
+    status: item.status || "",
+    notes: item.notes || ""
+  };
+}
+
+function fromDbIncome(row) {
+  return {
+    id: row.id,
+    incomeDate: row.income_date || "",
+    truckNumber: row.truck_number || "",
+    jobRef: row.job_ref || "",
+    client: row.client || "",
+    amount: Number(row.amount || 0),
+    status: row.status || "",
+    notes: row.notes || ""
+  };
+}
+
+function toDbExpense(item) {
+  return {
+    id: item.id,
+    expense_date: item.date || null,
+    truck_number: item.truckNumber || "",
+    category: item.category || "",
+    amount: Number(item.amount || 0),
+    vendor: item.vendor || "",
+    notes: item.notes || ""
+  };
+}
+
+function fromDbExpense(row) {
+  return {
+    id: row.id,
+    date: row.expense_date || "",
+    truckNumber: row.truck_number || "",
+    category: row.category || "",
+    amount: Number(row.amount || 0),
+    vendor: row.vendor || "",
+    notes: row.notes || ""
+  };
+}
+
+function toDbPay(item) {
+  return {
+    id: item.id,
+    driver: item.driver || "",
+    truck_number: item.truckNumber || "",
+    pay_period: item.payPeriod || "",
+    days_worked: Number(item.daysWorked ?? item.hoursWorked ?? 0),
+    daily_rate: Number(item.dailyRate ?? item.hourlyRate ?? 0),
+    night_run_drops: Number(item.nightRunDrops ?? 0),
+    drop_rate: Number(item.dropRate ?? NIGHT_DROP_DEFAULT_RATE),
+    night_run_pay: Number(item.nightRunPay ?? ((Number(item.nightRunDrops ?? 0)) * NIGHT_DROP_DEFAULT_RATE)),
+    driver_bonus: Number(item.driverBonus ?? 0),
+    deductions: Number(item.deductions ?? 0),
+    payment_date: item.paymentDate || null,
+    auto_pay: item.autoPay || "No",
+    auto_pay_ref: item.autoPayRef || ""
+  };
+}
+
+function fromDbPay(row) {
+  return {
+    id: row.id,
+    driver: row.driver || "",
+    truckNumber: row.truck_number || "",
+    payPeriod: row.pay_period || "",
+    daysWorked: Number(row.days_worked ?? 0),
+    dailyRate: Number(row.daily_rate ?? 0),
+    nightRunDrops: Number(row.night_run_drops ?? 0),
+    dropRate: Number(row.drop_rate ?? NIGHT_DROP_DEFAULT_RATE),
+    nightRunPay: Number(row.night_run_pay ?? 0),
+    driverBonus: Number(row.driver_bonus ?? 0),
+    deductions: Number(row.deductions ?? 0),
+    paymentDate: row.payment_date || "",
+    autoPay: row.auto_pay || "No",
+    autoPayRef: row.auto_pay_ref || ""
+  };
+}
+
+function toDbRows(key, rows) {
+  if (key === KEYS.income) return rows.map(toDbIncome);
+  if (key === KEYS.expense) return rows.map(toDbExpense);
+  if (key === KEYS.pay) return rows.map(toDbPay);
+  return rows;
+}
+
+async function syncRowsToSupabase(key, rows) {
+  if (!useSupabase) return;
+  const table = TABLE_BY_KEY[key];
+  if (!table) return;
+  const payload = toDbRows(key, rows);
+  const { error } = await supabase.from(table).upsert(payload, { onConflict: "id" });
+  if (error) {
+    console.error(`Supabase sync failed for ${table}:`, error.message);
+    return;
+  }
+
+  const ids = payload.map((r) => r.id);
+  if (!ids.length) {
+    const wipe = await supabase.from(table).delete().not("id", "is", null);
+    if (wipe.error) console.error(`Supabase delete sync failed for ${table}:`, wipe.error.message);
+    return;
+  }
+
+  const inList = `(${ids.map((id) => `"${String(id).replaceAll('"', "")}"`).join(",")})`;
+  const cleanup = await supabase.from(table).delete().not("id", "in", inList);
+  if (cleanup.error) {
+    console.error(`Supabase cleanup failed for ${table}:`, cleanup.error.message);
+  }
+}
+
+async function hydrateFinanceFromSupabase() {
+  if (!useSupabase) return;
+
+  const [incomeRes, expenseRes, payRes] = await Promise.all([
+    supabase.from(TABLE_BY_KEY[KEYS.income]).select("*"),
+    supabase.from(TABLE_BY_KEY[KEYS.expense]).select("*"),
+    supabase.from(TABLE_BY_KEY[KEYS.pay]).select("*")
+  ]);
+
+  if (!incomeRes.error && Array.isArray(incomeRes.data)) {
+    state.income = incomeRes.data.map(fromDbIncome);
+    localStorage.setItem(KEYS.income, JSON.stringify(state.income));
+  } else if (incomeRes.error) {
+    console.error("Supabase load failed for truck_income:", incomeRes.error.message);
+  }
+
+  if (!expenseRes.error && Array.isArray(expenseRes.data)) {
+    state.expense = expenseRes.data.map(fromDbExpense);
+    localStorage.setItem(KEYS.expense, JSON.stringify(state.expense));
+  } else if (expenseRes.error) {
+    console.error("Supabase load failed for truck_expense:", expenseRes.error.message);
+  }
+
+  if (!payRes.error && Array.isArray(payRes.data)) {
+    state.pay = payRes.data.map(fromDbPay);
+    localStorage.setItem(KEYS.pay, JSON.stringify(state.pay));
+  } else if (payRes.error) {
+    console.error("Supabase load failed for payslips:", payRes.error.message);
+  }
+
+  refresh();
 }
 
 function toCsv(rows) {
@@ -714,3 +899,4 @@ document.getElementById("payTruckNumber").addEventListener("blur", applyConfigur
 document.getElementById("nightRunDrops").addEventListener("input", updateNightRunPayPreview);
 document.getElementById("nightRunDrops").addEventListener("change", updateNightRunPayPreview);
 refresh();
+void hydrateFinanceFromSupabase();

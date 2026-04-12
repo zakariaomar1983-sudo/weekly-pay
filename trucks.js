@@ -7,13 +7,38 @@ if (!auth.can("accessCRM") || !auth.can("viewTrucks")) {
 }
 
 const KEY = "transport_crm_trucks";
+const TRUCKS_TABLE = "trucks";
+const supabase = window.OPXSupabase?.client || null;
+const useSupabase = Boolean(window.OPXSupabase?.isReady && supabase);
 const REGO_NOTIFY_KEY = "transport_crm_rego_notify_state";
 const REGO_ALERT_WINDOW_DAYS = 30;
 const state = { trucks: readData() };
 
+function isUuid(value) {
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(String(value || ""));
+}
+
+function newId() {
+  if (typeof crypto !== "undefined" && crypto.randomUUID) return crypto.randomUUID();
+  return `${Date.now()}${Math.random().toString(16).slice(2, 10)}`.slice(0, 32);
+}
+
+function ensureUuidTrucks(rows) {
+  let changed = false;
+  const normalized = rows.map((row) => {
+    if (isUuid(row.id)) return row;
+    changed = true;
+    return { ...row, id: newId() };
+  });
+  if (changed) {
+    localStorage.setItem(KEY, JSON.stringify(normalized));
+  }
+  return normalized;
+}
+
 function readData() {
   try {
-    return JSON.parse(localStorage.getItem(KEY) || "[]");
+    return ensureUuidTrucks(JSON.parse(localStorage.getItem(KEY) || "[]"));
   } catch {
     return [];
   }
@@ -21,10 +46,77 @@ function readData() {
 
 function saveData() {
   localStorage.setItem(KEY, JSON.stringify(state.trucks));
+  if (useSupabase) {
+    void syncTrucksToSupabase();
+  }
 }
 
 function uid() {
-  return `${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+  return newId();
+}
+
+function toDbTruck(item) {
+  return {
+    id: item.id,
+    truck_number: item.truckNumber || "",
+    registration: item.registration || "",
+    model: item.model || "",
+    capacity: Number(item.capacity || 0),
+    service_due_date: item.serviceDueDate || null,
+    rego_expiry_date: item.regoExpiryDate || null,
+    status: item.status || "",
+    notes: item.notes || ""
+  };
+}
+
+function fromDbTruck(row) {
+  return {
+    id: row.id,
+    truckNumber: row.truck_number || "",
+    registration: row.registration || "",
+    model: row.model || "",
+    capacity: Number(row.capacity || 0),
+    serviceDueDate: row.service_due_date || "",
+    regoExpiryDate: row.rego_expiry_date || "",
+    status: row.status || "",
+    notes: row.notes || ""
+  };
+}
+
+async function syncTrucksToSupabase() {
+  if (!useSupabase) return;
+  const rows = state.trucks.map(toDbTruck);
+  const { error } = await supabase.from(TRUCKS_TABLE).upsert(rows, { onConflict: "id" });
+  if (error) {
+    console.error("Supabase sync failed for trucks:", error.message);
+    return;
+  }
+
+  const ids = rows.map((r) => r.id);
+  if (!ids.length) {
+    const wipe = await supabase.from(TRUCKS_TABLE).delete().not("id", "is", null);
+    if (wipe.error) console.error("Supabase delete sync failed for trucks:", wipe.error.message);
+    return;
+  }
+
+  const inList = `(${ids.map((id) => `"${String(id).replaceAll('"', "")}"`).join(",")})`;
+  const cleanup = await supabase.from(TRUCKS_TABLE).delete().not("id", "in", inList);
+  if (cleanup.error) {
+    console.error("Supabase cleanup failed for trucks:", cleanup.error.message);
+  }
+}
+
+async function hydrateTrucksFromSupabase() {
+  if (!useSupabase) return;
+  const { data, error } = await supabase.from(TRUCKS_TABLE).select("*");
+  if (error) {
+    console.error("Supabase load failed for trucks:", error.message);
+    return;
+  }
+  if (!Array.isArray(data)) return;
+  state.trucks = data.map(fromDbTruck);
+  localStorage.setItem(KEY, JSON.stringify(state.trucks));
+  refresh();
 }
 
 function parseDateOnly(value) {
@@ -348,4 +440,5 @@ document.body.addEventListener("click", (e) => {
 
 applyAccessControl();
 refresh();
+void hydrateTrucksFromSupabase();
 
