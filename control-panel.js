@@ -462,7 +462,19 @@ function hookBackupActions() {
   syncSupabaseBtn.addEventListener("click", () => {
     void syncAllLocalDataToSupabase();
   });
-  restoreBtn.addEventListener("click", () => fileInput.click());
+  restoreBtn.addEventListener("click", () => {
+    setBackupStatus("Opening backup file picker...");
+    try {
+      if (typeof fileInput.showPicker === "function") {
+        fileInput.showPicker();
+      } else {
+        fileInput.click();
+      }
+    } catch (error) {
+      console.error("Backup picker open failed:", error);
+      setBackupStatus("Could not open file picker. Please refresh and try again.", true);
+    }
+  });
 
   fileInput.addEventListener("change", async () => {
     const file = fileInput.files?.[0];
@@ -592,3 +604,7 @@ resetRoleForm();
 resetUserForm();
 refresh();
 hookBackupActions();
+
+if (document.getElementById("restoreBackupBtn")) {
+  setBackupStatus("Backup actions ready.");
+}
