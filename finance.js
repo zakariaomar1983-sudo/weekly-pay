@@ -915,3 +915,9 @@ document.getElementById("nightRunDrops").addEventListener("input", updateNightRu
 document.getElementById("nightRunDrops").addEventListener("change", updateNightRunPayPreview);
 refresh();
 void hydrateFinanceFromSupabase();
+
+if (!useSupabase) {
+  window.addEventListener("opx:supabase-ready", () => {
+    window.location.reload();
+  }, { once: true });
+}

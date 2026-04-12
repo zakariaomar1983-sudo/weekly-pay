@@ -289,3 +289,9 @@ applyAccessControl();
 refresh();
 void hydrateDriversFromSupabase();
 
+if (!useSupabase) {
+  window.addEventListener("opx:supabase-ready", () => {
+    window.location.reload();
+  }, { once: true });
+}
+
