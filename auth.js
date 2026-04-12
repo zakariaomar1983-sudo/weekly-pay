@@ -173,6 +173,24 @@
     return next;
   }
 
+  function healCoreAccess() {
+    const currentRoles = read(STORAGE.roles, []);
+    const currentUsers = read(STORAGE.users, []);
+
+    const nextRoles = migrateSystemRoles(Array.isArray(currentRoles) ? currentRoles : []);
+    const cleanedUsers = removeLegacyDefaultAdmin(Array.isArray(currentUsers) ? currentUsers : []);
+    const nextUsers = ensureCoreUsers(cleanedUsers);
+
+    if (JSON.stringify(nextRoles) !== JSON.stringify(currentRoles)) {
+      write(STORAGE.roles, nextRoles);
+    }
+    if (JSON.stringify(nextUsers) !== JSON.stringify(currentUsers)) {
+      write(STORAGE.users, nextUsers);
+    }
+
+    return { roles: nextRoles, users: nextUsers };
+  }
+
   function init() {
     const roles = read(STORAGE.roles, null);
     const users = read(STORAGE.users, null);
@@ -198,6 +216,9 @@
     if (JSON.stringify(ensuredUsers) !== JSON.stringify(nextUsers)) {
       write(STORAGE.users, ensuredUsers);
     }
+
+    // Final safety net: always heal core system roles/users if anything is missing.
+    healCoreAccess();
   }
 
   function getRoles() {
@@ -477,6 +498,7 @@
     getPermissionsForUser,
     canUser,
     hasUsers,
+    healCoreAccess,
     getRoles,
     getUsers,
     createFirstAdmin,
