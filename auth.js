@@ -35,6 +35,12 @@
     viewer: "role_viewer"
   };
 
+  const CORE_DEFAULT_USERS = {
+    admin: { username: "admin", password: "Admin@123", roleId: SYSTEM_ROLE_IDS.admin },
+    manager: { username: "opsmanager", password: "Ops@123", roleId: SYSTEM_ROLE_IDS.manager },
+    viewer: { username: "gm", password: "Gm@123", roleId: SYSTEM_ROLE_IDS.viewer }
+  };
+
   function read(key, fallback) {
     try {
       const parsed = JSON.parse(localStorage.getItem(key) || "null");
@@ -132,6 +138,41 @@
     return users.filter((u) => !(u.username === "admin" && u.password === "admin123"));
   }
 
+  function uniqueUsername(base, users) {
+    const existing = new Set(users.map((u) => String(u.username || "").toLowerCase()));
+    if (!existing.has(base.toLowerCase())) return base;
+
+    let i = 2;
+    while (existing.has(`${base}${i}`.toLowerCase())) i += 1;
+    return `${base}${i}`;
+  }
+
+  function ensureCoreUsers(users) {
+    const next = [...users];
+
+    const rolePresence = {
+      [SYSTEM_ROLE_IDS.admin]: next.some((u) => u.roleId === SYSTEM_ROLE_IDS.admin && u.active),
+      [SYSTEM_ROLE_IDS.manager]: next.some((u) => u.roleId === SYSTEM_ROLE_IDS.manager && u.active),
+      [SYSTEM_ROLE_IDS.viewer]: next.some((u) => u.roleId === SYSTEM_ROLE_IDS.viewer && u.active)
+    };
+
+    const required = [CORE_DEFAULT_USERS.admin, CORE_DEFAULT_USERS.manager, CORE_DEFAULT_USERS.viewer];
+    required.forEach((core) => {
+      if (rolePresence[core.roleId]) return;
+      const username = uniqueUsername(core.username, next);
+      next.push({
+        id: uid("user"),
+        username,
+        password: core.password,
+        roleId: core.roleId,
+        active: true
+      });
+      rolePresence[core.roleId] = true;
+    });
+
+    return next;
+  }
+
   function init() {
     const roles = read(STORAGE.roles, null);
     const users = read(STORAGE.users, null);
@@ -153,8 +194,9 @@
     }
 
     const cleanedUsers = removeLegacyDefaultAdmin(nextUsers);
-    if (cleanedUsers.length !== nextUsers.length) {
-      write(STORAGE.users, cleanedUsers);
+    const ensuredUsers = ensureCoreUsers(cleanedUsers);
+    if (JSON.stringify(ensuredUsers) !== JSON.stringify(nextUsers)) {
+      write(STORAGE.users, ensuredUsers);
     }
   }
 
