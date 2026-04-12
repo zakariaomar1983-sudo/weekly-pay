@@ -41,6 +41,11 @@
     viewer: { username: "gm", password: "Gm@123", roleId: SYSTEM_ROLE_IDS.viewer }
   };
 
+  const DEFAULT_CUSTOM_ROLE_IDS = {
+    dispatcher: "role_dispatcher",
+    finance: "role_finance"
+  };
+
   function read(key, fallback) {
     try {
       const parsed = JSON.parse(localStorage.getItem(key) || "null");
@@ -118,11 +123,51 @@
     ];
   }
 
+  function buildDefaultCustomRoleDefinitions() {
+    const dispatcherPerms = allPermissions(false);
+    [
+      "accessCRM",
+      "viewDrivers",
+      "editDrivers",
+      "viewTrucks",
+      "viewRoster",
+      "editRoster",
+      "viewTruckIncome",
+      "accessLogs"
+    ].forEach((key) => {
+      dispatcherPerms[key] = true;
+    });
+
+    const financePerms = allPermissions(false);
+    [
+      "accessCRM",
+      "viewTruckIncome",
+      "editTruckIncome",
+      "viewSpending",
+      "editSpending",
+      "viewPayslips",
+      "editPayslips",
+      "viewStats"
+    ].forEach((key) => {
+      financePerms[key] = true;
+    });
+
+    return [
+      { id: DEFAULT_CUSTOM_ROLE_IDS.dispatcher, name: "Dispatcher", system: false, permissions: dispatcherPerms },
+      { id: DEFAULT_CUSTOM_ROLE_IDS.finance, name: "Finance Officer", system: false, permissions: financePerms }
+    ];
+  }
+
   function migrateSystemRoles(existingRoles) {
     const systemRoles = buildSystemRoleDefinitions();
     const systemIds = new Set(systemRoles.map((r) => r.id));
     const customRoles = existingRoles.filter((r) => !systemIds.has(r.id));
-    return [...systemRoles, ...customRoles];
+
+    const defaults = buildDefaultCustomRoleDefinitions();
+    const customIds = new Set(customRoles.map((r) => r.id));
+    const missingDefaults = defaults.filter((r) => !customIds.has(r.id));
+
+    return [...systemRoles, ...customRoles, ...missingDefaults];
   }
 
   function buildDefaults() {
