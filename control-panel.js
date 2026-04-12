@@ -9,6 +9,8 @@ if (!auth.can("accessControlPanel")) {
 }
 
 const PERMISSIONS = window.OPXAuth.PERMISSIONS;
+const supabase = window.OPXSupabase?.client || null;
+const useSupabase = Boolean(window.OPXSupabase?.isReady && supabase);
 
 document.getElementById("currentUserChip").textContent = `User: ${auth.user.username}`;
 
@@ -168,6 +170,15 @@ const CATEGORY_BACKUPS = [
   { category: "roles", key: window.OPXAuth.STORAGE.roles, filename: "roles-backup.json" },
   { category: "users", key: window.OPXAuth.STORAGE.users, filename: "users-backup.json" }
 ];
+const TABLE_BY_KEY = {
+  transport_crm_drivers: "drivers",
+  transport_crm_trucks: "trucks",
+  transport_crm_truck_income: "truck_income",
+  transport_crm_spending: "truck_expense",
+  transport_crm_payslips: "payslips",
+  transport_crm_roster: "roster",
+  transport_crm_logs: "app_logs"
+};
 
 function isBackupKey(key) {
   return BACKUP_PREFIXES.some((prefix) => key.startsWith(prefix)) && !BACKUP_EXCLUDE_KEYS.has(key);
@@ -292,7 +303,117 @@ function restoreBackupFromText(text) {
   resetRoleForm();
   resetUserForm();
   refresh();
-  setBackupStatus(`Restore complete. ${keys.length} key(s) imported.`);
+  void syncRestoredKeysToSupabase(keys).then((synced) => {
+    const where = synced ? "browser + Supabase" : "browser storage";
+    setBackupStatus(`Restore complete. ${keys.length} key(s) imported to ${where}.`);
+  });
+}
+
+function isUuid(value) {
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(String(value || ""));
+}
+
+function newId() {
+  if (typeof crypto !== "undefined" && crypto.randomUUID) return crypto.randomUUID();
+  return `${Date.now()}${Math.random().toString(16).slice(2, 10)}`.slice(0, 32);
+}
+
+function ensureUuidRows(rows) {
+  return rows.map((row) => {
+    if (isUuid(row.id)) return row;
+    return { ...row, id: newId() };
+  });
+}
+
+function parseRowsFromStorageKey(key) {
+  try {
+    const parsed = JSON.parse(localStorage.getItem(key) || "[]");
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+}
+
+function toDbRowsForKey(key, rows) {
+  if (key === "transport_crm_drivers") {
+    return rows.map((x) => ({
+      id: x.id, name: x.name || "", phone: x.phone || "", license_number: x.licenseNumber || "",
+      license_expiry: x.licenseExpiry || null, hire_date: x.hireDate || null, status: x.status || "",
+      address: x.address || "", emergency_contact: x.emergencyContact || ""
+    }));
+  }
+  if (key === "transport_crm_trucks") {
+    return rows.map((x) => ({
+      id: x.id, truck_number: x.truckNumber || "", registration: x.registration || "", model: x.model || "",
+      capacity: Number(x.capacity || 0), service_due_date: x.serviceDueDate || null, rego_expiry_date: x.regoExpiryDate || null,
+      status: x.status || "", notes: x.notes || ""
+    }));
+  }
+  if (key === "transport_crm_truck_income") {
+    return rows.map((x) => ({
+      id: x.id, income_date: x.incomeDate || null, truck_number: x.truckNumber || "", job_ref: x.jobRef || "",
+      client: x.client || "", amount: Number(x.amount || 0), status: x.status || "", notes: x.notes || ""
+    }));
+  }
+  if (key === "transport_crm_spending") {
+    return rows.map((x) => ({
+      id: x.id, expense_date: x.date || null, truck_number: x.truckNumber || "", category: x.category || "",
+      amount: Number(x.amount || 0), vendor: x.vendor || "", notes: x.notes || ""
+    }));
+  }
+  if (key === "transport_crm_payslips") {
+    return rows.map((x) => ({
+      id: x.id, driver: x.driver || "", truck_number: x.truckNumber || "", pay_period: x.payPeriod || "",
+      days_worked: Number(x.daysWorked ?? x.hoursWorked ?? 0), daily_rate: Number(x.dailyRate ?? x.hourlyRate ?? 0),
+      night_run_drops: Number(x.nightRunDrops ?? 0), drop_rate: Number(x.dropRate ?? 90),
+      night_run_pay: Number(x.nightRunPay ?? 0), driver_bonus: Number(x.driverBonus ?? 0),
+      deductions: Number(x.deductions ?? 0), payment_date: x.paymentDate || null, auto_pay: x.autoPay || "No",
+      auto_pay_ref: x.autoPayRef || ""
+    }));
+  }
+  if (key === "transport_crm_roster") {
+    return rows.map((x) => ({
+      id: x.id, driver_name: x.driverName || "", truck_number: x.truckNumber || "",
+      shift_date: x.shiftDate || null, shift_time: x.shiftTime || "", route: x.route || "", status: x.status || ""
+    }));
+  }
+  if (key === "transport_crm_logs") {
+    return rows.map((x) => ({
+      id: x.id, log_date: x.date || x.logDate || null, level: x.level || "", message: x.message || "", details: x.details || x.notes || ""
+    }));
+  }
+  return [];
+}
+
+async function syncRestoredKeysToSupabase(keys) {
+  if (!useSupabase) return false;
+  let syncedAny = false;
+
+  for (const key of keys) {
+    const table = TABLE_BY_KEY[key];
+    if (!table) continue;
+
+    const rows = ensureUuidRows(parseRowsFromStorageKey(key));
+    localStorage.setItem(key, JSON.stringify(rows));
+    const dbRows = toDbRowsForKey(key, rows);
+
+    const { error } = await supabase.from(table).upsert(dbRows, { onConflict: "id" });
+    if (error) {
+      console.error(`Supabase restore sync failed for ${table}:`, error.message);
+      continue;
+    }
+
+    syncedAny = true;
+    const ids = dbRows.map((r) => r.id);
+    if (!ids.length) {
+      await supabase.from(table).delete().not("id", "is", null);
+      continue;
+    }
+    const inList = `(${ids.map((id) => `"${String(id).replaceAll('"', "")}"`).join(",")})`;
+    await supabase.from(table).delete().not("id", "in", inList);
+  }
+
+  return syncedAny;
 }
 
 function hookBackupActions() {
