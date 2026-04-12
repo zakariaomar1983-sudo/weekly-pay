@@ -193,9 +193,11 @@ function setBackupStatus(message, isError = false) {
 
 function setSupabaseConfigStatus(message, isError = false) {
   const status = document.getElementById("supabaseConfigStatus");
-  if (!status) return;
-  status.textContent = message;
-  status.className = isError ? "error-text" : "muted";
+  if (status) {
+    status.textContent = message;
+    status.className = isError ? "error-text" : "muted";
+  }
+  console[isError ? "error" : "log"](`[Supabase] ${message}`);
 }
 
 function readSupabaseConfigInputs() {
@@ -207,11 +209,13 @@ function readSupabaseConfigInputs() {
 async function testSupabaseConnection(url, anonKey) {
   if (!url || !anonKey) {
     setSupabaseConfigStatus("Enter both Supabase URL and anon key.", true);
+    alert("Enter both Supabase URL and anon key.");
     return;
   }
 
   if (!window.supabase?.createClient) {
     setSupabaseConfigStatus("Supabase SDK not loaded.", true);
+    alert("Supabase SDK not loaded. Please refresh page.");
     return;
   }
 
@@ -220,11 +224,14 @@ async function testSupabaseConnection(url, anonKey) {
     const { count, error } = await client.from("trucks").select("*", { count: "exact", head: true });
     if (error) {
       setSupabaseConfigStatus(`Connection failed: ${error.message}`, true);
+      alert(`Connection failed: ${error.message}`);
       return;
     }
     setSupabaseConfigStatus(`Connected. Trucks rows available: ${count ?? 0}.`);
+    alert(`Connected. Trucks rows available: ${count ?? 0}.`);
   } catch (error) {
     setSupabaseConfigStatus(`Connection failed: ${error.message || "Unknown error"}`, true);
+    alert(`Connection failed: ${error.message || "Unknown error"}`);
   }
 }
 
@@ -253,11 +260,13 @@ function initSupabaseConfigPanel() {
     const { url, anonKey } = readSupabaseConfigInputs();
     if (!url || !anonKey) {
       setSupabaseConfigStatus("Please enter both URL and anon key before saving.", true);
+      alert("Please enter both URL and anon key before saving.");
       return;
     }
     localStorage.setItem("OPX_SUPABASE_URL", url);
     localStorage.setItem("OPX_SUPABASE_ANON_KEY", anonKey);
     setSupabaseConfigStatus("Saved. Reloading page to apply connection...");
+    alert("Supabase connection saved. Page will reload.");
     setTimeout(() => window.location.reload(), 500);
   });
 
@@ -272,7 +281,12 @@ function initSupabaseConfigPanel() {
     urlInput.value = "";
     anonInput.value = "";
     setSupabaseConfigStatus("Supabase credentials cleared for this browser.");
+    alert("Supabase credentials cleared.");
   });
+
+  if (savedUrl && savedAnon) {
+    void testSupabaseConnection(savedUrl, savedAnon);
+  }
 }
 
 function collectBackupData() {
