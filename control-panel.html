@@ -95,7 +95,10 @@
         <button id="downloadCategoryBackupsBtn" class="btn btn-outline" type="button">Download Category Files</button>
         <button id="syncSupabaseBtn" class="btn btn-outline" type="button">Sync Local Data to Supabase</button>
         <button id="restoreBackupBtn" class="btn btn-outline" type="button">Restore Backup</button>
-        <input id="backupFileInput" type="file" accept=".json,application/json" style="display:none" />
+      </div>
+      <div class="actions" style="margin-top: 0.6rem;">
+        <input id="backupFileInputVisible" type="file" accept=".json,application/json" />
+        <button id="importBackupBtn" class="btn btn-outline" type="button">Import Selected Backup</button>
       </div>
       <p id="backupStatus" class="muted"></p>
     </section>

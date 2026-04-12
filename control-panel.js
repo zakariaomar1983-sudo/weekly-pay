@@ -443,16 +443,18 @@ function hookBackupActions() {
   const downloadCategoryBtn = document.getElementById("downloadCategoryBackupsBtn");
   const syncSupabaseBtn = document.getElementById("syncSupabaseBtn");
   const restoreBtn = document.getElementById("restoreBackupBtn");
-  const fileInput = document.getElementById("backupFileInput");
+  const fileInputVisible = document.getElementById("backupFileInputVisible");
+  const importBackupBtn = document.getElementById("importBackupBtn");
 
-  if (!downloadBtn || !downloadCategoryBtn || !syncSupabaseBtn || !restoreBtn || !fileInput) return;
+  if (!downloadBtn || !downloadCategoryBtn || !syncSupabaseBtn || !restoreBtn || !fileInputVisible || !importBackupBtn) return;
 
   if (!(auth.can("backupRestore") || auth.can("adminData"))) {
     downloadBtn.style.display = "none";
     downloadCategoryBtn.style.display = "none";
     syncSupabaseBtn.style.display = "none";
     restoreBtn.style.display = "none";
-    fileInput.style.display = "none";
+    fileInputVisible.style.display = "none";
+    importBackupBtn.style.display = "none";
     setBackupStatus("Backup/restore is available to users with backup permission.");
     return;
   }
@@ -498,6 +500,20 @@ function hookBackupActions() {
     } catch (error) {
       console.error("Backup picker open failed:", error);
       setBackupStatus("Could not open file picker. Please refresh and try again.", true);
+    }
+  });
+
+  importBackupBtn.addEventListener("click", async () => {
+    const file = fileInputVisible.files?.[0];
+    if (!file) {
+      setBackupStatus("Please choose a backup file first.", true);
+      return;
+    }
+    try {
+      const text = await file.text();
+      restoreBackupFromText(text);
+    } catch {
+      setBackupStatus("Failed to read selected backup file.", true);
     }
   });
 }
