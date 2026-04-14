@@ -7,6 +7,13 @@ if (!auth.can("accessCRM") || !auth.can("viewRoster")) {
 }
 
 const KEY = "transport_crm_roster";
+const DRIVERS_KEY = "transport_crm_drivers";
+const CONTACT_KEY = "transport_crm_driver_contacts";
+const TRUCKS_KEY = "transport_crm_trucks";
+const TARGET_DRIVERS = 7;
+const TARGET_TRUCKS = 7;
+const TARGET_DAYS_PER_DRIVER = 5;
+const DAY_NAMES = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
 const state = { roster: readData() };
 
 function readData() {
@@ -14,6 +21,24 @@ function readData() {
     return JSON.parse(localStorage.getItem(KEY) || "[]");
   } catch {
     return [];
+  }
+}
+
+function readArray(key) {
+  try {
+    const parsed = JSON.parse(localStorage.getItem(key) || "[]");
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+}
+
+function readContacts() {
+  try {
+    const parsed = JSON.parse(localStorage.getItem(CONTACT_KEY) || "{}");
+    return parsed && typeof parsed === "object" && !Array.isArray(parsed) ? parsed : {};
+  } catch {
+    return {};
   }
 }
 
@@ -25,6 +50,19 @@ function uid() {
   return `${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
 }
 
+function parseDateOnly(value) {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(String(value || ""))) return null;
+  const [year, month, day] = String(value).split("-").map(Number);
+  const date = new Date(year, month - 1, day);
+  if (Number.isNaN(date.getTime())) return null;
+  date.setHours(0, 0, 0, 0);
+  return date;
+}
+
+function todayKey() {
+  return dateToKey(new Date());
+}
+
 function toCsv(rows) {
   if (!rows.length) return "";
   const headers = Object.keys(rows[0]);
@@ -34,8 +72,8 @@ function toCsv(rows) {
 }
 
 function mondayOf(dateStr) {
-  const d = new Date(dateStr);
-  if (Number.isNaN(d.getTime())) return null;
+  const d = parseDateOnly(dateStr);
+  if (!d || Number.isNaN(d.getTime())) return null;
   const day = d.getDay();
   const offset = day === 0 ? -6 : 1 - day;
   const monday = new Date(d);
@@ -45,11 +83,15 @@ function mondayOf(dateStr) {
 }
 
 function dateToKey(d) {
-  return d.toISOString().slice(0, 10);
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
 }
 
 function getWeekDates(startKey) {
-  const start = new Date(startKey);
+  const start = parseDateOnly(startKey);
+  if (!start) return [];
   const days = [];
   for (let i = 0; i < 7; i += 1) {
     const x = new Date(start);
@@ -61,8 +103,173 @@ function getWeekDates(startKey) {
 
 function selectedWeekStartKey() {
   const input = document.getElementById("weekStart").value;
-  const monday = mondayOf(input || new Date().toISOString().slice(0, 10));
+  const monday = mondayOf(input || todayKey());
   return monday ? dateToKey(monday) : "";
+}
+
+function getWeekContext() {
+  const weekKey = selectedWeekStartKey();
+  const weekDates = getWeekDates(weekKey);
+  const weekKeys = weekDates.map(dateToKey);
+  const weekSet = new Set(weekKeys);
+  const weekRows = state.roster.filter((r) => weekSet.has(r.shiftDate));
+
+  return { weekKey, weekDates, weekKeys, weekSet, weekRows };
+}
+
+function getActiveDrivers() {
+  return readArray(DRIVERS_KEY)
+    .filter((item) => String(item.status || "").toLowerCase() !== "inactive")
+    .sort((a, b) => String(a.name || "").localeCompare(String(b.name || "")));
+}
+
+function getActiveTrucks() {
+  return readArray(TRUCKS_KEY)
+    .filter((item) => String(item.status || "").toLowerCase() !== "under repair")
+    .sort((a, b) => String(a.truckNumber || "").localeCompare(String(b.truckNumber || "")));
+}
+
+function cleanPhone(phone) {
+  return String(phone || "").replace(/[^\d+]/g, "").trim();
+}
+
+function toWhatsAppNumber(phone) {
+  let digits = String(phone || "").replace(/\D/g, "");
+  if (digits.startsWith("00")) digits = digits.slice(2);
+  if (digits.startsWith("0") && digits.length === 10) {
+    digits = `61${digits.slice(1)}`;
+  }
+  return digits;
+}
+
+function launchLink(url, target = "_blank") {
+  const anchor = document.createElement("a");
+  anchor.href = url;
+  anchor.target = target;
+  anchor.rel = "noopener noreferrer";
+  anchor.click();
+}
+
+function buildDriverLookup() {
+  const contacts = readContacts();
+  return new Map(readArray(DRIVERS_KEY).map((driver) => [
+    driver.name,
+    {
+      id: driver.id,
+      name: driver.name || "",
+      phone: driver.phone || "",
+      email: String(driver.email || contacts?.[driver.id]?.email || "").trim()
+    }
+  ]));
+}
+
+function getDriverContactByName(driverName) {
+  return buildDriverLookup().get(driverName) || { id: "", name: driverName || "", phone: "", email: "" };
+}
+
+function renderRosterContactButtons(item) {
+  const contact = getDriverContactByName(item.driverName);
+  const hasPhone = Boolean(cleanPhone(contact.phone));
+  return `<div class='contact-actions'>
+    <button type='button' class='contact-link' data-action='email-shift' data-id='${item.id}' ${contact.email ? "" : "disabled"}>Email</button>
+    <button type='button' class='contact-link' data-action='sms-shift' data-id='${item.id}' ${hasPhone ? "" : "disabled"}>SMS</button>
+    <button type='button' class='contact-link' data-action='whatsapp-shift' data-id='${item.id}' ${hasPhone ? "" : "disabled"}>WhatsApp</button>
+  </div>`;
+}
+
+function openShiftContact(channel, item) {
+  const contact = getDriverContactByName(item.driverName);
+  const phone = cleanPhone(contact.phone);
+  const message = `Hi ${item.driverName}, your Onpoint Express shift is ${item.shiftDate} from ${item.shiftTime} with truck ${item.truckNumber} on route ${item.route}. Status: ${item.status}.`;
+
+  if (channel === "email") {
+    if (!contact.email) {
+      alert(`No email saved for ${item.driverName} yet.`);
+      return;
+    }
+    const subject = encodeURIComponent(`Onpoint Express shift update for ${item.driverName}`);
+    const body = encodeURIComponent(`${message}\n\nPlease confirm when received.`);
+    launchLink(`mailto:${contact.email}?subject=${subject}&body=${body}`, "_self");
+    return;
+  }
+
+  if (!phone) {
+    alert(`No phone number saved for ${item.driverName} yet.`);
+    return;
+  }
+
+  if (channel === "sms") {
+    launchLink(`sms:${phone}?body=${encodeURIComponent(message)}`, "_self");
+    return;
+  }
+
+  if (channel === "whatsapp") {
+    const whatsappNumber = toWhatsAppNumber(phone);
+    if (!whatsappNumber) {
+      alert(`WhatsApp number is not valid for ${item.driverName}.`);
+      return;
+    }
+    launchLink(`https://wa.me/${whatsappNumber}?text=${encodeURIComponent(message)}`);
+  }
+}
+
+function normalizeRouteLabel(route) {
+  const text = String(route || "").trim();
+  if (!text) return "Run";
+  return text.length > 24 ? `${text.slice(0, 21)}...` : text;
+}
+
+function firstTruckForDriver(rows) {
+  return rows.find((row) => row.truckNumber)?.truckNumber || "-";
+}
+
+function buildDriverPlans(weekRows) {
+  const activeDrivers = getActiveDrivers();
+  const activeDriverNames = activeDrivers.map((item) => item.name).filter(Boolean);
+  const namesFromRoster = [...new Set(weekRows.map((item) => item.driverName).filter(Boolean))];
+  const combined = [...new Set([...activeDriverNames, ...namesFromRoster])].slice(0, TARGET_DRIVERS);
+
+  while (combined.length < TARGET_DRIVERS) {
+    combined.push(`Open Driver Slot ${combined.length + 1}`);
+  }
+
+  return combined.map((driverName) => {
+    const driverRows = weekRows.filter((row) => row.driverName === driverName);
+    const assignments = {};
+
+    driverRows.forEach((row) => {
+      if (!assignments[row.shiftDate]) assignments[row.shiftDate] = [];
+      assignments[row.shiftDate].push(row);
+    });
+
+    const plannedDays = Object.keys(assignments).length;
+    const weekdayDays = Object.keys(assignments).filter((dateKey) => {
+      const date = parseDateOnly(dateKey);
+      const day = date?.getDay?.() ?? -1;
+      return day >= 1 && day <= 5;
+    }).length;
+    const weekendDays = Object.keys(assignments).filter((dateKey) => {
+      const date = parseDateOnly(dateKey);
+      const day = date?.getDay?.() ?? -1;
+      return day === 0 || day === 6;
+    }).length;
+
+    return {
+      driverName,
+      truckNumber: firstTruckForDriver(driverRows),
+      assignments,
+      plannedDays,
+      weekdayDays,
+      weekendDays,
+      isPlaceholder: driverRows.length === 0 && driverName.startsWith("Open Driver Slot ")
+    };
+  });
+}
+
+function targetTone(plannedDays) {
+  if (plannedDays >= TARGET_DAYS_PER_DRIVER) return "on-target";
+  if (plannedDays >= TARGET_DAYS_PER_DRIVER - 1) return "near-target";
+  return "under-target";
 }
 
 function drawStats() {
@@ -72,24 +279,134 @@ function drawStats() {
     return;
   }
 
-  const weekKey = selectedWeekStartKey();
-  const weekSet = new Set(getWeekDates(weekKey).map(dateToKey));
-  const weekRows = state.roster.filter((r) => weekSet.has(r.shiftDate));
+  const { weekRows } = getWeekContext();
+  const activeDrivers = getActiveDrivers();
+  const activeTrucks = getActiveTrucks();
+  const driversPlanned = new Set(weekRows.map((item) => item.driverName).filter(Boolean)).size;
+  const trucksAssigned = new Set(weekRows.map((item) => item.truckNumber).filter(Boolean)).size;
+  const driverPlans = buildDriverPlans(weekRows);
+  const targetHit = driverPlans.filter((item) => item.plannedDays >= TARGET_DAYS_PER_DRIVER).length;
+  const weekendShifts = weekRows.filter((item) => {
+    const date = parseDateOnly(item.shiftDate);
+    const day = date?.getDay?.() ?? -1;
+    return day === 0 || day === 6;
+  }).length;
 
   const stats = [
-    { label: "Total Shifts", value: String(state.roster.length) },
-    { label: "This Week", value: String(weekRows.length) },
-    { label: "Completed", value: String(weekRows.filter((x) => x.status === "Completed").length) },
-    { label: "Leave", value: String(weekRows.filter((x) => x.status === "Leave").length) }
+    { label: "Drivers Planned", value: `${driversPlanned}/${Math.min(activeDrivers.length || TARGET_DRIVERS, TARGET_DRIVERS)}` },
+    { label: "Trucks Assigned", value: `${trucksAssigned}/${Math.min(activeTrucks.length || TARGET_TRUCKS, TARGET_TRUCKS)}` },
+    { label: "Drivers At 5 Days", value: String(targetHit) },
+    { label: "Weekday Shifts", value: String(weekRows.filter((x) => {
+      const date = parseDateOnly(x.shiftDate);
+      const day = date?.getDay?.() ?? -1;
+      return day >= 1 && day <= 5;
+    }).length) },
+    { label: "Weekend Shifts", value: String(weekendShifts) }
   ];
 
   panel.style.display = "grid";
   panel.innerHTML = stats.map((s) => `<article class='stat-card'><p>${s.label}</p><h3>${s.value}</h3></article>`).join("");
 }
 
+function drawRosterModel() {
+  const strip = document.getElementById("rosterRuleStrip");
+  const activeDrivers = getActiveDrivers();
+  const activeTrucks = getActiveTrucks();
+
+  const items = [
+    { label: "Active drivers", value: `${Math.min(activeDrivers.length, TARGET_DRIVERS)}/${TARGET_DRIVERS}` },
+    { label: "Active trucks", value: `${Math.min(activeTrucks.length, TARGET_TRUCKS)}/${TARGET_TRUCKS}` },
+    { label: "Driver target", value: `${TARGET_DAYS_PER_DRIVER} days` },
+    { label: "Core pattern", value: "Mon-Fri" },
+    { label: "Overflow", value: "Sat-Sun when required" }
+  ];
+
+  strip.innerHTML = items.map((item) => `<div class='rule-pill'><span>${item.label}</span><strong>${item.value}</strong></div>`).join("");
+}
+
+function drawDriverBoard() {
+  const body = document.getElementById("rosterDriverBoardBody");
+  const summary = document.getElementById("rosterBoardSummary");
+  const notes = document.getElementById("rosterCoverageNotes");
+  const { weekRows, weekKeys } = getWeekContext();
+  const driverPlans = buildDriverPlans(weekRows);
+
+  if (!driverPlans.length) {
+    body.innerHTML = `<tr><td colspan='10' class='empty'>No active drivers found yet. Add drivers on the Drivers page or create shifts for this week.</td></tr>`;
+    summary.textContent = "Weekly board is waiting for driver assignments.";
+    notes.innerHTML = "";
+    return;
+  }
+
+  const rows = driverPlans.map((plan) => {
+    const cells = weekKeys.map((dayKey, index) => {
+      const items = plan.assignments[dayKey] || [];
+      if (!items.length) {
+        return `<td class='board-cell board-cell-empty ${index >= 5 ? "weekend-col" : ""}'><span>Off</span></td>`;
+      }
+
+      const cellBody = items.map((item) => {
+        const tone = item.status === "Leave" ? "board-badge-leave" : item.status === "Completed" ? "board-badge-done" : "board-badge-live";
+        return `<div class='board-chip ${index >= 5 ? "weekend-col" : ""}'>
+          <strong>${item.truckNumber}</strong>
+          <span>${normalizeRouteLabel(item.route)}</span>
+          <em class='board-badge ${tone}'>${item.status}</em>
+        </div>`;
+      }).join("");
+
+      return `<td class='board-cell ${index >= 5 ? "weekend-col" : ""}'>${cellBody}</td>`;
+    }).join("");
+
+    const tone = targetTone(plan.plannedDays);
+    return `<tr>
+      <td><strong>${plan.driverName}</strong>${plan.isPlaceholder ? "<div class='muted'>Needs assignment</div>" : ""}</td>
+      <td>${plan.truckNumber}</td>
+      ${cells}
+      <td>
+        <div class='load-indicator ${tone}'>
+          <strong>${plan.plannedDays}/${TARGET_DAYS_PER_DRIVER}</strong>
+          <span>${plan.weekdayDays} weekday | ${plan.weekendDays} weekend</span>
+        </div>
+      </td>
+    </tr>`;
+  });
+
+  body.innerHTML = rows.join("");
+
+  const onTarget = driverPlans.filter((plan) => plan.plannedDays >= TARGET_DAYS_PER_DRIVER).length;
+  const underTarget = driverPlans.filter((plan) => plan.plannedDays < TARGET_DAYS_PER_DRIVER).length;
+  const weekendDrivers = driverPlans.filter((plan) => plan.weekendDays > 0).length;
+  summary.textContent = `${driverPlans.length} drivers are shown on the weekly board. ${onTarget} have hit the 5-day target, ${underTarget} still need more coverage, and ${weekendDrivers} are carrying weekend work.`;
+
+  const coverageItems = [
+    {
+      label: "5-day target",
+      value: `${onTarget}/${driverPlans.length} drivers`,
+      detail: underTarget ? `${underTarget} drivers are still below target for the week.` : "All listed drivers have reached the weekly target."
+    },
+    {
+      label: "Driver coverage",
+      value: `${new Set(weekRows.map((item) => item.driverName).filter(Boolean)).size}/${TARGET_DRIVERS}`,
+      detail: "Use this as the live check for whether all 7 roster slots are covered."
+    },
+    {
+      label: "Truck coverage",
+      value: `${new Set(weekRows.map((item) => item.truckNumber).filter(Boolean)).size}/${TARGET_TRUCKS}`,
+      detail: "Truck count shows how many fleet units are actually assigned this week."
+    },
+    {
+      label: "Weekend usage",
+      value: `${weekendDrivers} drivers`,
+      detail: weekendDrivers ? "Weekend shifts are being used as overflow coverage." : "No weekend shifts planned right now."
+    }
+  ];
+
+  notes.innerHTML = coverageItems.map((item) => `<article class='note-card'><p>${item.label}</p><h3>${item.value}</h3><span>${item.detail}</span></article>`).join("");
+}
+
 function drawWeekTable() {
   const tbody = document.getElementById("weeklyRosterTableBody");
-  const weekKey = selectedWeekStartKey();
+  const { weekKey, weekDates } = getWeekContext();
   const query = (document.getElementById("rosterSearch")?.value || "").trim().toLowerCase();
   const statusFilter = document.getElementById("rosterFilterStatus")?.value || "";
   if (!weekKey) {
@@ -97,8 +414,6 @@ function drawWeekTable() {
     return;
   }
 
-  const weekDates = getWeekDates(weekKey);
-  const dayNames = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
   const rows = [];
 
   weekDates.forEach((dateObj, idx) => {
@@ -114,20 +429,23 @@ function drawWeekTable() {
       .sort((a, b) => a.shiftTime.localeCompare(b.shiftTime));
 
     if (!entries.length) {
-      rows.push(`<tr><td>${dayNames[idx]}</td><td>${key}</td><td colspan='6' class='muted'>No shifts</td></tr>`);
+      rows.push(`<tr><td>${DAY_NAMES[idx]}</td><td>${key}</td><td colspan='6' class='muted'>No shifts</td></tr>`);
       return;
     }
 
     entries.forEach((item, rowIndex) => {
+      const adminActions = auth.can("editRoster")
+        ? `<div class='table-actions'><button data-action='edit' data-id='${item.id}'>Edit</button><button data-action='delete' data-id='${item.id}'>Delete</button></div>`
+        : "<span class='muted'>View only</span>";
       rows.push(`<tr>
-        <td>${rowIndex === 0 ? dayNames[idx] : ""}</td>
+        <td>${rowIndex === 0 ? DAY_NAMES[idx] : ""}</td>
         <td>${rowIndex === 0 ? key : ""}</td>
         <td>${item.driverName}</td>
         <td>${item.truckNumber}</td>
         <td>${item.shiftTime}</td>
         <td>${item.route}</td>
         <td>${item.status}</td>
-        <td>${auth.can("editRoster") ? `<div class='table-actions'><button data-action='edit' data-id='${item.id}'>Edit</button><button data-action='delete' data-id='${item.id}'>Delete</button></div>` : "<span class='muted'>View only</span>"}</td>
+        <td><div class='table-actions table-actions-stack'>${renderRosterContactButtons(item)}${adminActions}</div></td>
       </tr>`);
     });
   });
@@ -136,7 +454,9 @@ function drawWeekTable() {
 }
 
 function refresh() {
+  drawRosterModel();
   drawStats();
+  drawDriverBoard();
   drawWeekTable();
 }
 
@@ -223,7 +543,7 @@ document.getElementById("rosterFilterStatus").addEventListener("change", refresh
 document.getElementById("clearRosterFilters").addEventListener("click", () => {
   document.getElementById("rosterSearch").value = "";
   document.getElementById("rosterFilterStatus").value = "";
-  const monday = mondayOf(new Date().toISOString().slice(0, 10));
+  const monday = mondayOf(todayKey());
   if (monday) {
     document.getElementById("weekStart").value = dateToKey(monday);
   } else {
@@ -234,11 +554,22 @@ document.getElementById("clearRosterFilters").addEventListener("click", () => {
 
 document.body.addEventListener("click", (e) => {
   const button = e.target.closest("button[data-action]");
-  if (!button || !auth.can("editRoster")) return;
+  if (!button) return;
 
   const { action, id } = button.dataset;
+  const item = state.roster.find((r) => r.id === id);
+
+  if (action === "email-shift" || action === "sms-shift" || action === "whatsapp-shift") {
+    if (!item) return;
+    if (action === "email-shift") openShiftContact("email", item);
+    if (action === "sms-shift") openShiftContact("sms", item);
+    if (action === "whatsapp-shift") openShiftContact("whatsapp", item);
+    return;
+  }
+
+  if (!auth.can("editRoster")) return;
+
   if (action === "edit") {
-    const item = state.roster.find((r) => r.id === id);
     if (item) setForm(item);
     return;
   }
@@ -251,7 +582,7 @@ document.body.addEventListener("click", (e) => {
 });
 
 applyAccess();
-const todayMonday = mondayOf(new Date().toISOString().slice(0, 10));
+const todayMonday = mondayOf(todayKey());
 if (todayMonday) {
   document.getElementById("weekStart").value = dateToKey(todayMonday);
 }

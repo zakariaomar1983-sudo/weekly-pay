@@ -7,7 +7,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=Manrope:wght@400;500;700&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="./style.css" />
+  <link rel="stylesheet" href="./style.css?v=20260414c" />
 </head>
 <body>
   <main class="app-shell">
@@ -36,7 +36,7 @@
       </div>
       <form class="form-grid" onsubmit="return false;">
         <label class="full">Search History
-          <input id="driversSearch" type="text" placeholder="Search name, phone, license, status..." />
+          <input id="driversSearch" type="text" placeholder="Search name, phone, email, license, status..." />
         </label>
         <div class="actions full">
           <button id="clearDriversFilters" class="btn btn-outline" type="button">Clear Filters</button>
@@ -46,6 +46,7 @@
         <input type="hidden" id="driverDetailsId" />
         <label>Driver Name<input id="driverDetailsName" type="text" required /></label>
         <label>Phone<input id="driverPhone" type="text" placeholder="04xx xxx xxx" required /></label>
+        <label>Email<input id="driverEmail" type="email" placeholder="driver@example.com" /></label>
         <label>License Number<input id="licenseNumber" type="text" required /></label>
         <label>License Expiry<input id="licenseExpiry" type="date" required /></label>
         <label>Hire Date<input id="hireDate" type="date" required /></label>
@@ -67,7 +68,7 @@
       <div class="table-wrap">
         <table>
           <thead>
-            <tr><th>Name</th><th>Phone</th><th>License #</th><th>License Expiry</th><th>Status</th><th>Emergency Contact</th><th>Actions</th></tr>
+            <tr><th>Name</th><th>Phone</th><th>Email</th><th>License #</th><th>Status</th><th>Emergency Contact</th><th>Actions</th></tr>
           </thead>
           <tbody id="driversTableBody"></tbody>
         </table>
@@ -79,8 +80,8 @@
   <script src="./supabase-config.js?v=20260413g"></script>
   <script src="./supabase-client.js?v=20260413g"></script>
   <script src="./seed-data.js?v=20260413g"></script>
-  <script src="./auth.js?v=20260413w"></script>
-  <script src="./drivers.js?v=20260413g"></script>
+  <script src="./auth.js?v=20260414b"></script>
+  <script src="./drivers.js?v=20260414e"></script>
   <script src="./emergency-fill.js?v=20260413g"></script>
 </body>
 </html>

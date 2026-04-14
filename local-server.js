@@ -1,9 +1,11 @@
 ﻿const http = require('http');
 const fs = require('fs');
 const path = require('path');
+const os = require('os');
 
 const root = process.cwd();
 const port = 4173;
+const host = '0.0.0.0';
 
 const mime = {
   '.html': 'text/html; charset=utf-8',
@@ -24,6 +26,20 @@ function send(res, status, body, type = 'text/plain; charset=utf-8') {
   res.end(body);
 }
 
+function getLanUrls() {
+  const nets = os.networkInterfaces();
+  const urls = [];
+
+  Object.values(nets).forEach((entries) => {
+    (entries || []).forEach((entry) => {
+      if (entry.family !== 'IPv4' || entry.internal) return;
+      urls.push(`http://${entry.address}:${port}`);
+    });
+  });
+
+  return urls;
+}
+
 http.createServer((req, res) => {
   const urlPath = decodeURIComponent((req.url || '/').split('?')[0]);
   let rel = urlPath === '/' ? '/index.html' : urlPath;
@@ -38,6 +54,9 @@ http.createServer((req, res) => {
     res.writeHead(200, { 'Content-Type': type });
     fs.createReadStream(full).pipe(res);
   });
-}).listen(port, () => {
+}).listen(port, host, () => {
   console.log(`Static server running at http://localhost:${port}`);
+  getLanUrls().forEach((url) => {
+    console.log(`LAN access: ${url}`);
+  });
 });

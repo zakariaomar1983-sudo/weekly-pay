@@ -9,14 +9,37 @@ if (!auth.can("accessLogs")) {
 }
 
 const LOG_KEY = "transport_crm_logs";
+const LOG_TABLE = "app_logs";
 
 const state = {
   logs: readData()
 };
 
+function isUuid(value) {
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(String(value || ""));
+}
+
+function newId() {
+  if (typeof crypto !== "undefined" && crypto.randomUUID) return crypto.randomUUID();
+  return `${Date.now()}${Math.random().toString(16).slice(2, 10)}`.slice(0, 32);
+}
+
+function ensureUuidLogs(rows) {
+  let changed = false;
+  const normalized = rows.map((row) => {
+    if (isUuid(row.id)) return row;
+    changed = true;
+    return { ...row, id: newId() };
+  });
+  if (changed) {
+    localStorage.setItem(LOG_KEY, JSON.stringify(normalized));
+  }
+  return normalized;
+}
+
 function readData() {
   try {
-    return JSON.parse(localStorage.getItem(LOG_KEY) || "[]");
+    return ensureUuidLogs(JSON.parse(localStorage.getItem(LOG_KEY) || "[]"));
   } catch {
     return [];
   }
@@ -24,10 +47,98 @@ function readData() {
 
 function saveData() {
   localStorage.setItem(LOG_KEY, JSON.stringify(state.logs));
+  if (isSupabaseReady()) {
+    void syncLogsToSupabase();
+  }
 }
 
 function uid() {
-  return `${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+  return newId();
+}
+
+function toDbLog(item) {
+  return {
+    id: item.id,
+    log_date: item.logDate || null,
+    log_type: item.logType || "Operations",
+    driver: item.driver || "",
+    truck_number: item.truck || "",
+    reference: item.reference || "",
+    status: item.status || "Open",
+    description: item.description || ""
+  };
+}
+
+function fromDbLog(row) {
+  return {
+    id: row.id,
+    logDate: row.log_date || "",
+    logType: row.log_type || "Operations",
+    driver: row.driver || "",
+    truck: row.truck_number || "",
+    reference: row.reference || "",
+    status: row.status || "Open",
+    description: row.description || ""
+  };
+}
+
+function getSupabaseClient() {
+  return window.OPXSupabase?.client || null;
+}
+
+function isSupabaseReady() {
+  return Boolean(window.OPXSupabase?.isReady && getSupabaseClient());
+}
+
+async function syncLogsToSupabase() {
+  if (!isSupabaseReady()) return;
+  const supabase = getSupabaseClient();
+  if (!supabase) return;
+
+  const rows = state.logs.map(toDbLog);
+  const { error } = await supabase.from(LOG_TABLE).upsert(rows, { onConflict: "id" });
+  if (error) {
+    console.error("Supabase sync failed for app_logs:", error.message);
+    return;
+  }
+
+  const ids = rows.map((row) => row.id);
+  if (!ids.length) {
+    const wipe = await supabase.from(LOG_TABLE).delete().not("id", "is", null);
+    if (wipe.error) console.error("Supabase delete sync failed for app_logs:", wipe.error.message);
+    return;
+  }
+
+  const inList = `(${ids.map((id) => `"${String(id).replaceAll('"', "")}"`).join(",")})`;
+  const cleanup = await supabase.from(LOG_TABLE).delete().not("id", "in", inList);
+  if (cleanup.error) {
+    console.error("Supabase cleanup failed for app_logs:", cleanup.error.message);
+  }
+}
+
+async function hydrateLogsFromSupabase() {
+  if (!isSupabaseReady()) return;
+  const supabase = getSupabaseClient();
+  if (!supabase) return;
+
+  const { data, error } = await supabase.from(LOG_TABLE).select("*");
+  if (error) {
+    console.error("Supabase load failed for app_logs:", error.message);
+    return;
+  }
+
+  if (!Array.isArray(data)) return;
+
+  if (!data.length && state.logs.length) {
+    console.warn("Supabase app_logs table is empty; keeping local logs and seeding Supabase.");
+    await syncLogsToSupabase();
+    refresh();
+    return;
+  }
+
+  state.logs = data.map(fromDbLog);
+  localStorage.setItem(LOG_KEY, JSON.stringify(state.logs));
+  refresh();
 }
 
 function toCsv(rows) {
@@ -244,5 +355,19 @@ document.getElementById("clearLogsBtn").addEventListener("click", () => {
 
 applyAccessControl();
 refresh();
+
+if (isSupabaseReady()) {
+  void hydrateLogsFromSupabase();
+}
+
+window.addEventListener("opx:supabase-ready", () => {
+  void hydrateLogsFromSupabase();
+});
+
+setTimeout(() => {
+  if (isSupabaseReady()) {
+    void hydrateLogsFromSupabase();
+  }
+}, 1500);
 
 

@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Signing Out</title>
+  <link rel="stylesheet" href="./style.css" />
+</head>
+<body>
+  <main class="app-shell app-auth">
+    <section class="panel auth-panel">
+      <p class="eyebrow">Onpoint Express</p>
+      <h1>Signing Out</h1>
+      <p class="muted">Clearing your session and returning to login.</p>
+    </section>
+  </main>
+  <script>
+    try {
+      localStorage.removeItem("opx_auth_session");
+    } catch {}
+    window.location.replace("./login.html?logout=1&ts=20260414b");
+  </script>
+</body>
+</html>

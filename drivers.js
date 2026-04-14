@@ -1,4 +1,4 @@
-﻿const auth = window.OPXAuth?.requireAuth("./login.html");
+const auth = window.OPXAuth?.requireAuth("./login.html");
 if (!auth) throw new Error("Authentication required");
 
 if (!auth.can("accessCRM") || !auth.can("viewDrivers")) {
@@ -7,9 +7,11 @@ if (!auth.can("accessCRM") || !auth.can("viewDrivers")) {
 }
 
 const KEY = "transport_crm_drivers";
+const LEGACY_CONTACT_KEY = "transport_crm_driver_contacts";
 const DRIVERS_TABLE = "drivers";
 const supabase = window.OPXSupabase?.client || null;
 const useSupabase = Boolean(window.OPXSupabase?.isReady && supabase);
+const legacyContacts = readLegacyContacts();
 const state = { drivers: readData() };
 
 function isUuid(value) {
@@ -34,16 +36,50 @@ function ensureUuidDrivers(rows) {
   return normalized;
 }
 
+function readLegacyContacts() {
+  try {
+    const parsed = JSON.parse(localStorage.getItem(LEGACY_CONTACT_KEY) || "{}");
+    return parsed && typeof parsed === "object" && !Array.isArray(parsed) ? parsed : {};
+  } catch {
+    return {};
+  }
+}
+
 function readData() {
   try {
-    return ensureUuidDrivers(JSON.parse(localStorage.getItem(KEY) || "[]"));
+    return mergeLegacyEmails(ensureUuidDrivers(JSON.parse(localStorage.getItem(KEY) || "[]"))).rows;
   } catch {
     return [];
   }
 }
 
+function mergeLegacyEmails(rows) {
+  let changed = false;
+  const merged = rows.map((row) => {
+    const legacyEmail = String(legacyContacts?.[row.id]?.email || "").trim();
+    if (row.email || !legacyEmail) return row;
+    changed = true;
+    return { ...row, email: legacyEmail };
+  });
+  return { rows: merged, changed };
+}
+
+function cleanupLegacyContactsForRows(rows) {
+  let changed = false;
+  rows.forEach((row) => {
+    if (legacyContacts[row.id]) {
+      delete legacyContacts[row.id];
+      changed = true;
+    }
+  });
+  if (changed) {
+    localStorage.setItem(LEGACY_CONTACT_KEY, JSON.stringify(legacyContacts));
+  }
+}
+
 function saveData() {
   localStorage.setItem(KEY, JSON.stringify(state.drivers));
+  cleanupLegacyContactsForRows(state.drivers.filter((row) => row.email));
   if (useSupabase) {
     void syncDriversToSupabase();
   }
@@ -53,11 +89,79 @@ function uid() {
   return newId();
 }
 
+function cleanPhone(phone) {
+  return String(phone || "").replace(/[^\d+]/g, "").trim();
+}
+
+function toWhatsAppNumber(phone) {
+  let digits = String(phone || "").replace(/\D/g, "");
+  if (digits.startsWith("00")) digits = digits.slice(2);
+  if (digits.startsWith("0") && digits.length === 10) {
+    digits = `61${digits.slice(1)}`;
+  }
+  return digits;
+}
+
+function launchLink(url, target = "_blank") {
+  const anchor = document.createElement("a");
+  anchor.href = url;
+  anchor.target = target;
+  anchor.rel = "noopener noreferrer";
+  anchor.click();
+}
+
+function openDriverContact(channel, item) {
+  const email = String(item.email || "").trim();
+  const phone = cleanPhone(item.phone);
+  const message = `Hi ${item.name}, this is Onpoint Express.`;
+
+  if (channel === "email") {
+    if (!email) {
+      alert(`No email saved for ${item.name} yet.`);
+      return;
+    }
+    const subject = encodeURIComponent(`Onpoint Express update for ${item.name}`);
+    const body = encodeURIComponent(`${message}\n\nPlease reply when you can.`);
+    launchLink(`mailto:${email}?subject=${subject}&body=${body}`, "_self");
+    return;
+  }
+
+  if (!phone) {
+    alert(`No phone number saved for ${item.name} yet.`);
+    return;
+  }
+
+  if (channel === "sms") {
+    launchLink(`sms:${phone}?body=${encodeURIComponent(message)}`, "_self");
+    return;
+  }
+
+  if (channel === "whatsapp") {
+    const whatsappNumber = toWhatsAppNumber(phone);
+    if (!whatsappNumber) {
+      alert(`WhatsApp number is not valid for ${item.name}.`);
+      return;
+    }
+    launchLink(`https://wa.me/${whatsappNumber}?text=${encodeURIComponent(message)}`);
+  }
+}
+
+function renderContactButtons(item) {
+  const email = String(item.email || "").trim();
+  const hasPhone = Boolean(cleanPhone(item.phone));
+  return `<div class='contact-actions'>
+    <button type='button' class='contact-link' data-action='email-driver' data-id='${item.id}' ${email ? "" : "disabled"}>Email</button>
+    <button type='button' class='contact-link' data-action='sms-driver' data-id='${item.id}' ${hasPhone ? "" : "disabled"}>SMS</button>
+    <button type='button' class='contact-link' data-action='whatsapp-driver' data-id='${item.id}' ${hasPhone ? "" : "disabled"}>WhatsApp</button>
+  </div>`;
+}
+
 function toDbDriver(item) {
   return {
     id: item.id,
     name: item.name || "",
     phone: item.phone || "",
+    email: item.email || "",
     license_number: item.licenseNumber || "",
     license_expiry: item.licenseExpiry || null,
     hire_date: item.hireDate || null,
@@ -72,6 +176,7 @@ function fromDbDriver(row) {
     id: row.id,
     name: row.name || "",
     phone: row.phone || "",
+    email: row.email || "",
     licenseNumber: row.license_number || "",
     licenseExpiry: row.license_expiry || "",
     hireDate: row.hire_date || "",
@@ -118,8 +223,14 @@ async function hydrateDriversFromSupabase() {
     refresh();
     return;
   }
-  state.drivers = data.map(fromDbDriver);
+
+  const merged = mergeLegacyEmails(data.map(fromDbDriver));
+  state.drivers = merged.rows;
   localStorage.setItem(KEY, JSON.stringify(state.drivers));
+  cleanupLegacyContactsForRows(state.drivers.filter((row) => row.email));
+  if (merged.changed) {
+    await syncDriversToSupabase();
+  }
   refresh();
 }
 
@@ -155,7 +266,7 @@ function drawTable() {
   const query = (document.getElementById("driversSearch")?.value || "").trim().toLowerCase();
   const filtered = state.drivers.filter((item) => {
     if (!query) return true;
-    const hay = `${item.name} ${item.phone} ${item.licenseNumber} ${item.status} ${item.emergencyContact || ""}`.toLowerCase();
+    const hay = `${item.name} ${item.phone} ${item.email || ""} ${item.licenseNumber} ${item.status} ${item.emergencyContact || ""}`.toLowerCase();
     return hay.includes(query);
   });
 
@@ -166,7 +277,12 @@ function drawTable() {
 
   tbody.innerHTML = filtered
     .sort((a, b) => a.name.localeCompare(b.name))
-    .map((item) => `<tr><td>${item.name}</td><td>${item.phone}</td><td>${item.licenseNumber}</td><td>${item.licenseExpiry}</td><td>${item.status}</td><td>${item.emergencyContact || "-"}</td><td>${auth.can("editDrivers") ? `<div class='table-actions'><button data-action='edit' data-id='${item.id}'>Edit</button><button data-action='delete' data-id='${item.id}'>Delete</button></div>` : "<span class='muted'>View only</span>"}</td></tr>`)
+    .map((item) => {
+      const adminActions = auth.can("editDrivers")
+        ? `<div class='table-actions'><button data-action='edit' data-id='${item.id}'>Edit</button><button data-action='delete' data-id='${item.id}'>Delete</button></div>`
+        : "<span class='muted'>View only</span>";
+      return `<tr><td>${item.name}</td><td>${item.phone}</td><td>${item.email || "-"}</td><td>${item.licenseNumber}</td><td>${item.status}</td><td>${item.emergencyContact || "-"}</td><td><div class='table-actions table-actions-stack'>${renderContactButtons(item)}${adminActions}</div></td></tr>`;
+    })
     .join("");
 }
 
@@ -179,6 +295,7 @@ function setForm(item) {
   document.getElementById("driverDetailsId").value = item.id;
   document.getElementById("driverDetailsName").value = item.name;
   document.getElementById("driverPhone").value = item.phone;
+  document.getElementById("driverEmail").value = item.email || "";
   document.getElementById("licenseNumber").value = item.licenseNumber;
   document.getElementById("licenseExpiry").value = item.licenseExpiry;
   document.getElementById("hireDate").value = item.hireDate;
@@ -228,6 +345,7 @@ document.getElementById("driversForm").addEventListener("submit", (e) => {
     id: id || uid(),
     name: document.getElementById("driverDetailsName").value.trim(),
     phone: document.getElementById("driverPhone").value.trim(),
+    email: document.getElementById("driverEmail").value.trim(),
     licenseNumber: document.getElementById("licenseNumber").value.trim(),
     licenseExpiry: document.getElementById("licenseExpiry").value,
     hireDate: document.getElementById("hireDate").value,
@@ -269,17 +387,32 @@ document.getElementById("clearDriversFilters").addEventListener("click", () => {
 
 document.body.addEventListener("click", (e) => {
   const button = e.target.closest("button[data-action]");
-  if (!button || !auth.can("editDrivers")) return;
+  if (!button) return;
 
   const { action, id } = button.dataset;
+  const item = state.drivers.find((d) => d.id === id);
+
+  if (action === "email-driver" || action === "sms-driver" || action === "whatsapp-driver") {
+    if (!item) return;
+    if (action === "email-driver") openDriverContact("email", item);
+    if (action === "sms-driver") openDriverContact("sms", item);
+    if (action === "whatsapp-driver") openDriverContact("whatsapp", item);
+    return;
+  }
+
+  if (!auth.can("editDrivers")) return;
+
   if (action === "edit") {
-    const item = state.drivers.find((d) => d.id === id);
     if (item) setForm(item);
     return;
   }
 
   if (action === "delete") {
     state.drivers = state.drivers.filter((d) => d.id !== id);
+    if (legacyContacts[id]) {
+      delete legacyContacts[id];
+      localStorage.setItem(LEGACY_CONTACT_KEY, JSON.stringify(legacyContacts));
+    }
     saveData();
     refresh();
   }
@@ -294,4 +427,3 @@ if (!useSupabase) {
     window.location.reload();
   }, { once: true });
 }
-

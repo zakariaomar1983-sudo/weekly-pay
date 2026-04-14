@@ -7,7 +7,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=Manrope:wght@400;500;700&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="./style.css" />
+  <link rel="stylesheet" href="./style.css?v=20260414c" />
 </head>
 <body>
   <main class="app-shell">
@@ -29,6 +29,30 @@
     </header>
 
     <section class="stats-grid" id="rosterStats"></section>
+
+    <section class="panel roster-focus-panel">
+      <div class="panel-head">
+        <h2>Weekly Planning Model</h2>
+      </div>
+      <div class="roster-focus-grid">
+        <article class="focus-card">
+          <p class="eyebrow">Fleet Goal</p>
+          <h3>7 Drivers | 7 Trucks</h3>
+          <p class="muted">Keep one active truck matched to one active driver as the default weekly setup.</p>
+        </article>
+        <article class="focus-card">
+          <p class="eyebrow">Work Pattern</p>
+          <h3>5 Days Each</h3>
+          <p class="muted">Plan core coverage for Monday to Friday, then use weekends only when extra loads are needed.</p>
+        </article>
+        <article class="focus-card">
+          <p class="eyebrow">Roster Balance</p>
+          <h3>Weekend Overflow</h3>
+          <p class="muted">The board below highlights who is below target, who is full, and where weekend shifts are being used.</p>
+        </article>
+      </div>
+      <div class="roster-rule-strip" id="rosterRuleStrip"></div>
+    </section>
 
     <section class="panel">
       <div class="panel-head">
@@ -79,6 +103,29 @@
           <button id="clearRosterFilters" class="btn btn-outline" type="button">Clear Filters</button>
         </div>
       </form>
+      <div class="roster-board-topline">
+        <p id="rosterBoardSummary" class="muted"></p>
+      </div>
+      <div class="table-wrap roster-board-wrap">
+        <table class="roster-board-table">
+          <thead>
+            <tr>
+              <th>Driver</th>
+              <th>Truck</th>
+              <th>Mon</th>
+              <th>Tue</th>
+              <th>Wed</th>
+              <th>Thu</th>
+              <th>Fri</th>
+              <th>Sat</th>
+              <th>Sun</th>
+              <th>Load</th>
+            </tr>
+          </thead>
+          <tbody id="rosterDriverBoardBody"></tbody>
+        </table>
+      </div>
+      <div id="rosterCoverageNotes" class="roster-note-grid"></div>
       <div class="table-wrap">
         <table>
           <thead>
@@ -91,8 +138,8 @@
   </main>
 
   <script src="./seed-data.js?v=20260413d"></script>
-  <script src="./auth.js?v=20260413w"></script>
-  <script src="./roster.js?v=20260413d"></script>
+  <script src="./auth.js?v=20260414b"></script>
+  <script src="./roster.js?v=20260414f"></script>
 </body>
 </html>
 

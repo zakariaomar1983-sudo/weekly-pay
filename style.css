@@ -242,12 +242,38 @@ th {
   gap: 0.4rem;
 }
 
+.table-actions-stack {
+  flex-wrap: wrap;
+}
+
 .table-actions button {
   border: 1px solid var(--line);
   background: white;
   border-radius: 8px;
   padding: 0.3rem 0.55rem;
   cursor: pointer;
+}
+
+.contact-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+}
+
+.contact-link {
+  border: 1px solid #c8d8cd;
+  background: #f5faf6;
+  color: #1d2a2f;
+  border-radius: 999px;
+  padding: 0.28rem 0.6rem;
+  cursor: pointer;
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
+.contact-link:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
 }
 
 tr.row-rego-overdue td {
@@ -326,6 +352,208 @@ tr.row-rego-soon td {
   background: #f3f8f2;
 }
 
+.roster-focus-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 0.8rem;
+  margin-bottom: 0.9rem;
+}
+
+.focus-card {
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  padding: 1rem;
+  background:
+    linear-gradient(145deg, rgba(22, 110, 86, 0.08), rgba(255, 255, 255, 0.95)),
+    #fff;
+}
+
+.focus-card h3 {
+  margin: 0.35rem 0 0.45rem;
+  font-family: "Space Grotesk", "Segoe UI", sans-serif;
+  font-size: 1.25rem;
+}
+
+.focus-card .muted {
+  line-height: 1.5;
+}
+
+.roster-rule-strip {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+}
+
+.rule-pill {
+  min-width: 140px;
+  border: 1px solid #c8d8cd;
+  border-radius: 999px;
+  padding: 0.55rem 0.8rem;
+  background: #f5faf6;
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+
+.rule-pill span {
+  color: var(--subtle);
+  font-size: 0.74rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.rule-pill strong {
+  font-size: 0.96rem;
+}
+
+.roster-board-topline {
+  margin: 0.2rem 0 0.8rem;
+}
+
+.roster-board-topline .muted {
+  font-size: 0.92rem;
+}
+
+.roster-board-wrap {
+  margin-bottom: 0.9rem;
+}
+
+.roster-board-table {
+  min-width: 1120px;
+}
+
+.roster-board-table th:nth-child(8),
+.roster-board-table th:nth-child(9),
+.roster-board-table td.weekend-col {
+  background: #fbf5eb;
+}
+
+.board-cell {
+  min-width: 120px;
+}
+
+.board-cell-empty {
+  color: var(--muted);
+  text-align: center;
+}
+
+.board-chip {
+  display: flex;
+  flex-direction: column;
+  gap: 0.18rem;
+  padding: 0.45rem 0.5rem;
+  border-radius: 10px;
+  background: #eef7f2;
+  border: 1px solid #d4e5d9;
+  margin-bottom: 0.35rem;
+}
+
+.board-chip:last-child {
+  margin-bottom: 0;
+}
+
+.board-chip strong {
+  font-size: 0.84rem;
+}
+
+.board-chip span {
+  color: var(--subtle);
+  font-size: 0.76rem;
+  line-height: 1.35;
+}
+
+.board-badge {
+  display: inline-flex;
+  align-items: center;
+  width: fit-content;
+  border-radius: 999px;
+  padding: 0.14rem 0.45rem;
+  font-size: 0.72rem;
+  font-style: normal;
+  font-weight: 700;
+}
+
+.board-badge-live {
+  background: #ddf2e6;
+  color: #166e56;
+}
+
+.board-badge-done {
+  background: #e2ebf8;
+  color: #36598b;
+}
+
+.board-badge-leave {
+  background: #fde7c7;
+  color: #9b6400;
+}
+
+.load-indicator {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  border-radius: 12px;
+  padding: 0.55rem 0.7rem;
+  border: 1px solid var(--line);
+}
+
+.load-indicator strong {
+  font-size: 0.95rem;
+}
+
+.load-indicator span {
+  color: var(--subtle);
+  font-size: 0.76rem;
+  line-height: 1.35;
+}
+
+.load-indicator.on-target {
+  background: #edf9f1;
+  border-color: #9fd3b2;
+}
+
+.load-indicator.near-target {
+  background: #fff7ea;
+  border-color: #e7c98e;
+}
+
+.load-indicator.under-target {
+  background: #fff1f1;
+  border-color: #e5b3b3;
+}
+
+.roster-note-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 0.8rem;
+}
+
+.note-card {
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  padding: 0.9rem 1rem;
+  background: #fafcf8;
+}
+
+.note-card p {
+  margin: 0;
+  color: var(--subtle);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  font-size: 0.74rem;
+}
+
+.note-card h3 {
+  margin: 0.35rem 0;
+  font-family: "Space Grotesk", "Segoe UI", sans-serif;
+}
+
+.note-card span {
+  color: var(--subtle);
+  font-size: 0.84rem;
+  line-height: 1.45;
+}
+
 @media (max-width: 768px) {
   .topbar {
     flex-direction: column;
@@ -342,6 +570,10 @@ tr.row-rego-soon td {
   }
 
   .btn-danger {
+    width: 100%;
+  }
+
+  .rule-pill {
     width: 100%;
   }
 }

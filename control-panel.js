@@ -552,7 +552,7 @@ function parseRowsFromStorageKey(key) {
 function toDbRowsForKey(key, rows) {
   if (key === "transport_crm_drivers") {
     return rows.map((x) => ({
-      id: x.id, name: x.name || "", phone: x.phone || "", license_number: x.licenseNumber || "",
+      id: x.id, name: x.name || "", phone: x.phone || "", email: x.email || "", license_number: x.licenseNumber || "",
       license_expiry: x.licenseExpiry || null, hire_date: x.hireDate || null, status: x.status || "",
       address: x.address || "", emergency_contact: x.emergencyContact || ""
     }));
@@ -594,7 +594,14 @@ function toDbRowsForKey(key, rows) {
   }
   if (key === "transport_crm_logs") {
     return rows.map((x) => ({
-      id: x.id, log_date: x.date || x.logDate || null, level: x.level || "", message: x.message || "", details: x.details || x.notes || ""
+      id: x.id,
+      log_date: x.logDate || x.date || null,
+      log_type: x.logType || x.level || "",
+      driver: x.driver || "",
+      truck_number: x.truck || x.truckNumber || "",
+      reference: x.reference || "",
+      status: x.status || "",
+      description: x.description || x.message || x.details || x.notes || ""
     }));
   }
   return [];

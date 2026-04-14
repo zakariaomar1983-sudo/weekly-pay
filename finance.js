@@ -17,8 +17,18 @@ const TABLE_BY_KEY = {
   [KEYS.expense]: "truck_expense",
   [KEYS.pay]: "payslips"
 };
-const supabase = window.OPXSupabase?.client || null;
-const useSupabase = Boolean(window.OPXSupabase?.isReady && supabase);
+
+function applyFinanceResetFromUrl() {
+  try {
+    const params = new URLSearchParams(window.location.search || "");
+    if (params.get("resetFinance") !== "1") return;
+    Object.values(KEYS).forEach((key) => localStorage.removeItem(key));
+  } catch {
+    // ignore
+  }
+}
+
+applyFinanceResetFromUrl();
 
 const state = {
   income: readData(KEYS.income),
@@ -48,7 +58,7 @@ function readData(key) {
 
 function saveData(key, data) {
   localStorage.setItem(key, JSON.stringify(data));
-  if (useSupabase) {
+  if (isSupabaseReady()) {
     void syncRowsToSupabase(key, data);
   }
 }
@@ -174,10 +184,20 @@ function toDbRows(key, rows) {
   return rows;
 }
 
+function getSupabaseClient() {
+  return window.OPXSupabase?.client || null;
+}
+
+function isSupabaseReady() {
+  return Boolean(window.OPXSupabase?.isReady && getSupabaseClient());
+}
+
 async function syncRowsToSupabase(key, rows) {
-  if (!useSupabase) return;
+  if (!isSupabaseReady()) return;
   const table = TABLE_BY_KEY[key];
   if (!table) return;
+  const supabase = getSupabaseClient();
+  if (!supabase) return;
   const payload = toDbRows(key, rows);
   const { error } = await supabase.from(table).upsert(payload, { onConflict: "id" });
   if (error) {
@@ -200,7 +220,9 @@ async function syncRowsToSupabase(key, rows) {
 }
 
 async function hydrateFinanceFromSupabase() {
-  if (!useSupabase) return;
+  if (!isSupabaseReady()) return;
+  const supabase = getSupabaseClient();
+  if (!supabase) return;
 
   const [incomeRes, expenseRes, payRes] = await Promise.all([
     supabase.from(TABLE_BY_KEY[KEYS.income]).select("*"),
@@ -404,10 +426,17 @@ function weekStartFromDate(dateString) {
   return start;
 }
 
+function formatDateKey(date) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
 function weekKey(dateString) {
   const start = weekStartFromDate(dateString);
   if (!start) return "";
-  return start.toISOString().slice(0, 10);
+  return formatDateKey(start);
 }
 
 function weekLabel(key) {
@@ -433,19 +462,33 @@ function dateInRange(dateValue, rangeStart, rangeEnd) {
   return date >= rangeStart && date <= rangeEnd;
 }
 
-function periodBoundsToday() {
+function getLatestFinanceDate() {
+  const allDates = [
+    ...state.income.map((item) => item.incomeDate),
+    ...state.expense.map((item) => item.date),
+    ...state.pay.map((item) => item.paymentDate)
+  ]
+    .map(parseDateKey)
+    .filter(Boolean)
+    .sort((a, b) => a - b);
+
+  return allDates.length ? allDates[allDates.length - 1] : null;
+}
+
+function periodBoundsForDashboard() {
   const today = new Date();
   today.setHours(0, 0, 0, 0);
+  const referenceDate = getLatestFinanceDate() || today;
 
-  const weekStart = weekStartFromDate(today.toISOString().slice(0, 10));
+  const weekStart = weekStartFromDate(formatDateKey(referenceDate));
   const weekEnd = new Date(weekStart);
   weekEnd.setDate(weekStart.getDate() + 6);
 
-  const monthStart = new Date(today.getFullYear(), today.getMonth(), 1);
-  const monthEnd = new Date(today.getFullYear(), today.getMonth() + 1, 0);
+  const monthStart = new Date(referenceDate.getFullYear(), referenceDate.getMonth(), 1);
+  const monthEnd = new Date(referenceDate.getFullYear(), referenceDate.getMonth() + 1, 0);
   monthEnd.setHours(23, 59, 59, 999);
 
-  return { weekStart, weekEnd, monthStart, monthEnd };
+  return { weekStart, weekEnd, monthStart, monthEnd, referenceDate };
 }
 
 function sumForRange(rows, dateField, amountGetter, start, end) {
@@ -454,21 +497,30 @@ function sumForRange(rows, dateField, amountGetter, start, end) {
   ), 0);
 }
 
+function getFinanceDashboardAccess() {
+  const canViewIncome = auth.can("viewTruckIncome") || auth.can("viewStats");
+  const canViewExpense = auth.can("viewSpending") || auth.can("viewStats");
+  const canViewPay = auth.can("viewPayslips") || auth.can("viewStats");
+  const canViewProfit = auth.can("viewStats") || (auth.can("viewTruckIncome") && auth.can("viewSpending") && auth.can("viewPayslips"));
+  return { canViewIncome, canViewExpense, canViewPay, canViewProfit };
+}
+
 function drawPeriodTotalsDashboard() {
   const panel = document.getElementById("periodTotalsPanel");
   const meta = document.getElementById("periodTotalsMeta");
   const grid = document.getElementById("periodTotalsGrid");
+  const { canViewIncome, canViewExpense, canViewPay, canViewProfit } = getFinanceDashboardAccess();
 
-  if (!auth.can("viewStats")) {
+  if (!(canViewIncome || canViewExpense || canViewPay || canViewProfit)) {
     panel.style.display = "none";
     return;
   }
 
   panel.style.display = "block";
 
-  const { weekStart, weekEnd, monthStart, monthEnd } = periodBoundsToday();
+  const { weekStart, weekEnd, monthStart, monthEnd, referenceDate } = periodBoundsForDashboard();
   const fmt = { day: "2-digit", month: "short", year: "numeric" };
-  meta.textContent = `Week: ${weekStart.toLocaleDateString("en-AU", fmt)} - ${weekEnd.toLocaleDateString("en-AU", fmt)} | Month: ${monthStart.toLocaleDateString("en-AU", { month: "long", year: "numeric" })}`;
+  meta.textContent = `Week: ${weekStart.toLocaleDateString("en-AU", fmt)} - ${weekEnd.toLocaleDateString("en-AU", fmt)} | Month: ${monthStart.toLocaleDateString("en-AU", { month: "long", year: "numeric" })} | Latest activity: ${referenceDate.toLocaleDateString("en-AU", fmt)}`;
 
   const weeklyIncome = sumForRange(state.income, "incomeDate", (x) => x.amount, weekStart, weekEnd);
   const monthlyIncome = sumForRange(state.income, "incomeDate", (x) => x.amount, monthStart, monthEnd);
@@ -482,24 +534,43 @@ function drawPeriodTotalsDashboard() {
   const weeklyProfit = weeklyIncome - weeklyExpense - weeklyDriverPay;
   const monthlyProfit = monthlyIncome - monthlyExpense - monthlyDriverPay;
 
-  const cards = [
-    { label: "Weekly Income", value: money(weeklyIncome) },
-    { label: "Monthly Income", value: money(monthlyIncome) },
-    { label: "Weekly Truck Expense", value: money(weeklyExpense) },
-    { label: "Monthly Truck Expense", value: money(monthlyExpense) },
-    { label: "Weekly Driver Pay", value: money(weeklyDriverPay) },
-    { label: "Monthly Driver Pay", value: money(monthlyDriverPay) },
-    {
-      label: "Weekly Profit",
-      value: money(weeklyProfit),
-      tone: weeklyProfit > 0 ? "positive" : weeklyProfit < 0 ? "negative" : "neutral"
-    },
-    {
-      label: "Monthly Profit",
-      value: money(monthlyProfit),
-      tone: monthlyProfit > 0 ? "positive" : monthlyProfit < 0 ? "negative" : "neutral"
-    }
-  ];
+  const cards = [];
+
+  if (canViewIncome) {
+    cards.push(
+      { label: "Weekly Income", value: money(weeklyIncome) },
+      { label: "Monthly Income", value: money(monthlyIncome) }
+    );
+  }
+
+  if (canViewExpense) {
+    cards.push(
+      { label: "Weekly Truck Expense", value: money(weeklyExpense) },
+      { label: "Monthly Truck Expense", value: money(monthlyExpense) }
+    );
+  }
+
+  if (canViewPay) {
+    cards.push(
+      { label: "Weekly Driver Pay", value: money(weeklyDriverPay) },
+      { label: "Monthly Driver Pay", value: money(monthlyDriverPay) }
+    );
+  }
+
+  if (canViewProfit) {
+    cards.push(
+      {
+        label: "Weekly Profit",
+        value: money(weeklyProfit),
+        tone: weeklyProfit > 0 ? "positive" : weeklyProfit < 0 ? "negative" : "neutral"
+      },
+      {
+        label: "Monthly Profit",
+        value: money(monthlyProfit),
+        tone: monthlyProfit > 0 ? "positive" : monthlyProfit < 0 ? "negative" : "neutral"
+      }
+    );
+  }
 
   grid.innerHTML = cards
     .map((card) => `<article class='stat-card${card.tone ? ` profit-${card.tone}` : ""}'><p>${card.label}</p><h3>${card.value}</h3></article>`)
@@ -541,7 +612,9 @@ function buildWeeklySummary() {
 
 function drawStats() {
   const stats = document.getElementById("financeStats");
-  if (!auth.can("viewStats")) {
+  const { canViewIncome, canViewExpense, canViewPay, canViewProfit } = getFinanceDashboardAccess();
+
+  if (!(canViewIncome || canViewExpense || canViewPay || canViewProfit)) {
     stats.style.display = "none";
     return;
   }
@@ -551,18 +624,33 @@ function drawStats() {
   const driverPayTotal = state.pay.reduce((sum, x) => sum + netPay(x), 0);
   const profit = incomeTotal - expenseTotal - driverPayTotal;
 
+  const cards = [];
+
+  if (canViewIncome) {
+    cards.push({ label: "Truck Income", value: money(incomeTotal) });
+  }
+
+  if (canViewExpense) {
+    cards.push({ label: "Truck Expense", value: money(expenseTotal) });
+  }
+
+  if (canViewPay) {
+    cards.push({ label: "Driver Pay", value: money(driverPayTotal) });
+  }
+
+  if (canViewProfit) {
+    cards.push({ label: "Profit", value: money(profit) });
+  }
+
   stats.style.display = "grid";
-  stats.innerHTML = [
-    { label: "Truck Income", value: money(incomeTotal) },
-    { label: "Truck Expense", value: money(expenseTotal) },
-    { label: "Driver Pay", value: money(driverPayTotal) },
-    { label: "Profit", value: money(profit) }
-  ].map((s) => `<article class='stat-card'><p>${s.label}</p><h3>${s.value}</h3></article>`).join("");
+  stats.innerHTML = cards.map((s) => `<article class='stat-card'><p>${s.label}</p><h3>${s.value}</h3></article>`).join("");
 }
 
 function drawWeeklySummary() {
   const panel = document.getElementById("weeklyProfitPanel");
-  if (!auth.can("viewStats")) {
+  const { canViewProfit } = getFinanceDashboardAccess();
+
+  if (!canViewProfit) {
     panel.style.display = "none";
     return;
   }
@@ -916,8 +1004,13 @@ document.getElementById("nightRunDrops").addEventListener("change", updateNightR
 refresh();
 void hydrateFinanceFromSupabase();
 
-if (!useSupabase) {
+if (!isSupabaseReady()) {
   window.addEventListener("opx:supabase-ready", () => {
-    window.location.reload();
+    void hydrateFinanceFromSupabase();
   }, { once: true });
+  window.setTimeout(() => {
+    if (isSupabaseReady()) {
+      void hydrateFinanceFromSupabase();
+    }
+  }, 1500);
 }

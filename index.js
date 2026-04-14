@@ -17,6 +17,10 @@ const links = [
   { label: "Control Panel", href: "./control-panel.html", show: auth.can("accessControlPanel") }
 ];
 
+const state = {
+  logCount: readCount("transport_crm_logs")
+};
+
 function readCount(key) {
   try {
     return JSON.parse(localStorage.getItem(key) || "[]").length;
@@ -32,7 +36,7 @@ function drawStats() {
     { label: "Roster Shifts", value: String(readCount("transport_crm_roster")) },
     { label: "Income Rows", value: String(readCount("transport_crm_truck_income")) },
     { label: "Payslips", value: String(readCount("transport_crm_payslips")) },
-    { label: "Logs", value: String(readCount("transport_crm_logs")) },
+    { label: "Logs", value: String(state.logCount) },
     { label: "Users", value: String(window.OPXAuth.getUsers().length) }
   ];
 
@@ -62,5 +66,36 @@ document.getElementById("logoutBtn").addEventListener("click", () => {
   window.location.href = "./login.html";
 });
 
+function getSupabaseClient() {
+  return window.OPXSupabase?.client || null;
+}
+
+function isSupabaseReady() {
+  return Boolean(window.OPXSupabase?.isReady && getSupabaseClient());
+}
+
+async function hydrateLogCountFromSupabase() {
+  if (!isSupabaseReady()) return;
+  const supabase = getSupabaseClient();
+  if (!supabase) return;
+
+  const { count, error } = await supabase.from("app_logs").select("*", { count: "exact", head: true });
+  if (error) {
+    console.error("Supabase log count failed:", error.message);
+    return;
+  }
+
+  state.logCount = Number(count || 0);
+  drawStats();
+}
+
 drawStats();
 drawLinks();
+
+if (isSupabaseReady()) {
+  void hydrateLogCountFromSupabase();
+}
+
+window.addEventListener("opx:supabase-ready", () => {
+  void hydrateLogCountFromSupabase();
+});

@@ -313,7 +313,12 @@
   }
 
   function getRoles() {
-    return read(STORAGE.roles, []);
+    const currentRoles = read(STORAGE.roles, []);
+    const nextRoles = normalizeRoles(currentRoles);
+    if (JSON.stringify(nextRoles) !== JSON.stringify(currentRoles)) {
+      write(STORAGE.roles, nextRoles);
+    }
+    return nextRoles;
   }
 
   function setRoles(roles) {
@@ -321,7 +326,13 @@
   }
 
   function getUsers() {
-    return read(STORAGE.users, []);
+    const roles = getRoles();
+    const currentUsers = read(STORAGE.users, []);
+    const nextUsers = normalizeUsers(currentUsers, roles);
+    if (JSON.stringify(nextUsers) !== JSON.stringify(currentUsers)) {
+      write(STORAGE.users, nextUsers);
+    }
+    return nextUsers;
   }
 
   function setUsers(users) {
@@ -384,6 +395,35 @@
 
   function logout() {
     clearSession();
+  }
+
+  function triggerLogout(redirectPath = "./logout.html") {
+    try {
+      logout();
+    } catch {
+      try {
+        localStorage.removeItem(STORAGE.session);
+      } catch {
+        // ignore
+      }
+    }
+
+    if (typeof window !== "undefined" && redirectPath) {
+      window.location.href = redirectPath;
+    }
+  }
+
+  function installGlobalLogout() {
+    if (typeof document === "undefined") return;
+    if (window.__opxLogoutInstalled) return;
+    window.__opxLogoutInstalled = true;
+
+    document.addEventListener("click", (event) => {
+      const target = event.target?.closest?.("#logoutBtn, [data-logout]");
+      if (!target) return;
+      event.preventDefault();
+      triggerLogout(target.getAttribute("href") || "./logout.html");
+    });
   }
 
   function requireAuth(redirectPath) {
@@ -589,6 +629,7 @@
     init,
     login,
     logout,
+    triggerLogout,
     requireAuth,
     getSessionUser,
     getPermissionsForUser,
@@ -613,4 +654,5 @@
 
   init();
   recoverRolesFromUrl();
+  installGlobalLogout();
 })();
