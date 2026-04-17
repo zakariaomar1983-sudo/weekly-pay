@@ -31,14 +31,14 @@ function readCount(key) {
 
 function drawStats() {
   const stats = [
-    { label: "Drivers", value: String(readCount("transport_crm_drivers")) },
-    { label: "Trucks", value: String(readCount("transport_crm_trucks")) },
-    { label: "Roster Shifts", value: String(readCount("transport_crm_roster")) },
-    { label: "Income Rows", value: String(readCount("transport_crm_truck_income")) },
-    { label: "Payslips", value: String(readCount("transport_crm_payslips")) },
-    { label: "Logs", value: String(state.logCount) },
-    { label: "Users", value: String(window.OPXAuth.getUsers().length) }
-  ];
+    { label: "Drivers", value: String(readCount("transport_crm_drivers")), show: auth.can("viewDrivers") },
+    { label: "Trucks", value: String(readCount("transport_crm_trucks")), show: auth.can("viewTrucks") },
+    { label: "Roster Shifts", value: String(readCount("transport_crm_roster")), show: auth.can("viewRoster") },
+    { label: "Income Rows", value: String(readCount("transport_crm_truck_income")), show: auth.can("viewTruckIncome") },
+    { label: "Payslips", value: String(readCount("transport_crm_payslips")), show: auth.can("viewPayslips") },
+    { label: "Logs", value: String(state.logCount), show: auth.can("accessLogs") },
+    { label: "Users", value: String(window.OPXAuth.getUsers().length), show: auth.can("accessControlPanel") }
+  ].filter((item) => item.show);
 
   document.getElementById("homeStats").innerHTML = stats
     .map((s) => `<article class="stat-card"><p>${s.label}</p><h3>${s.value}</h3></article>`)

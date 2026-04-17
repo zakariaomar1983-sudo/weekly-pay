@@ -4,6 +4,12 @@
     users: "opx_auth_users",
     session: "opx_auth_session"
   };
+  const AUTH_TABLES = {
+    roles: "auth_roles",
+    users: "auth_users"
+  };
+  let authSyncBusy = false;
+  let sharedAuthStatus = "Shared login not checked yet.";
 
   const PERMISSIONS = [
     { key: "accessCRM", label: "Access CRM page" },
@@ -36,6 +42,7 @@
   };
 
   const STARTER_CUSTOM_ROLE_IDS = {
+    teamBasic: "role_team_basic",
     dispatcher: "role_dispatcher",
     finance: "role_finance",
     fleet: "role_fleet_manager",
@@ -72,6 +79,48 @@
       out[perm.key] = value;
     });
     return out;
+  }
+
+  function getSupabaseClient() {
+    return window.OPXSupabase?.isReady ? window.OPXSupabase.client : null;
+  }
+
+  function toDbRole(role) {
+    return {
+      id: role.id,
+      name: role.name || "Custom Role",
+      system: Boolean(role.system),
+      permissions: role.permissions || {}
+    };
+  }
+
+  function fromDbRole(row) {
+    return {
+      id: String(row.id || ""),
+      name: String(row.name || "Custom Role"),
+      system: Boolean(row.system),
+      permissions: row.permissions && typeof row.permissions === "object" ? row.permissions : {}
+    };
+  }
+
+  function toDbUser(user) {
+    return {
+      id: user.id,
+      username: user.username || "",
+      password: user.password || "",
+      role_id: user.roleId || SYSTEM_ROLE_IDS.admin,
+      active: user.active !== false
+    };
+  }
+
+  function fromDbUser(row) {
+    return {
+      id: String(row.id || ""),
+      username: String(row.username || ""),
+      password: String(row.password || ""),
+      roleId: String(row.role_id || SYSTEM_ROLE_IDS.admin),
+      active: row.active !== false
+    };
   }
 
   function buildSystemRoleDefinitions() {
@@ -126,6 +175,15 @@
   }
 
   function buildStarterCustomRoleDefinitions() {
+    const teamBasicPerms = allPermissions(false);
+    [
+      "accessCRM",
+      "viewTrucks",
+      "viewRoster"
+    ].forEach((key) => {
+      teamBasicPerms[key] = true;
+    });
+
     const dispatcherPerms = allPermissions(false);
     [
       "accessCRM",
@@ -210,6 +268,7 @@
     });
 
     return [
+      { id: STARTER_CUSTOM_ROLE_IDS.teamBasic, name: "Team - Trucks & Roster", system: false, permissions: teamBasicPerms },
       { id: STARTER_CUSTOM_ROLE_IDS.dispatcher, name: "Dispatcher", system: false, permissions: dispatcherPerms },
       { id: STARTER_CUSTOM_ROLE_IDS.finance, name: "Finance Officer", system: false, permissions: financePerms },
       { id: STARTER_CUSTOM_ROLE_IDS.fleet, name: "Fleet Manager", system: false, permissions: fleetPerms },
@@ -339,6 +398,91 @@
     write(STORAGE.users, normalizeUsers(users, getRoles()));
   }
 
+  async function deleteMissingRemoteRows(client, table, ids) {
+    if (!ids.length) {
+      await client.from(table).delete().not("id", "is", null);
+      return;
+    }
+    const inList = `(${ids.map((id) => `"${String(id).replaceAll('"', "")}"`).join(",")})`;
+    await client.from(table).delete().not("id", "in", inList);
+  }
+
+  async function syncAuthToSupabase() {
+    const client = getSupabaseClient();
+    if (!client || authSyncBusy) return false;
+    authSyncBusy = true;
+
+    try {
+      const roles = getRoles().map(toDbRole);
+      const users = getUsers().map(toDbUser);
+
+      const roleResult = await client.from(AUTH_TABLES.roles).upsert(roles, { onConflict: "id" });
+      if (roleResult.error) {
+        sharedAuthStatus = `Shared role sync failed: ${roleResult.error.message}`;
+        console.warn("Shared role sync failed:", roleResult.error.message);
+        return false;
+      }
+
+      const userResult = await client.from(AUTH_TABLES.users).upsert(users, { onConflict: "id" });
+      if (userResult.error) {
+        sharedAuthStatus = `Shared user sync failed: ${userResult.error.message}`;
+        console.warn("Shared user sync failed:", userResult.error.message);
+        return false;
+      }
+
+      await deleteMissingRemoteRows(client, AUTH_TABLES.roles, roles.map((role) => role.id));
+      await deleteMissingRemoteRows(client, AUTH_TABLES.users, users.map((user) => user.id));
+      sharedAuthStatus = "Shared login roles/users synced.";
+      return true;
+    } catch (error) {
+      sharedAuthStatus = `Shared auth sync failed: ${error.message || error}`;
+      console.warn("Shared auth sync failed:", error.message || error);
+      return false;
+    } finally {
+      authSyncBusy = false;
+    }
+  }
+
+  async function hydrateAuthFromSupabase() {
+    const client = getSupabaseClient();
+    if (!client) return false;
+
+    try {
+      const [roleResult, userResult] = await Promise.all([
+        client.from(AUTH_TABLES.roles).select("*"),
+        client.from(AUTH_TABLES.users).select("*")
+      ]);
+
+      if (roleResult.error || userResult.error) {
+        const message = roleResult.error?.message || userResult.error?.message || "Unknown Supabase auth load error";
+        sharedAuthStatus = `Shared login tables not ready: ${message}`;
+        console.warn("Shared auth load failed:", message);
+        return false;
+      }
+
+      const remoteRoles = Array.isArray(roleResult.data) ? roleResult.data.map(fromDbRole).filter((role) => role.id) : [];
+      const remoteUsers = Array.isArray(userResult.data) ? userResult.data.map(fromDbUser).filter((user) => user.id && user.username && user.password) : [];
+
+      if (remoteRoles.length || remoteUsers.length) {
+        if (remoteRoles.length) setRoles(remoteRoles);
+        if (remoteUsers.length) setUsers(remoteUsers);
+        init();
+        sharedAuthStatus = `Shared login loaded ${remoteRoles.length} role(s) and ${remoteUsers.length} user(s).`;
+        return true;
+      }
+
+      if (getUsers().length) {
+        await syncAuthToSupabase();
+      }
+      sharedAuthStatus = "Shared login tables are ready.";
+      return true;
+    } catch (error) {
+      sharedAuthStatus = `Shared auth load failed: ${error.message || error}`;
+      console.warn("Shared auth load failed:", error.message || error);
+      return false;
+    }
+  }
+
   function getSession() {
     return read(STORAGE.session, null);
   }
@@ -454,6 +598,7 @@
     };
     roles.push(payload);
     setRoles(roles);
+    void syncAuthToSupabase();
     return payload;
   }
 
@@ -465,6 +610,7 @@
     role.name = String(input?.name || "").trim() || role.name;
     role.permissions = { ...allPermissions(false), ...(input?.permissions || {}) };
     setRoles(roles);
+    void syncAuthToSupabase();
     return role;
   }
 
@@ -478,6 +624,7 @@
     if (inUse) return { ok: false, message: "Role is assigned to users. Reassign users first." };
 
     setRoles(roles.filter((r) => r.id !== roleId));
+    void syncAuthToSupabase();
     return { ok: true };
   }
 
@@ -500,6 +647,7 @@
 
     users.push(payload);
     setUsers(users);
+    void syncAuthToSupabase();
     return { ok: true, user: payload };
   }
 
@@ -524,6 +672,7 @@
     };
 
     setUsers([payload]);
+    void syncAuthToSupabase();
     return { ok: true, user: payload };
   }
 
@@ -582,6 +731,7 @@
     }
 
     setUsers(payload);
+    void syncAuthToSupabase();
     return { ok: true, users: payload };
   }
 
@@ -602,6 +752,7 @@
     user.active = Boolean(input?.active);
 
     setUsers(users);
+    void syncAuthToSupabase();
     return { ok: true, user };
   }
 
@@ -622,6 +773,7 @@
 
     const session = getSession();
     if (session?.userId === userId) clearSession();
+    void syncAuthToSupabase();
     return { ok: true };
   }
 
@@ -644,6 +796,9 @@
     createRole,
     updateRole,
     deleteRole,
+    hydrateAuthFromSupabase,
+    syncAuthToSupabase,
+    getSharedAuthStatus: () => sharedAuthStatus,
     createUser,
     updateUser,
     deleteUser,
@@ -655,4 +810,11 @@
   init();
   recoverRolesFromUrl();
   installGlobalLogout();
+  if (getSupabaseClient()) {
+    void hydrateAuthFromSupabase();
+  } else if (typeof window !== "undefined") {
+    window.addEventListener("opx:supabase-ready", () => {
+      void hydrateAuthFromSupabase();
+    });
+  }
 })();

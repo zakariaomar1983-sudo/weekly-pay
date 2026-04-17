@@ -9,10 +9,39 @@ if (!auth.can("accessCRM") || !auth.can("viewDrivers")) {
 const KEY = "transport_crm_drivers";
 const LEGACY_CONTACT_KEY = "transport_crm_driver_contacts";
 const DRIVERS_TABLE = "drivers";
-const supabase = window.OPXSupabase?.client || null;
-const useSupabase = Boolean(window.OPXSupabase?.isReady && supabase);
+const driversSupabase = window.OPXSupabase?.client || null;
+const useSupabase = Boolean(window.OPXSupabase?.isReady && driversSupabase);
 const legacyContacts = readLegacyContacts();
 const state = { drivers: readData() };
+
+function canManageDrivers() {
+  return auth.can("viewDrivers");
+}
+
+function firstValue(row, keys) {
+  for (const key of keys) {
+    const value = row?.[key];
+    if (value !== undefined && value !== null && String(value).trim() !== "") return value;
+  }
+  return "";
+}
+
+function normalizeDriverRow(row) {
+  const raw = row && typeof row === "object" ? row : {};
+  return {
+    ...raw,
+    id: String(firstValue(raw, ["id", "driverId", "driver_id"]) || ""),
+    name: String(firstValue(raw, ["name", "driverName", "driver", "fullName", "driver_name"]) || ""),
+    phone: String(firstValue(raw, ["phone", "mobile", "phoneNumber", "phone_number", "contactNumber"]) || ""),
+    email: String(firstValue(raw, ["email", "emailAddress", "email_address"]) || ""),
+    licenseNumber: String(firstValue(raw, ["licenseNumber", "licenceNumber", "license", "licence", "license_number"]) || ""),
+    licenseExpiry: String(firstValue(raw, ["licenseExpiry", "licenceExpiry", "license_expiry", "licence_expiry"]) || ""),
+    hireDate: String(firstValue(raw, ["hireDate", "startDate", "hire_date", "start_date"]) || ""),
+    status: String(firstValue(raw, ["status", "driverStatus", "driver_status"]) || "Active"),
+    address: String(firstValue(raw, ["address", "homeAddress", "home_address"]) || ""),
+    emergencyContact: String(firstValue(raw, ["emergencyContact", "emergency", "nextOfKin", "emergency_contact"]) || "")
+  };
+}
 
 function isUuid(value) {
   return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(String(value || ""));
@@ -47,7 +76,9 @@ function readLegacyContacts() {
 
 function readData() {
   try {
-    return mergeLegacyEmails(ensureUuidDrivers(JSON.parse(localStorage.getItem(KEY) || "[]"))).rows;
+    const parsed = JSON.parse(localStorage.getItem(KEY) || "[]");
+    const rows = Array.isArray(parsed) ? parsed.map(normalizeDriverRow) : [];
+    return mergeLegacyEmails(ensureUuidDrivers(rows)).rows;
   } catch {
     return [];
   }
@@ -150,9 +181,9 @@ function renderContactButtons(item) {
   const email = String(item.email || "").trim();
   const hasPhone = Boolean(cleanPhone(item.phone));
   return `<div class='contact-actions'>
-    <button type='button' class='contact-link' data-action='email-driver' data-id='${item.id}' ${email ? "" : "disabled"}>Email</button>
-    <button type='button' class='contact-link' data-action='sms-driver' data-id='${item.id}' ${hasPhone ? "" : "disabled"}>SMS</button>
-    <button type='button' class='contact-link' data-action='whatsapp-driver' data-id='${item.id}' ${hasPhone ? "" : "disabled"}>WhatsApp</button>
+    <button type='button' class='contact-link contact-link-email' data-action='email-driver' data-id='${item.id}' ${email ? "" : "disabled"}>Email</button>
+    <button type='button' class='contact-link contact-link-sms' data-action='sms-driver' data-id='${item.id}' ${hasPhone ? "" : "disabled"}>SMS</button>
+    <button type='button' class='contact-link contact-link-whatsapp' data-action='whatsapp-driver' data-id='${item.id}' ${hasPhone ? "" : "disabled"}>WhatsApp</button>
   </div>`;
 }
 
@@ -189,7 +220,7 @@ function fromDbDriver(row) {
 async function syncDriversToSupabase() {
   if (!useSupabase) return;
   const rows = state.drivers.map(toDbDriver);
-  const { error } = await supabase.from(DRIVERS_TABLE).upsert(rows, { onConflict: "id" });
+  const { error } = await driversSupabase.from(DRIVERS_TABLE).upsert(rows, { onConflict: "id" });
   if (error) {
     console.error("Supabase sync failed for drivers:", error.message);
     return;
@@ -197,13 +228,13 @@ async function syncDriversToSupabase() {
 
   const ids = rows.map((r) => r.id);
   if (!ids.length) {
-    const wipe = await supabase.from(DRIVERS_TABLE).delete().not("id", "is", null);
+    const wipe = await driversSupabase.from(DRIVERS_TABLE).delete().not("id", "is", null);
     if (wipe.error) console.error("Supabase delete sync failed for drivers:", wipe.error.message);
     return;
   }
 
   const inList = `(${ids.map((id) => `"${String(id).replaceAll('"', "")}"`).join(",")})`;
-  const cleanup = await supabase.from(DRIVERS_TABLE).delete().not("id", "in", inList);
+  const cleanup = await driversSupabase.from(DRIVERS_TABLE).delete().not("id", "in", inList);
   if (cleanup.error) {
     console.error("Supabase cleanup failed for drivers:", cleanup.error.message);
   }
@@ -211,9 +242,11 @@ async function syncDriversToSupabase() {
 
 async function hydrateDriversFromSupabase() {
   if (!useSupabase) return;
-  const { data, error } = await supabase.from(DRIVERS_TABLE).select("*");
+  updateDataStatus("Checking shared driver data...");
+  const { data, error } = await driversSupabase.from(DRIVERS_TABLE).select("*");
   if (error) {
     console.error("Supabase load failed for drivers:", error.message);
+    updateDataStatus(`Shared driver data could not load: ${error.message}. Showing this device's saved driver data.`);
     return;
   }
   if (!Array.isArray(data)) return;
@@ -266,29 +299,60 @@ function drawTable() {
   const query = (document.getElementById("driversSearch")?.value || "").trim().toLowerCase();
   const filtered = state.drivers.filter((item) => {
     if (!query) return true;
-    const hay = `${item.name} ${item.phone} ${item.email || ""} ${item.licenseNumber} ${item.status} ${item.emergencyContact || ""}`.toLowerCase();
+    const hay = Object.values(item).concat([
+      item.name,
+      item.phone,
+      item.email,
+      item.licenseNumber,
+      item.licenseExpiry,
+      item.hireDate,
+      item.status,
+      item.address,
+      item.emergencyContact
+    ]).join(" ").toLowerCase();
     return hay.includes(query);
   });
 
   if (!filtered.length) {
-    tbody.innerHTML = `<tr><td colspan='7' class='empty'>No drivers yet.</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan='6' class='empty'>${query ? "No drivers match your search." : "No drivers yet."}</td></tr>`;
     return;
   }
 
   tbody.innerHTML = filtered
-    .sort((a, b) => a.name.localeCompare(b.name))
+    .sort((a, b) => String(a.name || "").localeCompare(String(b.name || "")))
     .map((item) => {
-      const adminActions = auth.can("editDrivers")
+      const adminActions = canManageDrivers()
         ? `<div class='table-actions'><button data-action='edit' data-id='${item.id}'>Edit</button><button data-action='delete' data-id='${item.id}'>Delete</button></div>`
         : "<span class='muted'>View only</span>";
-      return `<tr><td>${item.name}</td><td>${item.phone}</td><td>${item.email || "-"}</td><td>${item.licenseNumber}</td><td>${item.status}</td><td>${item.emergencyContact || "-"}</td><td><div class='table-actions table-actions-stack'>${renderContactButtons(item)}${adminActions}</div></td></tr>`;
+      return `<tr><td><strong>${item.name || "Unnamed driver"}</strong><div class='table-actions table-actions-stack'>${renderContactButtons(item)}${adminActions}</div></td><td>${item.phone || "-"}</td><td>${item.email || "-"}</td><td>${item.licenseNumber || "-"}</td><td>${item.status || "-"}</td><td>${item.emergencyContact || "-"}</td></tr>`;
     })
     .join("");
 }
 
 function refresh() {
+  state.drivers = readData();
   drawStats();
   drawTable();
+  updateDataStatus(null, getFilteredDriverCount());
+}
+
+function getFilteredDriverCount() {
+  const query = (document.getElementById("driversSearch")?.value || "").trim().toLowerCase();
+  if (!query) return state.drivers.length;
+  return state.drivers.filter((item) => Object.values(item).join(" ").toLowerCase().includes(query)).length;
+}
+
+function updateDataStatus(message, visibleCount = state.drivers.length) {
+  const status = document.getElementById("driversDataStatus");
+  if (!status) return;
+  const query = (document.getElementById("driversSearch")?.value || "").trim();
+  if (message) {
+    status.textContent = message;
+    return;
+  }
+  status.textContent = query
+    ? `Search is active. Showing ${visibleCount} of ${state.drivers.length} driver record${state.drivers.length === 1 ? "" : "s"}.`
+    : `Loaded ${state.drivers.length} driver record${state.drivers.length === 1 ? "" : "s"}. Edit and Delete are under each driver's name.`;
 }
 
 function setForm(item) {
@@ -322,7 +386,7 @@ function applyAccessControl() {
     if (financeLink) financeLink.style.display = "none";
   }
 
-  if (!auth.can("editDrivers")) {
+  if (!canManageDrivers()) {
     const form = document.getElementById("driversForm");
     Array.from(form.elements).forEach((element) => {
       if (element.type !== "hidden") element.disabled = true;
@@ -338,7 +402,7 @@ document.getElementById("logoutBtn").addEventListener("click", () => {
 
 document.getElementById("driversForm").addEventListener("submit", (e) => {
   e.preventDefault();
-  if (!auth.can("editDrivers")) return;
+  if (!canManageDrivers()) return;
 
   const id = document.getElementById("driverDetailsId").value;
   const payload = {
@@ -367,7 +431,7 @@ document.getElementById("cancelDriverEdit").addEventListener("click", () => {
 });
 
 document.getElementById("exportDrivers").addEventListener("click", () => {
-  if (!auth.can("editDrivers")) return;
+  if (!canManageDrivers()) return;
   const csv = toCsv(state.drivers);
   if (!csv) return alert("No records to export.");
   const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
@@ -390,6 +454,7 @@ document.body.addEventListener("click", (e) => {
   if (!button) return;
 
   const { action, id } = button.dataset;
+  state.drivers = readData();
   const item = state.drivers.find((d) => d.id === id);
 
   if (action === "email-driver" || action === "sms-driver" || action === "whatsapp-driver") {
@@ -400,7 +465,7 @@ document.body.addEventListener("click", (e) => {
     return;
   }
 
-  if (!auth.can("editDrivers")) return;
+  if (!canManageDrivers()) return;
 
   if (action === "edit") {
     if (item) setForm(item);
@@ -408,6 +473,7 @@ document.body.addEventListener("click", (e) => {
   }
 
   if (action === "delete") {
+    if (item && !confirm(`Delete driver ${item.name}?`)) return;
     state.drivers = state.drivers.filter((d) => d.id !== id);
     if (legacyContacts[id]) {
       delete legacyContacts[id];

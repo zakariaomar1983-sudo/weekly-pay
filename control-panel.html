@@ -7,7 +7,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=Manrope:wght@400;500;700&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="./style.css" />
+  <link rel="stylesheet" href="./style.css?v=20260416i" />
 </head>
 <body>
   <main class="app-shell">
@@ -34,7 +34,14 @@
       <div class="panel-head">
         <h2>Role Table</h2>
       </div>
-      <p class="muted">Create and manage CRM staff roles and permissions.</p>
+      <p class="muted">Create and manage CRM staff roles by page access. Use a preset, adjust the ticks, then save the role.</p>
+      <div class="role-presets" id="rolePresets">
+        <button class="btn btn-outline" type="button" data-role-preset="teamBasic">Team: Home + Trucks + Roster</button>
+        <button class="btn btn-outline" type="button" data-role-preset="dispatcher">Dispatcher: Drivers + Trucks + Roster</button>
+        <button class="btn btn-outline" type="button" data-role-preset="finance">Finance: Pay + Expenses</button>
+        <button class="btn btn-outline" type="button" data-role-preset="readonly">Read Only</button>
+      </div>
+      <p id="sharedAuthStatus" class="data-status">Checking shared login roles...</p>
       <form id="roleForm" class="form-grid">
         <input type="hidden" id="roleId" />
         <label class="full">Role Name<input id="roleName" type="text" placeholder="Dispatcher" required /></label>
@@ -51,12 +58,10 @@
       <div class="table-wrap">
         <table>
           <thead>
-            <tr><th>Role ID</th><th>Role Name</th><th>Type</th><th>Permissions</th><th>Assigned Users</th><th>Actions</th></tr>
+            <tr><th>Role Name</th><th>Type</th><th>Home</th><th>Trucks</th><th>Roster</th><th>Finance</th><th>Logs</th><th>Control Panel</th><th>Assigned Users</th><th>Actions</th></tr>
           </thead>
           <tbody id="rolesTableBody">
-            <tr><td>role_admin</td><td>Admin</td><td>System</td><td>All enabled</td><td>0</td><td><span class="muted">System role</span></td></tr>
-            <tr><td>role_manager</td><td>Ops Manager</td><td>System</td><td>Operational enabled</td><td>0</td><td><span class="muted">System role</span></td></tr>
-            <tr><td>role_viewer</td><td>GM</td><td>System</td><td>View enabled</td><td>0</td><td><span class="muted">System role</span></td></tr>
+            <tr><td>Admin</td><td>System</td><td>Yes</td><td>Yes</td><td>Yes</td><td>Yes</td><td>Yes</td><td>Yes</td><td>0</td><td><span class="muted">System role</span></td></tr>
           </tbody>
         </table>
       </div>
@@ -104,13 +109,38 @@
   <script src="./supabase-config.js?v=20260413s"></script>
   <script src="./supabase-client.js?v=20260413s"></script>
   <script src="./seed-data.js?v=20260413s"></script>
-  <script src="./auth.js?v=20260414b"></script>
+  <script>
+    window.addEventListener("error", function (event) {
+      var target = event.target;
+      var status = document.getElementById("sharedAuthStatus");
+      var grid = document.getElementById("permissionsGrid");
+      var message = "";
+
+      if (target && target.tagName === "SCRIPT") {
+        message = "Could not load " + (target.getAttribute("src") || "a page script") + ". Please refresh.";
+      } else {
+        message = "Control Panel script error: " + (event.message || "Unknown browser error");
+        if (event.filename) {
+          message += " [" + event.filename.split("/").pop() + ":" + (event.lineno || 0) + "]";
+        }
+      }
+
+      if (status) {
+        status.textContent = message;
+        status.className = "error-text";
+      }
+      if (grid && !grid.innerHTML.trim()) {
+        grid.innerHTML = "<p class=\"error-text\">" + message + "</p>";
+      }
+    }, true);
+  </script>
+  <script src="./auth.js?v=20260416i"></script>
   <script>
     if (window.OPXAuth?.healCoreAccess) {
       window.OPXAuth.healCoreAccess();
     }
   </script>
-  <script src="./control-panel.js?v=20260414a"></script>
+  <script type="module" src="./control-panel-entry.js?v=20260416i"></script>
   <script src="./emergency-fill.js?v=20260413s"></script>
 </body>
 </html>

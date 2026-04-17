@@ -13,12 +13,13 @@ delete from truck_expense;
 delete from payslips;
 
 insert into drivers (
-  id, name, phone, license_number, license_expiry, hire_date, status, address, emergency_contact
+  id, name, phone, email, license_number, license_expiry, hire_date, status, address, emergency_contact
 )
 select
   gen_random_uuid(),
   obj->>'name',
   obj->>'phone',
+  coalesce(obj->>'email', ''),
   obj->>'licenseNumber',
   nullif(obj->>'licenseExpiry', '')::date,
   nullif(obj->>'hireDate', '')::date,

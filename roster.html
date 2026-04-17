@@ -7,7 +7,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=Manrope:wght@400;500;700&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="./style.css?v=20260414c" />
+  <link rel="stylesheet" href="./style.css?v=20260415r" />
 </head>
 <body>
   <main class="app-shell">
@@ -60,8 +60,37 @@
       </div>
       <form id="rosterForm" class="form-grid">
         <input type="hidden" id="rosterId" />
-        <label>Driver Name<input id="driverName" type="text" required /></label>
-        <label>Truck Number<input id="truckNumber" type="text" placeholder="Truck 12" required /></label>
+        <label>Driver Name
+          <select id="driverName" class="roster-pick-select" required>
+            <option value="">Select driver</option>
+            <option value="Abdirizak Ahmed">Abdirizak Ahmed</option>
+            <option value="Imran Abdella">Imran Abdella</option>
+            <option value="Ramzi Mohamed">Ramzi Mohamed</option>
+            <option value="Samatar Yusuf">Samatar Yusuf</option>
+            <option value="Sharmake Hashi">Sharmake Hashi</option>
+            <option value="Soleh Sungkar">Soleh Sungkar</option>
+            <option value="Suhen Omar">Suhen Omar</option>
+          </select>
+        </label>
+        <label>Truck Number
+          <select id="truckNumber" class="roster-pick-select" required>
+            <option value="">Select truck</option>
+            <option value="620">620</option>
+            <option value="672">672</option>
+            <option value="840">840</option>
+            <option value="841">841</option>
+            <option value="853">853</option>
+            <option value="855">855</option>
+            <option value="881">881</option>
+          </select>
+        </label>
+        <label class="roster-night-run-toggle">
+          <span>Night Run +</span>
+          <div class="roster-batch-inline">
+            <input id="rosterNightRun" type="checkbox" />
+            <span>Tick when this driver also covers the Night Run after the main shift</span>
+          </div>
+        </label>
         <label>Shift Date<input id="shiftDate" type="date" required /></label>
         <label>Shift Time<input id="shiftTime" type="text" placeholder="06:00 - 14:00" required /></label>
         <label>Route<input id="route" type="text" placeholder="Sydney to Newcastle" required /></label>
@@ -72,6 +101,23 @@
             <option value="Leave">Leave</option>
           </select>
         </label>
+        <section class="full roster-batch-card">
+          <label class="roster-batch-toggle">
+            <span>Weekday Batch</span>
+            <div class="roster-batch-inline">
+              <input id="batchAddWeekdays" type="checkbox" />
+              <span>Add several shifts in the same week</span>
+            </div>
+          </label>
+          <p class="muted">Use the selected Shift Date as the week anchor, then choose which weekdays to create. Batch add applies to new shifts only.</p>
+          <div id="weekdayBatchGrid" class="weekday-batch-grid">
+            <label class="weekday-pill"><input type="checkbox" name="weekdayBatch" value="0" checked /> Monday</label>
+            <label class="weekday-pill"><input type="checkbox" name="weekdayBatch" value="1" checked /> Tuesday</label>
+            <label class="weekday-pill"><input type="checkbox" name="weekdayBatch" value="2" checked /> Wednesday</label>
+            <label class="weekday-pill"><input type="checkbox" name="weekdayBatch" value="3" checked /> Thursday</label>
+            <label class="weekday-pill"><input type="checkbox" name="weekdayBatch" value="4" checked /> Friday</label>
+          </div>
+        </section>
         <div class="actions full">
           <button class="btn" type="submit">Save Shift</button>
           <button id="cancelRosterEdit" class="btn btn-muted" type="button">Cancel Edit</button>
@@ -100,18 +146,19 @@
           <input id="weekStart" type="date" />
         </label>
         <div class="actions full">
+          <button id="saveWeekTemplate" class="btn" type="button">Save Week Template</button>
           <button id="clearRosterFilters" class="btn btn-outline" type="button">Clear Filters</button>
         </div>
       </form>
       <div class="roster-board-topline">
         <p id="rosterBoardSummary" class="muted"></p>
       </div>
+      <div id="rosterBoardLegend" class="roster-board-legend"></div>
       <div class="table-wrap roster-board-wrap">
         <table class="roster-board-table">
           <thead>
             <tr>
               <th>Driver</th>
-              <th>Truck</th>
               <th>Mon</th>
               <th>Tue</th>
               <th>Wed</th>
@@ -129,7 +176,7 @@
       <div class="table-wrap">
         <table>
           <thead>
-            <tr><th>Day</th><th>Date</th><th>Driver</th><th>Truck</th><th>Time</th><th>Route</th><th>Status</th><th>Actions</th></tr>
+            <tr><th>Day</th><th>Date</th><th>Driver</th><th>Night Run</th><th>Time</th><th>Route</th><th>Status</th><th>Actions</th></tr>
           </thead>
           <tbody id="weeklyRosterTableBody"></tbody>
         </table>
@@ -137,9 +184,876 @@
     </section>
   </main>
 
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="./supabase-config.js?v=20260413g"></script>
+  <script src="./supabase-client.js?v=20260413g"></script>
   <script src="./seed-data.js?v=20260413d"></script>
   <script src="./auth.js?v=20260414b"></script>
-  <script src="./roster.js?v=20260414f"></script>
+  <script src="./roster.js?v=20260415ac"></script>
+  <script>
+    (function rosterWeekFallback() {
+      const ROSTER_KEY = "transport_crm_roster";
+      const DRIVERS_KEY = "transport_crm_drivers";
+      const TRUCKS_KEY = "transport_crm_trucks";
+      const DEFAULT_SHIFT_TIME = "06:00 - 14:00";
+      const DEFAULT_ROUTE = "Sydney to Newcastle";
+      const LEAVE_SHIFT_TIME = "On Leave";
+      const LEAVE_ROUTE = "Driver away";
+      const fallbackPairs = [
+        { name: "Abdirizak Ahmed", truck: "620" },
+        { name: "Imran Abdella", truck: "672" },
+        { name: "Ramzi Mohamed", truck: "840" },
+        { name: "Samatar Yusuf", truck: "841" },
+        { name: "Sharmake Hashi", truck: "853" },
+        { name: "Soleh Sungkar", truck: "855" },
+        { name: "Suhen Omar", truck: "881" }
+      ];
+      const dayNames = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
+      const boardDragState = { shiftId: "" };
+      const fallbackRenderState = { queued: false };
+
+      function pad(value) {
+        return String(value).padStart(2, "0");
+      }
+
+      function keyOf(date) {
+        return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
+      }
+
+      function createNodeFromMarkup(markup) {
+        const template = document.createElement("template");
+        template.innerHTML = String(markup || "").trim();
+        return template.content.firstElementChild;
+      }
+
+      function patchKeyedChildren(container, items, keyAttr) {
+        if (!container) return;
+        const existing = new Map(Array.from(container.children).map((child) => [child.getAttribute(keyAttr), child]));
+
+        items.forEach((item, index) => {
+          const key = String(item.key || "");
+          const signature = String(item.signature || "");
+          let child = existing.get(key);
+
+          if (!child) {
+            child = createNodeFromMarkup(item.markup);
+            if (!child) return;
+            container.insertBefore(child, container.children[index] || null);
+          } else if (child.getAttribute("data-render-signature") !== signature) {
+            const nextChild = createNodeFromMarkup(item.markup);
+            if (!nextChild) return;
+            child.replaceWith(nextChild);
+            child = nextChild;
+          }
+
+          const currentAtIndex = container.children[index];
+          if (currentAtIndex !== child) {
+            container.insertBefore(child, currentAtIndex || null);
+          }
+
+          existing.delete(key);
+        });
+
+        existing.forEach((child) => child.remove());
+      }
+
+      function setMarkupIfChanged(node, markup) {
+        if (!node) return;
+        if (node.innerHTML !== markup) node.innerHTML = markup;
+      }
+
+      function setTextIfChanged(node, text) {
+        if (!node) return;
+        if (node.textContent !== text) node.textContent = text;
+      }
+
+      function parseDateKey(value) {
+        if (!/^\d{4}-\d{2}-\d{2}$/.test(String(value || ""))) return null;
+        const [year, month, day] = String(value).split("-").map(Number);
+        const date = new Date(year, month - 1, day);
+        if (Number.isNaN(date.getTime())) return null;
+        date.setHours(0, 0, 0, 0);
+        return date;
+      }
+
+      function mondayOf(value) {
+        const date = parseDateKey(value) || new Date();
+        date.setHours(0, 0, 0, 0);
+        const day = date.getDay();
+        const offset = day === 0 ? -6 : 1 - day;
+        date.setDate(date.getDate() + offset);
+        return date;
+      }
+
+      function weekKeysFrom(date) {
+        return Array.from({ length: 7 }, (_, index) => {
+          const next = new Date(date);
+          next.setDate(date.getDate() + index);
+          return keyOf(next);
+        });
+      }
+
+      function uid() {
+        return `${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+      }
+
+      function readArray(key) {
+        try {
+          const parsed = JSON.parse(localStorage.getItem(key) || "[]");
+          return Array.isArray(parsed) ? parsed : [];
+        } catch {
+          return [];
+        }
+      }
+
+      function readRoster() {
+        return readArray(ROSTER_KEY).filter((item) => item && typeof item === "object");
+      }
+
+      function writeRoster(rows) {
+        localStorage.setItem(ROSTER_KEY, JSON.stringify(rows));
+      }
+
+      function activePairs() {
+        const drivers = readArray(DRIVERS_KEY)
+          .filter((item) => String(item.status || "").toLowerCase() !== "inactive")
+          .map((item) => String(item.name || "").trim())
+          .filter(Boolean)
+          .sort((a, b) => a.localeCompare(b));
+        const trucks = readArray(TRUCKS_KEY)
+          .filter((item) => String(item.status || "").toLowerCase() !== "under repair")
+          .map((item) => String(item.truckNumber || "").trim())
+          .filter(Boolean)
+          .sort((a, b) => a.localeCompare(b));
+        if (!drivers.length || !trucks.length) return fallbackPairs;
+        return drivers.slice(0, 7).map((name, index) => ({ name, truck: trucks[index] || "" })).filter((item) => item.name && item.truck);
+      }
+
+      function getBatchDates(anchorDate) {
+        const toggle = document.getElementById("batchAddWeekdays");
+        if (!toggle || !toggle.checked) return [];
+        const monday = mondayOf(anchorDate);
+        return Array.from(document.querySelectorAll("input[name='weekdayBatch']"))
+          .filter((input) => input.checked)
+          .map((input) => Number(input.value))
+          .filter((value) => Number.isInteger(value) && value >= 0 && value <= 4)
+          .map((offset) => {
+            const date = new Date(monday);
+            date.setDate(monday.getDate() + offset);
+            return keyOf(date);
+          });
+      }
+
+      function normalizePayload(payload) {
+        if (payload.status !== "Leave") return payload;
+        return {
+          ...payload,
+          truckNumber: "",
+          nightRun: false,
+          shiftTime: payload.shiftTime || LEAVE_SHIFT_TIME,
+          route: payload.route || LEAVE_ROUTE
+        };
+      }
+
+      function dedupeRows(rows) {
+        const latestByDriverDate = new Map();
+        rows.forEach((row) => {
+          const driverName = String(row.driverName || "").trim();
+          const shiftDate = String(row.shiftDate || "").trim();
+          if (!driverName || !shiftDate) return;
+          latestByDriverDate.set(`${driverName}__${shiftDate}`, row);
+        });
+        return rows.filter((row) => {
+          const driverName = String(row.driverName || "").trim();
+          const shiftDate = String(row.shiftDate || "").trim();
+          if (!driverName || !shiftDate) return true;
+          return latestByDriverDate.get(`${driverName}__${shiftDate}`) === row;
+        });
+      }
+
+      function matchedTruck(driverName) {
+        const name = String(driverName || "").trim();
+        const roster = readRoster();
+        for (let index = roster.length - 1; index >= 0; index -= 1) {
+          const row = roster[index];
+          if (row.driverName === name && row.truckNumber) return row.truckNumber;
+        }
+        return activePairs().find((item) => item.name === name)?.truck || "";
+      }
+
+      function cleanPhone(phone) {
+        return String(phone || "").replace(/[^\d+]/g, "").trim();
+      }
+
+      function toWhatsAppNumber(phone) {
+        let digits = String(phone || "").replace(/\D/g, "");
+        if (digits.startsWith("00")) digits = digits.slice(2);
+        if (digits.startsWith("0") && digits.length === 10) digits = `61${digits.slice(1)}`;
+        return digits;
+      }
+
+      function driverContactByName(driverName) {
+        return readArray(DRIVERS_KEY).find((item) => item.name === driverName) || {};
+      }
+
+      function shiftMessage(row) {
+        const nightText = row.nightRun ? " plus Night Run" : "";
+        return `Hi ${row.driverName}, your Onpoint Express shift is ${row.shiftDate} from ${displayTime(row)} with truck ${displayTruck(row)} on route ${displayRoute(row)}${nightText}. Status: ${row.status}.`;
+      }
+
+      function renderContactButtons(row) {
+        const contact = driverContactByName(row.driverName);
+        const email = String(contact.email || "").trim();
+        const phone = cleanPhone(contact.phone);
+        return `
+          <div class="contact-actions">
+            <button type="button" class="contact-link" data-action="email-shift" data-id="${row.id}" ${email ? "" : "disabled"}>Email</button>
+            <button type="button" class="contact-link" data-action="sms-shift" data-id="${row.id}" ${phone ? "" : "disabled"}>SMS</button>
+            <button type="button" class="contact-link" data-action="whatsapp-shift" data-id="${row.id}" ${phone ? "" : "disabled"}>WhatsApp</button>
+          </div>
+        `;
+      }
+
+      function openShiftContact(action, row) {
+        const contact = driverContactByName(row.driverName);
+        const email = String(contact.email || "").trim();
+        const phone = cleanPhone(contact.phone);
+        const message = encodeURIComponent(shiftMessage(row));
+
+        if (action === "email-shift") {
+          if (!email) {
+            alert(`No email saved for ${row.driverName} yet.`);
+            return;
+          }
+          const subject = encodeURIComponent(`Onpoint Express shift update for ${row.driverName}`);
+          window.location.href = `mailto:${email}?subject=${subject}&body=${encodeURIComponent(`${shiftMessage(row)}\n\nPlease confirm when received.`)}`;
+          return;
+        }
+
+        if (!phone) {
+          alert(`No phone number saved for ${row.driverName} yet.`);
+          return;
+        }
+
+        if (action === "sms-shift") {
+          window.location.href = `sms:${phone}?body=${message}`;
+          return;
+        }
+
+        if (action === "whatsapp-shift") {
+          const whatsappNumber = toWhatsAppNumber(phone);
+          if (!whatsappNumber) {
+            alert(`WhatsApp number is not valid for ${row.driverName}.`);
+            return;
+          }
+          window.open(`https://wa.me/${whatsappNumber}?text=${message}`, "_blank", "noopener,noreferrer");
+        }
+      }
+
+      function buildWeekRows(weekKeys, actualRows) {
+        const uniqueActualRows = dedupeRows(actualRows);
+        const existingDriverDates = new Set();
+        const existingTruckDates = new Set();
+        uniqueActualRows.forEach((row) => {
+          const driverName = String(row.driverName || "").trim();
+          const truckNumber = String(row.truckNumber || "").trim();
+          const shiftDate = String(row.shiftDate || "").trim();
+          if (driverName && shiftDate) existingDriverDates.add(`${driverName}__${shiftDate}`);
+          if (truckNumber && shiftDate) existingTruckDates.add(`${truckNumber}__${shiftDate}`);
+        });
+
+        const templateRows = [];
+        activePairs().forEach((item) => {
+          weekKeys.slice(0, 5).forEach((shiftDate) => {
+            if (existingDriverDates.has(`${item.name}__${shiftDate}`) || existingTruckDates.has(`${item.truck}__${shiftDate}`)) return;
+            templateRows.push({
+              id: `template-${shiftDate}-${item.name}`,
+              driverName: item.name,
+              truckNumber: item.truck,
+              nightRun: false,
+              shiftDate,
+              shiftTime: DEFAULT_SHIFT_TIME,
+              route: DEFAULT_ROUTE,
+              status: "Scheduled",
+              isTemplate: true
+            });
+          });
+        });
+
+        return [...uniqueActualRows, ...templateRows];
+      }
+
+      function displayTruck(row) {
+        return row.status === "Leave" ? "-" : (row.truckNumber || "-");
+      }
+
+      function displayTime(row) {
+        return row.shiftTime || (row.status === "Leave" ? LEAVE_SHIFT_TIME : DEFAULT_SHIFT_TIME);
+      }
+
+      function displayRoute(row) {
+        return row.route || (row.status === "Leave" ? LEAVE_ROUTE : DEFAULT_ROUTE);
+      }
+
+      function scrollFormIntoView() {
+        document.getElementById("rosterForm")?.scrollIntoView?.({ behavior: "smooth", block: "start" });
+      }
+
+      function loadTemplateIntoForm(row) {
+        document.getElementById("rosterForm")?.reset();
+        document.getElementById("rosterId").value = "";
+        document.getElementById("shiftDate").value = row.shiftDate || "";
+        document.getElementById("driverName").value = row.driverName || "";
+        document.getElementById("truckNumber").value = row.truckNumber || "";
+        document.getElementById("rosterNightRun").checked = Boolean(row.nightRun);
+        document.getElementById("shiftTime").value = row.shiftTime || DEFAULT_SHIFT_TIME;
+        document.getElementById("route").value = row.route || DEFAULT_ROUTE;
+        document.getElementById("rosterStatus").value = row.status || "Scheduled";
+        syncStatusFields();
+        scrollFormIntoView();
+      }
+
+      function hasTruckConflict(rows, truckNumber, shiftDate, excludeIds = []) {
+        if (!truckNumber || !shiftDate) return false;
+        const exclusions = new Set(excludeIds);
+        return rows.some((row) => row.shiftDate === shiftDate && row.truckNumber === truckNumber && !exclusions.has(row.id));
+      }
+
+      async function applyBoardMoveOrSwap(sourceId, targetMeta, targetShiftId = "") {
+        const allRows = readRoster();
+        const source = allRows.find((row) => row.id === sourceId);
+        if (!source) return;
+
+        const targetDriverName = String(targetMeta?.driverName || "").trim();
+        const targetShiftDate = String(targetMeta?.shiftDate || "").trim();
+        const targetTruckNumber = String(targetMeta?.truckNumber || "").trim() || matchedTruck(targetDriverName);
+        if (!targetDriverName || !targetShiftDate) return;
+
+        if (targetShiftId && targetShiftId !== sourceId) {
+          const target = allRows.find((row) => row.id === targetShiftId);
+          if (!target) return;
+
+          const nextSource = normalizePayload({
+            ...source,
+            driverName: target.driverName,
+            shiftDate: target.shiftDate,
+            truckNumber: source.status === "Leave" ? "" : (target.truckNumber || matchedTruck(target.driverName))
+          });
+          const nextTarget = normalizePayload({
+            ...target,
+            driverName: source.driverName,
+            shiftDate: source.shiftDate,
+            truckNumber: target.status === "Leave" ? "" : (source.truckNumber || matchedTruck(source.driverName))
+          });
+
+          if (nextSource.truckNumber && hasTruckConflict(allRows, nextSource.truckNumber, nextSource.shiftDate, [source.id, target.id])) {
+            alert(`Truck ${nextSource.truckNumber} is already assigned on ${nextSource.shiftDate}.`);
+            return;
+          }
+          if (nextTarget.truckNumber && hasTruckConflict(allRows, nextTarget.truckNumber, nextTarget.shiftDate, [source.id, target.id])) {
+            alert(`Truck ${nextTarget.truckNumber} is already assigned on ${nextTarget.shiftDate}.`);
+            return;
+          }
+
+          const nextRows = allRows.map((row) => {
+            if (row.id === source.id) return nextSource;
+            if (row.id === target.id) return nextTarget;
+            return row;
+          });
+          writeRoster(nextRows);
+          await syncSupabaseRoster(nextRows);
+          renderFallback();
+          return;
+        }
+
+        const nextSource = normalizePayload({
+          ...source,
+          driverName: targetDriverName,
+          shiftDate: targetShiftDate,
+          truckNumber: source.status === "Leave" ? "" : (targetTruckNumber || source.truckNumber)
+        });
+        if (nextSource.truckNumber && hasTruckConflict(allRows, nextSource.truckNumber, nextSource.shiftDate, [source.id])) {
+          alert(`Truck ${nextSource.truckNumber} is already assigned on ${nextSource.shiftDate}.`);
+          return;
+        }
+
+        const nextRows = allRows.map((row) => row.id === source.id ? nextSource : row);
+        writeRoster(nextRows);
+        await syncSupabaseRoster(nextRows);
+        renderFallback();
+      }
+
+      function syncStatusFields() {
+        const status = document.getElementById("rosterStatus");
+        const truck = document.getElementById("truckNumber");
+        const time = document.getElementById("shiftTime");
+        const route = document.getElementById("route");
+        const nightRun = document.getElementById("rosterNightRun");
+        if (!status || !truck || !time || !route || !nightRun) return;
+
+        if (status.value === "Leave") {
+          truck.required = false;
+          truck.disabled = true;
+          truck.value = "";
+          nightRun.checked = false;
+          nightRun.disabled = true;
+          if (!time.value || time.value === DEFAULT_SHIFT_TIME) time.value = LEAVE_SHIFT_TIME;
+          if (!route.value || route.value === DEFAULT_ROUTE) route.value = LEAVE_ROUTE;
+          return;
+        }
+
+        truck.disabled = false;
+        truck.required = true;
+        nightRun.disabled = false;
+        if (time.value === LEAVE_SHIFT_TIME) time.value = DEFAULT_SHIFT_TIME;
+        if (route.value === LEAVE_ROUTE) route.value = DEFAULT_ROUTE;
+        if (!truck.value) truck.value = matchedTruck(document.getElementById("driverName")?.value || "");
+      }
+
+      async function syncSupabaseRoster(rows) {
+        const client = window.OPXSupabase?.isReady ? window.OPXSupabase.client : null;
+        if (!client) return;
+        const payload = rows.map((row) => ({
+          id: row.id,
+          driver_name: row.driverName || "",
+          truck_number: row.truckNumber || "",
+          run_type: row.nightRun ? "Night Run +" : "",
+          shift_date: row.shiftDate || null,
+          shift_time: row.shiftTime || "",
+          route: row.route || "",
+          status: row.status || "Scheduled"
+        }));
+        await client.from("roster").upsert(payload, { onConflict: "id" });
+      }
+
+      function buildFallbackBoardRow(item, mergedRows, weekKeys) {
+        const driverRows = mergedRows.filter((row) => row.driverName === item.name);
+        const nightRuns = driverRows.filter((row) => row.nightRun).length;
+        const leaveDays = driverRows.filter((row) => row.status === "Leave").length;
+        const plannedDays = new Set(driverRows.map((row) => row.shiftDate)).size;
+        const weekdayDays = [...new Set(driverRows.map((row) => row.shiftDate))].filter((dateKey) => weekKeys.indexOf(dateKey) <= 4).length;
+        const weekendDays = Math.max(plannedDays - weekdayDays, 0);
+        const tone = plannedDays >= 5 ? "on-target" : plannedDays >= 4 ? "near-target" : "under-target";
+        const fill = Math.min((plannedDays / 5) * 100, 100);
+        const signature = [
+          item.name,
+          item.truck,
+          plannedDays,
+          nightRuns,
+          leaveDays,
+          weekKeys.map((dateKey) => driverRows.filter((row) => row.shiftDate === dateKey).map((row) => `${row.id}:${row.status}:${row.truckNumber}:${row.nightRun ? 1 : 0}:${row.isTemplate ? 1 : 0}`).join("|")).join("~")
+        ].join("::");
+
+        const cells = weekKeys.map((dateKey, index) => {
+          const dayRows = driverRows.filter((row) => row.shiftDate === dateKey);
+          if (!dayRows.length) return `<td class="board-cell board-cell-empty ${index >= 5 ? "weekend-col" : ""}" data-drop-date="${dateKey}" data-drop-driver="${item.name}" data-drop-truck="${item.truck}"><span>Off</span></td>`;
+          return `<td class="board-cell ${index >= 5 ? "weekend-col" : ""}" data-drop-date="${dateKey}" data-drop-driver="${item.name}" data-drop-truck="${item.truck}">${dayRows.map((row) => `
+            <div class="board-chip ${row.isTemplate ? "board-chip-template" : "board-chip-movable"} ${row.status === "Leave" ? "board-chip-leave" : ""} ${row.nightRun ? "board-chip-night" : ""}"
+              data-board-id="${row.id}"
+              data-board-driver="${row.driverName}"
+              data-board-date="${row.shiftDate}"
+              data-board-truck="${row.truckNumber || ""}"
+              data-board-status="${row.status}"
+              data-board-shift-time="${row.shiftTime || ""}"
+              data-board-route="${row.route || ""}"
+              data-board-night-run="${row.nightRun ? "true" : "false"}"
+              data-template="${row.isTemplate ? "true" : "false"}"
+              draggable="${row.isTemplate ? "false" : "true"}"
+              title="${row.isTemplate ? "Click to load this template into the form." : "Click to edit or drag to move/swap this shift."}">
+              ${!row.isTemplate ? `<button type="button" class="board-chip-delete" data-board-delete="${row.id}" aria-label="Delete shift for ${row.driverName} on ${row.shiftDate}" title="Delete shift">&times;</button>` : ""}
+              <strong>${row.status === "Leave" ? "On Leave" : displayTruck(row)}</strong>
+              ${row.isTemplate ? "<span>Template</span>" : ""}
+              ${row.nightRun ? "<span>Night Run +</span>" : ""}
+              <span>${row.status === "Leave" ? "Unavailable today" : displayRoute(row)}</span>
+              <em class="board-badge ${row.status === "Leave" ? "board-badge-leave" : row.status === "Completed" ? "board-badge-done" : "board-badge-live"}">${row.status === "Leave" ? "Away" : row.status}</em>
+            </div>
+          `).join("")}</td>`;
+        }).join("");
+
+        return {
+          key: item.name,
+          signature,
+          markup: `
+            <tr data-driver-key="${item.name}" data-render-signature="${signature}">
+              <td class="board-driver-cell">
+                <div class="board-driver-name">
+                  <strong>${item.name}</strong>
+                  <span class="board-driver-meta">Primary truck ${item.truck} | ${nightRuns} night runs | ${leaveDays} leave days</span>
+                </div>
+              </td>
+              ${cells}
+              <td>
+                <div class="load-indicator ${tone}">
+                  <strong>${plannedDays}/5</strong>
+                  <span>${weekdayDays} weekday | ${weekendDays} weekend</span>
+                  <div class="load-meter"><span class="load-meter-fill" style="width:${fill}%;"></span></div>
+                </div>
+              </td>
+            </tr>
+          `
+        };
+      }
+
+      function renderFallback() {
+        if (!fallbackRenderState.forceNow) {
+          if (fallbackRenderState.queued) return;
+          fallbackRenderState.queued = true;
+          window.requestAnimationFrame(() => {
+            fallbackRenderState.queued = false;
+            fallbackRenderState.forceNow = true;
+            renderFallback();
+            fallbackRenderState.forceNow = false;
+          });
+          return;
+        }
+
+        const weekStart = document.getElementById("weekStart");
+        const boardBody = document.getElementById("rosterDriverBoardBody");
+        const tableBody = document.getElementById("weeklyRosterTableBody");
+        const summary = document.getElementById("rosterBoardSummary");
+        const notes = document.getElementById("rosterCoverageNotes");
+        const saveTemplateBtn = document.getElementById("saveWeekTemplate");
+        if (!weekStart || !boardBody || !tableBody) return;
+
+        const monday = mondayOf(weekStart.value);
+        const weekKeys = weekKeysFrom(monday);
+        const weekSet = new Set(weekKeys);
+        const query = String(document.getElementById("rosterSearch")?.value || "").trim().toLowerCase();
+        const statusFilter = String(document.getElementById("rosterFilterStatus")?.value || "");
+        const actualRows = readRoster().filter((row) => weekSet.has(row.shiftDate));
+        const mergedRows = buildWeekRows(weekKeys, actualRows);
+        const pairs = activePairs();
+        weekStart.value = keyOf(monday);
+
+        patchKeyedChildren(boardBody, pairs.map((item) => buildFallbackBoardRow(item, mergedRows, weekKeys)), "data-driver-key");
+
+        const tableMarkup = weekKeys.map((dateKey, dayIndex) => {
+          const entries = mergedRows
+            .filter((row) => row.shiftDate === dateKey)
+            .filter((row) => !statusFilter || row.status === statusFilter)
+            .filter((row) => {
+              if (!query) return true;
+              const hay = `${row.driverName} ${displayTruck(row)} ${displayTime(row)} ${displayRoute(row)} ${row.status}`.toLowerCase();
+              return hay.includes(query);
+            })
+            .sort((a, b) => String(a.driverName || "").localeCompare(String(b.driverName || "")));
+
+          if (!entries.length) {
+            return `<tr><td>${dayNames[dayIndex]}</td><td>${dateKey}</td><td colspan="6" class="muted">No shifts</td></tr>`;
+          }
+
+          return entries.map((row, rowIndex) => `
+            <tr class="${row.isTemplate ? "row-template-highlight" : ""} ${row.status === "Leave" ? "row-leave-highlight" : ""}">
+              <td>${rowIndex === 0 ? dayNames[dayIndex] : ""}</td>
+              <td>${rowIndex === 0 ? dateKey : ""}</td>
+              <td>${row.driverName}</td>
+              <td>${row.nightRun ? "Yes" : "-"}</td>
+              <td>${displayTime(row)}</td>
+              <td>${displayRoute(row)}</td>
+              <td>${row.status}</td>
+              <td>${row.isTemplate ? '<span class="muted">Week template</span>' : `${renderContactButtons(row)}<span class="muted">${row.status === "Leave" ? "Leave saved" : "Saved shift"}</span>`}</td>
+            </tr>
+          `).join("");
+        }).join("");
+        setMarkupIfChanged(tableBody, tableMarkup);
+
+        const templateCount = mergedRows.filter((row) => row.isTemplate).length;
+        setTextIfChanged(summary, `${pairs.length} drivers shown. ${templateCount} template rows are still open and will disappear when you save real shifts or leave.`);
+        if (notes) {
+          setMarkupIfChanged(notes, `
+            <article class="note-card"><p>Week template</p><h3>${templateCount} open rows</h3><span>Real shifts replace the template for that driver and day immediately.</span></article>
+            <article class="note-card"><p>Leave</p><h3>Auto highlighted</h3><span>Set Status to Leave and the week view will show that driver away instead of the normal template.</span></article>
+          `);
+        }
+        if (saveTemplateBtn) {
+          const nextLabel = templateCount ? `Save Week Template (${templateCount})` : "Week Template Saved";
+          if (saveTemplateBtn.textContent !== nextLabel) saveTemplateBtn.textContent = nextLabel;
+          saveTemplateBtn.disabled = !templateCount;
+        }
+        return;
+        {
+
+        boardBody.innerHTML = pairs.map((item) => {
+          const driverRows = mergedRows.filter((row) => row.driverName === item.name);
+          const nightRuns = driverRows.filter((row) => row.nightRun).length;
+          const leaveDays = driverRows.filter((row) => row.status === "Leave").length;
+          const plannedDays = new Set(driverRows.map((row) => row.shiftDate)).size;
+          const cells = weekKeys.map((dateKey, index) => {
+            const dayRows = driverRows.filter((row) => row.shiftDate === dateKey);
+            if (!dayRows.length) return `<td class="board-cell board-cell-empty ${index >= 5 ? "weekend-col" : ""}" data-drop-date="${dateKey}" data-drop-driver="${item.name}" data-drop-truck="${item.truck}"><span>Off</span></td>`;
+            return `<td class="board-cell ${index >= 5 ? "weekend-col" : ""}" data-drop-date="${dateKey}" data-drop-driver="${item.name}" data-drop-truck="${item.truck}">${dayRows.map((row) => `
+              <div class="board-chip ${row.isTemplate ? "board-chip-template" : "board-chip-movable"} ${row.status === "Leave" ? "board-chip-leave" : ""} ${row.nightRun ? "board-chip-night" : ""}"
+                data-board-id="${row.id}"
+                data-board-driver="${row.driverName}"
+                data-board-date="${row.shiftDate}"
+                data-board-truck="${row.truckNumber || ""}"
+                data-board-status="${row.status}"
+                data-board-shift-time="${row.shiftTime || ""}"
+                data-board-route="${row.route || ""}"
+                data-board-night-run="${row.nightRun ? "true" : "false"}"
+                data-template="${row.isTemplate ? "true" : "false"}"
+                draggable="${row.isTemplate ? "false" : "true"}"
+                title="${row.isTemplate ? "Click to load this template into the form." : "Click to edit or drag to move/swap this shift."}">
+                ${!row.isTemplate ? `<button type="button" class="board-chip-delete" data-board-delete="${row.id}" aria-label="Delete shift for ${row.driverName} on ${row.shiftDate}" title="Delete shift">×</button>` : ""}
+                <strong>${row.status === "Leave" ? "On Leave" : displayTruck(row)}</strong>
+                ${row.isTemplate ? "<span>Template</span>" : ""}
+                ${row.nightRun ? "<span>Night Run +</span>" : ""}
+                <span>${row.status === "Leave" ? "Unavailable today" : displayRoute(row)}</span>
+                <em class="board-badge ${row.status === "Leave" ? "board-badge-leave" : row.status === "Completed" ? "board-badge-done" : "board-badge-live"}">${row.status === "Leave" ? "Away" : row.status}</em>
+              </div>
+            `).join("")}</td>`;
+          }).join("");
+          return `
+            <tr>
+              <td class="board-driver-cell">
+                <div class="board-driver-name">
+                  <strong>${item.name}</strong>
+                  <span class="board-driver-meta">Primary truck ${item.truck} | ${nightRuns} night runs | ${leaveDays} leave days</span>
+                </div>
+              </td>
+              <td>${item.truck}</td>
+              ${cells}
+              <td>
+                <div class="load-indicator ${plannedDays >= 5 ? "on-target" : plannedDays >= 4 ? "near-target" : "under-target"}">
+                  <strong>${plannedDays}/5</strong>
+                  <span>${Math.min(plannedDays, 5)} weekday | ${plannedDays > 5 ? plannedDays - 5 : 0} weekend</span>
+                  <div class="load-meter"><span class="load-meter-fill" style="width:${Math.min((plannedDays / 5) * 100, 100)}%;"></span></div>
+                </div>
+              </td>
+            </tr>
+          `;
+        }).join("");
+
+        tableBody.innerHTML = weekKeys.map((dateKey, dayIndex) => {
+          const entries = mergedRows
+            .filter((row) => row.shiftDate === dateKey)
+            .filter((row) => !statusFilter || row.status === statusFilter)
+            .filter((row) => {
+              if (!query) return true;
+              const hay = `${row.driverName} ${displayTruck(row)} ${displayTime(row)} ${displayRoute(row)} ${row.status}`.toLowerCase();
+              return hay.includes(query);
+            })
+            .sort((a, b) => String(a.driverName || "").localeCompare(String(b.driverName || "")));
+
+          if (!entries.length) {
+            return `<tr><td>${dayNames[dayIndex]}</td><td>${dateKey}</td><td colspan="7" class="muted">No shifts</td></tr>`;
+          }
+
+          return entries.map((row, rowIndex) => `
+            <tr class="${row.isTemplate ? "row-template-highlight" : ""} ${row.status === "Leave" ? "row-leave-highlight" : ""}">
+              <td>${rowIndex === 0 ? dayNames[dayIndex] : ""}</td>
+              <td>${rowIndex === 0 ? dateKey : ""}</td>
+              <td>${row.driverName}</td>
+              <td>${displayTruck(row)}</td>
+              <td>${row.nightRun ? "Yes" : "-"}</td>
+              <td>${displayTime(row)}</td>
+              <td>${displayRoute(row)}</td>
+              <td>${row.status}</td>
+              <td>${row.isTemplate ? '<span class="muted">Week template</span>' : `${renderContactButtons(row)}<span class="muted">${row.status === "Leave" ? "Leave saved" : "Saved shift"}</span>`}</td>
+            </tr>
+          `).join("");
+        }).join("");
+
+        const templateCount = mergedRows.filter((row) => row.isTemplate).length;
+        if (summary) {
+          summary.textContent = `${pairs.length} drivers shown. ${templateCount} template rows are still open and will disappear when you save real shifts or leave.`;
+        }
+        if (notes) {
+          notes.innerHTML = `
+            <article class="note-card"><p>Week template</p><h3>${templateCount} open rows</h3><span>Real shifts replace the template for that driver and day immediately.</span></article>
+            <article class="note-card"><p>Leave</p><h3>Auto highlighted</h3><span>Set Status to Leave and the week view will show that driver away instead of the normal template.</span></article>
+          `;
+        }
+        if (saveTemplateBtn) {
+          saveTemplateBtn.textContent = templateCount ? `Save Week Template (${templateCount})` : "Week Template Saved";
+          saveTemplateBtn.disabled = !templateCount;
+        }
+        }
+      }
+
+      window.addEventListener("load", () => {
+        window.setTimeout(() => {
+          const boardBody = document.getElementById("rosterDriverBoardBody");
+          const tableBody = document.getElementById("weeklyRosterTableBody");
+          if (!boardBody || !tableBody) return;
+          if (boardBody.children.length || tableBody.children.length) return;
+          if (window.__opxRosterFallbackActive) return;
+          window.__opxRosterFallbackActive = true;
+
+          document.getElementById("driverName")?.addEventListener("change", () => {
+            const truck = document.getElementById("truckNumber");
+            const status = document.getElementById("rosterStatus");
+            if (truck && status?.value !== "Leave" && !truck.value) truck.value = matchedTruck(document.getElementById("driverName")?.value || "");
+          });
+          document.getElementById("rosterStatus")?.addEventListener("change", syncStatusFields);
+          document.getElementById("weekStart")?.addEventListener("change", renderFallback);
+          document.getElementById("rosterSearch")?.addEventListener("input", renderFallback);
+          document.getElementById("rosterFilterStatus")?.addEventListener("change", renderFallback);
+          document.getElementById("clearRosterFilters")?.addEventListener("click", () => {
+            const monday = mondayOf("");
+            document.getElementById("rosterSearch").value = "";
+            document.getElementById("rosterFilterStatus").value = "";
+            document.getElementById("weekStart").value = keyOf(monday);
+            renderFallback();
+          });
+          document.getElementById("saveWeekTemplate")?.addEventListener("click", async () => {
+            const weekStart = document.getElementById("weekStart");
+            const monday = mondayOf(weekStart?.value || "");
+            const weekKeys = weekKeysFrom(monday);
+            const weekSet = new Set(weekKeys);
+            const allRows = readRoster();
+            const actualWeekRows = allRows.filter((row) => weekSet.has(row.shiftDate));
+            const templateRows = buildWeekRows(weekKeys, actualWeekRows)
+              .filter((row) => row.isTemplate)
+              .map((row) => ({ ...row, id: uid(), isTemplate: false }));
+            if (!templateRows.length) {
+              alert("This week template is already saved.");
+              return;
+            }
+            const nextRows = dedupeRows([...allRows, ...templateRows]);
+            writeRoster(nextRows);
+            await syncSupabaseRoster(nextRows);
+            renderFallback();
+          });
+          document.getElementById("rosterForm")?.addEventListener("submit", async (event) => {
+            event.preventDefault();
+            const editId = document.getElementById("rosterId")?.value || "";
+            const payload = normalizePayload({
+              id: editId || uid(),
+              driverName: String(document.getElementById("driverName")?.value || "").trim(),
+              truckNumber: String(document.getElementById("truckNumber")?.value || "").trim(),
+              nightRun: Boolean(document.getElementById("rosterNightRun")?.checked),
+              shiftDate: String(document.getElementById("shiftDate")?.value || "").trim(),
+              shiftTime: String(document.getElementById("shiftTime")?.value || "").trim(),
+              route: String(document.getElementById("route")?.value || "").trim(),
+              status: String(document.getElementById("rosterStatus")?.value || "Scheduled")
+            });
+            if (!payload.driverName || !payload.shiftDate) {
+              alert("Choose a driver and date first.");
+              return;
+            }
+            if (payload.status !== "Leave" && (!payload.truckNumber || !payload.shiftTime || !payload.route)) {
+              alert("Driver, truck, time, and route are required for a real shift.");
+              return;
+            }
+
+            const allRows = readRoster();
+            const targetDates = getBatchDates(payload.shiftDate).length ? getBatchDates(payload.shiftDate) : [payload.shiftDate];
+            const taken = new Set(allRows.filter((row) => row.id !== editId).map((row) => `${row.truckNumber || ""}__${row.shiftDate || ""}`));
+            const nextRows = editId
+              ? allRows.filter((row) => row.id !== editId && !(row.driverName === payload.driverName && row.shiftDate === payload.shiftDate))
+              : allRows.filter((row) => !targetDates.some((shiftDate) => row.driverName === payload.driverName && row.shiftDate === shiftDate));
+            const created = [];
+
+            targetDates.forEach((shiftDate) => {
+              if (payload.status !== "Leave" && taken.has(`${payload.truckNumber}__${shiftDate}`)) return;
+              created.push({ ...payload, id: editId || uid(), shiftDate });
+            });
+
+            if (!created.length) {
+              alert("That truck is already assigned on the selected day.");
+              return;
+            }
+
+            const mergedRows = dedupeRows([...nextRows, ...created]);
+            writeRoster(mergedRows);
+            await syncSupabaseRoster(mergedRows);
+            event.target.reset();
+            document.getElementById("rosterId").value = "";
+            document.getElementById("weekStart").value = keyOf(mondayOf(payload.shiftDate));
+            syncStatusFields();
+            renderFallback();
+          });
+          document.body.addEventListener("click", (event) => {
+            const boardDelete = event.target.closest(".board-chip-delete[data-board-delete]");
+            if (boardDelete && window.__opxRosterFallbackActive) {
+              const id = boardDelete.dataset.boardDelete || "";
+              const row = readRoster().find((item) => item.id === id);
+              if (!row) return;
+              if (!window.confirm(`Delete shift for ${row.driverName} on ${row.shiftDate}?`)) return;
+              const nextRows = readRoster().filter((item) => item.id !== id);
+              writeRoster(nextRows);
+              syncSupabaseRoster(nextRows).finally(renderFallback);
+              return;
+            }
+            const boardChip = event.target.closest(".board-chip[data-board-id]");
+            if (boardChip && window.__opxRosterFallbackActive) {
+              const boardItem = {
+                id: boardChip.dataset.boardId || "",
+                driverName: boardChip.dataset.boardDriver || "",
+                shiftDate: boardChip.dataset.boardDate || "",
+                truckNumber: boardChip.dataset.boardTruck || "",
+                status: boardChip.dataset.boardStatus || "Scheduled",
+                shiftTime: boardChip.dataset.boardShiftTime || "",
+                route: boardChip.dataset.boardRoute || "",
+                nightRun: boardChip.dataset.boardNightRun === "true",
+                isTemplate: boardChip.dataset.template === "true"
+              };
+              if (boardItem.isTemplate) {
+                loadTemplateIntoForm(boardItem);
+              } else {
+                const saved = readRoster().find((row) => row.id === boardItem.id);
+                if (saved) loadTemplateIntoForm(saved);
+              }
+              return;
+            }
+            const button = event.target.closest("button[data-action]");
+            if (!button || !window.__opxRosterFallbackActive) return;
+            const action = button.dataset.action;
+            if (!action) return;
+            const row = readRoster().find((item) => item.id === button.dataset.id);
+            if (!row) return;
+            openShiftContact(action, row);
+          });
+          document.body.addEventListener("dragstart", (event) => {
+            const chip = event.target.closest(".board-chip[data-board-id]");
+            if (!chip || chip.dataset.template === "true" || !window.__opxRosterFallbackActive) return;
+            boardDragState.shiftId = chip.dataset.boardId || "";
+            chip.classList.add("is-dragging");
+            event.dataTransfer.effectAllowed = "move";
+            event.dataTransfer.setData("text/plain", boardDragState.shiftId);
+          });
+          document.body.addEventListener("dragend", (event) => {
+            const chip = event.target.closest(".board-chip[data-board-id]");
+            if (chip) chip.classList.remove("is-dragging");
+            boardDragState.shiftId = "";
+            document.querySelectorAll(".board-cell.is-drop-target").forEach((cell) => cell.classList.remove("is-drop-target"));
+          });
+          document.body.addEventListener("dragover", (event) => {
+            const cell = event.target.closest(".board-cell[data-drop-date]");
+            if (!cell || !boardDragState.shiftId || !window.__opxRosterFallbackActive) return;
+            event.preventDefault();
+            cell.classList.add("is-drop-target");
+            event.dataTransfer.dropEffect = "move";
+          });
+          document.body.addEventListener("dragleave", (event) => {
+            const cell = event.target.closest(".board-cell[data-drop-date]");
+            if (cell) cell.classList.remove("is-drop-target");
+          });
+          document.body.addEventListener("drop", async (event) => {
+            const cell = event.target.closest(".board-cell[data-drop-date]");
+            if (!cell || !boardDragState.shiftId || !window.__opxRosterFallbackActive) return;
+            event.preventDefault();
+            cell.classList.remove("is-drop-target");
+            const targetChip = event.target.closest(".board-chip[data-board-id]");
+            const targetShiftId = targetChip && targetChip.dataset.template !== "true" ? (targetChip.dataset.boardId || "") : "";
+            await applyBoardMoveOrSwap(
+              boardDragState.shiftId,
+              {
+                driverName: cell.dataset.dropDriver || "",
+                shiftDate: cell.dataset.dropDate || "",
+                truckNumber: cell.dataset.dropTruck || ""
+              },
+              targetShiftId
+            );
+          });
+
+          syncStatusFields();
+          renderFallback();
+        }, 250);
+      });
+    })();
+  </script>
 </body>
 </html>
 

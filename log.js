@@ -9,6 +9,7 @@ if (!auth.can("accessLogs")) {
 }
 
 const LOG_KEY = "transport_crm_logs";
+const LOG_BACKUP_KEY = "transport_crm_logs_recovery_snapshots";
 const LOG_TABLE = "app_logs";
 
 const state = {
@@ -45,7 +46,50 @@ function readData() {
   }
 }
 
+function readLogSnapshots() {
+  try {
+    const parsed = JSON.parse(localStorage.getItem(LOG_BACKUP_KEY) || "[]");
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+}
+
+function saveLogSnapshot(reason = "auto") {
+  const rows = readData();
+  if (!rows.length) return;
+
+  const snapshots = readLogSnapshots();
+  snapshots.unshift({
+    reason,
+    savedAt: new Date().toISOString(),
+    rows
+  });
+  localStorage.setItem(LOG_BACKUP_KEY, JSON.stringify(snapshots.slice(0, 8)));
+}
+
+function latestSnapshotRows() {
+  return readLogSnapshots()
+    .flatMap((snapshot) => Array.isArray(snapshot?.rows) ? snapshot.rows : []);
+}
+
+function mergeLogRows(...groups) {
+  const byId = new Map();
+  groups.flat().forEach((row) => {
+    if (!row || typeof row !== "object") return;
+    const id = String(row.id || "").trim() || newId();
+    const normalized = { ...row, id };
+    const existing = byId.get(id);
+    const existingTime = Date.parse(existing?.updatedAt || existing?.savedAt || existing?.logDate || "") || 0;
+    const nextTime = Date.parse(normalized.updatedAt || normalized.savedAt || normalized.logDate || "") || 0;
+    if (!existing || nextTime >= existingTime) byId.set(id, normalized);
+  });
+
+  return ensureUuidLogs(Array.from(byId.values()));
+}
+
 function saveData() {
+  saveLogSnapshot("before-save");
   localStorage.setItem(LOG_KEY, JSON.stringify(state.logs));
   if (isSupabaseReady()) {
     void syncLogsToSupabase();
@@ -78,7 +122,8 @@ function fromDbLog(row) {
     truck: row.truck_number || "",
     reference: row.reference || "",
     status: row.status || "Open",
-    description: row.description || ""
+    description: row.description || "",
+    updatedAt: row.updated_at || row.created_at || ""
   };
 }
 
@@ -96,23 +141,10 @@ async function syncLogsToSupabase() {
   if (!supabase) return;
 
   const rows = state.logs.map(toDbLog);
+  if (!rows.length) return;
   const { error } = await supabase.from(LOG_TABLE).upsert(rows, { onConflict: "id" });
   if (error) {
     console.error("Supabase sync failed for app_logs:", error.message);
-    return;
-  }
-
-  const ids = rows.map((row) => row.id);
-  if (!ids.length) {
-    const wipe = await supabase.from(LOG_TABLE).delete().not("id", "is", null);
-    if (wipe.error) console.error("Supabase delete sync failed for app_logs:", wipe.error.message);
-    return;
-  }
-
-  const inList = `(${ids.map((id) => `"${String(id).replaceAll('"', "")}"`).join(",")})`;
-  const cleanup = await supabase.from(LOG_TABLE).delete().not("id", "in", inList);
-  if (cleanup.error) {
-    console.error("Supabase cleanup failed for app_logs:", cleanup.error.message);
   }
 }
 
@@ -124,21 +156,48 @@ async function hydrateLogsFromSupabase() {
   const { data, error } = await supabase.from(LOG_TABLE).select("*");
   if (error) {
     console.error("Supabase load failed for app_logs:", error.message);
+    const recoveredRows = mergeLogRows(latestSnapshotRows(), state.logs);
+    if (recoveredRows.length > state.logs.length) {
+      state.logs = recoveredRows;
+      localStorage.setItem(LOG_KEY, JSON.stringify(state.logs));
+      refresh();
+    }
     return;
   }
 
   if (!Array.isArray(data)) return;
 
-  if (!data.length && state.logs.length) {
-    console.warn("Supabase app_logs table is empty; keeping local logs and seeding Supabase.");
+  const remoteLogs = data.map(fromDbLog);
+  const mergedLogs = mergeLogRows(latestSnapshotRows(), state.logs, remoteLogs);
+  if (!data.length && mergedLogs.length) {
+    console.warn("Supabase app_logs table is empty; keeping local/recovered logs and seeding Supabase.");
+  }
+
+  if (mergedLogs.length) {
+    state.logs = mergedLogs;
+    localStorage.setItem(LOG_KEY, JSON.stringify(state.logs));
     await syncLogsToSupabase();
     refresh();
     return;
   }
 
-  state.logs = data.map(fromDbLog);
+  state.logs = [];
   localStorage.setItem(LOG_KEY, JSON.stringify(state.logs));
   refresh();
+}
+
+async function deleteLogFromSupabase(id) {
+  if (!isSupabaseReady() || !id) return;
+  const supabase = getSupabaseClient();
+  const { error } = await supabase.from(LOG_TABLE).delete().eq("id", id);
+  if (error) console.error("Supabase delete failed for app_logs:", error.message);
+}
+
+async function clearLogsFromSupabase() {
+  if (!isSupabaseReady()) return;
+  const supabase = getSupabaseClient();
+  const { error } = await supabase.from(LOG_TABLE).delete().not("id", "is", null);
+  if (error) console.error("Supabase clear failed for app_logs:", error.message);
 }
 
 function toCsv(rows) {
@@ -334,7 +393,9 @@ document.body.addEventListener("click", (e) => {
   }
 
   if (action === "delete-log") {
+    saveLogSnapshot("before-delete");
     state.logs = state.logs.filter((x) => x.id !== id);
+    void deleteLogFromSupabase(id);
     saveData();
     refresh();
   }
@@ -346,7 +407,10 @@ document.getElementById("clearLogsBtn").addEventListener("click", () => {
   const ok = confirm("Delete all log records? This cannot be undone.");
   if (!ok) return;
 
+  saveLogSnapshot("before-clear-all");
   state.logs = [];
+  void clearLogsFromSupabase();
+  localStorage.setItem(LOG_KEY, JSON.stringify(state.logs));
   saveData();
   document.getElementById("logForm").reset();
   document.getElementById("logId").value = "";

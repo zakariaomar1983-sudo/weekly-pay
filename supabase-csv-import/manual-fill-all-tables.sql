@@ -6,8 +6,9 @@ delete from truck_expense;
 delete from truck_income;
 delete from trucks;
 delete from drivers;
-insert into drivers (id, name, phone, license_number, license_expiry, hire_date, status, address, emergency_contact)
-select gen_random_uuid(), v.name, v.phone, v.license_number,
+insert into drivers (id, name, phone, email, license_number, license_expiry, hire_date, status, address, emergency_contact)
+select gen_random_uuid(), v.name, v.phone, '',
+       v.license_number,
        nullif(v.license_expiry, '')::date,
        nullif(v.hire_date, '')::date,
        v.status, v.address, v.emergency_contact

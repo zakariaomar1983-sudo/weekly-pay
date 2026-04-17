@@ -9,12 +9,96 @@ if (!auth.can("accessControlPanel")) {
 }
 
 const PERMISSIONS = window.OPXAuth.PERMISSIONS;
-const supabase = window.OPXSupabase?.client || null;
-const useSupabase = Boolean(window.OPXSupabase?.isReady && supabase);
+const controlPanelSupabase = window.OPXSupabase?.client || null;
+const useSupabase = Boolean(window.OPXSupabase?.isReady && controlPanelSupabase);
+
+function byId(id) {
+  return document.getElementById(id);
+}
+
+function showControlPanelError(error) {
+  const message = error?.message || String(error || "Unknown error");
+  const status = byId("sharedAuthStatus");
+  const grid = byId("permissionsGrid");
+
+  if (status) {
+    status.textContent = `Control Panel error: ${message}`;
+    status.className = "error-text";
+  }
+  if (grid && !grid.innerHTML.trim()) {
+    grid.innerHTML = `<p class="error-text">Control Panel error: ${message}</p>`;
+  }
+  console.error("Control Panel error:", error);
+}
+
+function hideElement(id) {
+  const element = byId(id);
+  if (element) element.style.display = "none";
+}
+
+const ROLE_PERMISSION_GROUPS = [
+  {
+    title: "Main Pages",
+    help: "These control which pages appear after login.",
+    keys: ["accessCRM", "accessLogs", "accessControlPanel"]
+  },
+  {
+    title: "Drivers",
+    help: "Driver Data page access.",
+    keys: ["viewDrivers", "editDrivers"]
+  },
+  {
+    title: "Trucks",
+    help: "Truck page access.",
+    keys: ["viewTrucks", "editTrucks"]
+  },
+  {
+    title: "Roster",
+    help: "Weekly Roster page access.",
+    keys: ["viewRoster", "editRoster"]
+  },
+  {
+    title: "Finance",
+    help: "Driver pay, truck income and expense access.",
+    keys: ["viewTruckIncome", "editTruckIncome", "viewSpending", "editSpending", "viewPayslips", "editPayslips", "viewStats"]
+  },
+  {
+    title: "Admin Tools",
+    help: "Backup, restore and sensitive data tools.",
+    keys: ["editLogs", "backupRestore", "adminData"]
+  }
+];
+
+const ROLE_PRESETS = {
+  teamBasic: {
+    name: "Team - Trucks & Roster",
+    keys: ["accessCRM", "viewTrucks", "viewRoster"]
+  },
+  dispatcher: {
+    name: "Dispatcher",
+    keys: ["accessCRM", "viewDrivers", "editDrivers", "viewTrucks", "viewRoster", "editRoster"]
+  },
+  finance: {
+    name: "Finance Officer",
+    keys: ["accessCRM", "viewTruckIncome", "editTruckIncome", "viewSpending", "editSpending", "viewPayslips", "editPayslips", "viewStats"]
+  },
+  readonly: {
+    name: "Read Only",
+    keys: ["accessCRM", "viewDrivers", "viewTrucks", "viewRoster", "viewTruckIncome", "viewSpending", "viewPayslips", "viewStats"]
+  }
+};
 
 function allPerms(value) {
   const out = {};
   PERMISSIONS.forEach((p) => { out[p.key] = value; });
+  return out;
+}
+
+function permissionsFromKeys(keys) {
+  const out = allPerms(false);
+  keys.forEach((key) => {
+    out[key] = true;
+  });
   return out;
 }
 
@@ -76,9 +160,12 @@ function enforceSystemRolesAndUsers() {
 enforceSystemRolesAndUsers();
 window.OPXAuth?.init?.();
 
-document.getElementById("currentUserChip").textContent = `User: ${auth.user.username}`;
+const currentUserChip = byId("currentUserChip");
+if (currentUserChip) {
+  currentUserChip.textContent = `User: ${auth.user.username}`;
+}
 
-document.getElementById("logoutBtn").addEventListener("click", () => {
+byId("logoutBtn")?.addEventListener("click", () => {
   try {
     if (window.OPXAuth?.logout) {
       window.OPXAuth.logout();
@@ -92,26 +179,26 @@ document.getElementById("logoutBtn").addEventListener("click", () => {
 });
 
 if (!auth.can("accessCRM")) {
-  document.getElementById("openHomeBtn").style.display = "none";
-  document.getElementById("openDriversBtn").style.display = "none";
-  document.getElementById("openTrucksBtn").style.display = "none";
-  document.getElementById("openRosterBtn").style.display = "none";
-  document.getElementById("openFinanceBtn").style.display = "none";
+  hideElement("openHomeBtn");
+  hideElement("openDriversBtn");
+  hideElement("openTrucksBtn");
+  hideElement("openRosterBtn");
+  hideElement("openFinanceBtn");
 }
 if (!auth.can("viewDrivers")) {
-  document.getElementById("openDriversBtn").style.display = "none";
+  hideElement("openDriversBtn");
 }
 if (!auth.can("viewTrucks")) {
-  document.getElementById("openTrucksBtn").style.display = "none";
+  hideElement("openTrucksBtn");
 }
 if (!auth.can("viewRoster")) {
-  document.getElementById("openRosterBtn").style.display = "none";
+  hideElement("openRosterBtn");
 }
 if (!(auth.can("viewTruckIncome") || auth.can("viewSpending") || auth.can("viewPayslips") || auth.can("viewStats"))) {
-  document.getElementById("openFinanceBtn").style.display = "none";
+  hideElement("openFinanceBtn");
 }
 if (!auth.can("accessLogs")) {
-  document.getElementById("openLogsBtn").style.display = "none";
+  hideElement("openLogsBtn");
 }
 
 function boolBadge(isTrue) {
@@ -127,24 +214,82 @@ function checkedPermissionsFromForm() {
 }
 
 function renderPermissionChecklist() {
-  const grid = document.getElementById("permissionsGrid");
-  grid.innerHTML = PERMISSIONS
-    .map((perm) => `<label class="perm-item"><input type="checkbox" id="perm_${perm.key}" /> ${perm.label}</label>`)
+  const grid = byId("permissionsGrid");
+  if (!grid) return;
+  const byKey = Object.fromEntries(PERMISSIONS.map((perm) => [perm.key, perm]));
+  const used = new Set(ROLE_PERMISSION_GROUPS.flatMap((group) => group.keys));
+  const fallback = PERMISSIONS.filter((perm) => !used.has(perm.key));
+  const groups = fallback.length
+    ? [...ROLE_PERMISSION_GROUPS, { title: "Other", help: "Extra permissions.", keys: fallback.map((perm) => perm.key) }]
+    : ROLE_PERMISSION_GROUPS;
+
+  grid.innerHTML = groups
+    .map((group) => {
+      const checks = group.keys
+        .map((key) => byKey[key])
+        .filter(Boolean)
+        .map((perm) => `<label class="perm-item"><input type="checkbox" id="perm_${perm.key}" /> <span>${perm.label}</span></label>`)
+        .join("");
+      return `<section class="perm-group"><h3>${group.title}</h3><p>${group.help}</p><div class="perm-group-grid">${checks}</div></section>`;
+    })
     .join("");
 
   // Safety: force these checkboxes interactive even after browser/state quirks.
   PERMISSIONS.forEach((perm) => {
-    const checkbox = document.getElementById(`perm_${perm.key}`);
+    const checkbox = byId(`perm_${perm.key}`);
     if (!checkbox) return;
     checkbox.disabled = false;
     checkbox.style.pointerEvents = "auto";
   });
 }
 
+function setRolePreset(presetKey) {
+  const preset = ROLE_PRESETS[presetKey];
+  if (!preset) return;
+
+  const roleId = byId("roleId");
+  const roleName = byId("roleName");
+  if (roleId) roleId.value = "";
+  if (roleName) roleName.value = preset.name;
+  const permissions = permissionsFromKeys(preset.keys);
+
+  PERMISSIONS.forEach((perm) => {
+    const checkbox = byId(`perm_${perm.key}`);
+    if (checkbox) checkbox.checked = Boolean(permissions[perm.key]);
+  });
+}
+
+function accessBadge(level) {
+  const labels = {
+    edit: "Edit",
+    view: "View",
+    yes: "Yes",
+    no: "No"
+  };
+  return `<span class="access-badge access-${level}">${labels[level] || labels.no}</span>`;
+}
+
+function rolePageLevel(role, page) {
+  const p = role.permissions || {};
+  if (page === "home") return p.accessCRM ? "yes" : "no";
+  if (page === "trucks") return p.editTrucks ? "edit" : p.viewTrucks ? "view" : "no";
+  if (page === "roster") return p.editRoster ? "edit" : p.viewRoster ? "view" : "no";
+  if (page === "finance") {
+    const canEdit = p.editTruckIncome || p.editSpending || p.editPayslips;
+    const canView = p.viewTruckIncome || p.viewSpending || p.viewPayslips || p.viewStats;
+    return canEdit ? "edit" : canView ? "view" : "no";
+  }
+  if (page === "logs") return p.editLogs ? "edit" : p.accessLogs ? "view" : "no";
+  if (page === "control") return p.accessControlPanel ? "yes" : "no";
+  return "no";
+}
+
 function renderSecurityStats() {
   const roles = window.OPXAuth.getRoles();
   const users = window.OPXAuth.getUsers();
   const activeUsers = users.filter((u) => u.active).length;
+  const statsGrid = byId("securityStats");
+  if (!statsGrid) return;
 
   const stats = [
     { label: "Total Roles", value: String(roles.length) },
@@ -152,14 +297,15 @@ function renderSecurityStats() {
     { label: "Active Users", value: String(activeUsers) }
   ];
 
-  document.getElementById("securityStats").innerHTML = stats
+  statsGrid.innerHTML = stats
     .map((s) => `<article class="stat-card"><p>${s.label}</p><h3>${s.value}</h3></article>`)
     .join("");
 }
 
 function renderRoleOptions() {
   const roles = getEffectiveRoles();
-  const select = document.getElementById("userRole");
+  const select = byId("userRole");
+  if (!select) return;
   if (!roles.length) return;
   select.innerHTML = roles.map((role) => `<option value="${role.id}">${role.name}</option>`).join("");
 }
@@ -167,27 +313,34 @@ function renderRoleOptions() {
 function renderRolesTable() {
   const roles = getEffectiveRoles();
   const users = window.OPXAuth.getUsers();
-  const tbody = document.getElementById("rolesTableBody");
+  const tbody = byId("rolesTableBody");
+  if (!tbody) return;
 
   if (!roles.length) {
-    tbody.innerHTML = [
-      "<tr><td>role_admin</td><td>Admin</td><td>System</td><td>All enabled</td><td>0</td><td><span class='muted'>System role</span></td></tr>",
-      "<tr><td>role_manager</td><td>Ops Manager</td><td>System</td><td>Operational enabled</td><td>0</td><td><span class='muted'>System role</span></td></tr>",
-      "<tr><td>role_viewer</td><td>GM</td><td>System</td><td>View enabled</td><td>0</td><td><span class='muted'>System role</span></td></tr>"
-    ].join("");
+    tbody.innerHTML = "<tr><td colspan='10' class='empty'>No roles found.</td></tr>";
     return;
   }
 
   tbody.innerHTML = roles
     .map((role) => {
-      const enabledCount = Object.values(role.permissions || {}).filter(Boolean).length;
       const assignedUsers = users.filter((u) => u.roleId === role.id).length;
       const typeLabel = role.system ? "System" : "Custom";
       const actions = role.system
         ? "<span class='muted'>System role</span>"
         : `<div class='table-actions'><button data-action='edit-role' data-id='${role.id}'>Edit</button><button data-action='delete-role' data-id='${role.id}'>Delete</button></div>`;
 
-      return `<tr><td>${role.id}</td><td>${role.name}</td><td>${typeLabel}</td><td>${enabledCount} enabled</td><td>${assignedUsers}</td><td>${actions}</td></tr>`;
+      return `<tr>
+        <td><strong>${role.name}</strong></td>
+        <td>${typeLabel}</td>
+        <td>${accessBadge(rolePageLevel(role, "home"))}</td>
+        <td>${accessBadge(rolePageLevel(role, "trucks"))}</td>
+        <td>${accessBadge(rolePageLevel(role, "roster"))}</td>
+        <td>${accessBadge(rolePageLevel(role, "finance"))}</td>
+        <td>${accessBadge(rolePageLevel(role, "logs"))}</td>
+        <td>${accessBadge(rolePageLevel(role, "control"))}</td>
+        <td>${assignedUsers}</td>
+        <td>${actions}</td>
+      </tr>`;
     })
     .join("");
 }
@@ -226,7 +379,8 @@ function renderUsersTable() {
   const roles = window.OPXAuth.getRoles();
   const roleNameById = Object.fromEntries(roles.map((r) => [r.id, r.name]));
   const users = window.OPXAuth.getUsers();
-  const tbody = document.getElementById("usersTableBody");
+  const tbody = byId("usersTableBody");
+  if (!tbody) return;
 
   if (!users.length) {
     tbody.innerHTML = `<tr><td colspan="4" class="empty">No users yet.</td></tr>`;
@@ -239,32 +393,41 @@ function renderUsersTable() {
 }
 
 function resetRoleForm() {
-  document.getElementById("roleForm").reset();
-  document.getElementById("roleId").value = "";
+  byId("roleForm")?.reset();
+  const roleId = byId("roleId");
+  if (roleId) roleId.value = "";
 }
 
 function resetUserForm() {
-  document.getElementById("userForm").reset();
-  document.getElementById("userId").value = "";
+  byId("userForm")?.reset();
+  const userId = byId("userId");
+  if (userId) userId.value = "";
   renderRoleOptions();
 }
 
 function fillRoleForm(role) {
-  document.getElementById("roleId").value = role.id;
-  document.getElementById("roleName").value = role.name;
+  const roleId = byId("roleId");
+  const roleName = byId("roleName");
+  if (roleId) roleId.value = role.id;
+  if (roleName) roleName.value = role.name;
 
   PERMISSIONS.forEach((perm) => {
-    const checkbox = document.getElementById(`perm_${perm.key}`);
+    const checkbox = byId(`perm_${perm.key}`);
     if (checkbox) checkbox.checked = Boolean(role.permissions?.[perm.key]);
   });
 }
 
 function fillUserForm(user) {
-  document.getElementById("userId").value = user.id;
-  document.getElementById("userName").value = user.username;
-  document.getElementById("userPassword").value = "";
-  document.getElementById("userRole").value = user.roleId;
-  document.getElementById("userActive").value = String(Boolean(user.active));
+  const userId = byId("userId");
+  const userName = byId("userName");
+  const userPassword = byId("userPassword");
+  const userRole = byId("userRole");
+  const userActive = byId("userActive");
+  if (userId) userId.value = user.id;
+  if (userName) userName.value = user.username;
+  if (userPassword) userPassword.value = "";
+  if (userRole) userRole.value = user.roleId;
+  if (userActive) userActive.value = String(Boolean(user.active));
 }
 
 function refresh() {
@@ -272,6 +435,15 @@ function refresh() {
   renderRoleOptions();
   renderRolesTable();
   renderUsersTable();
+  updateSharedAuthStatus();
+}
+
+function updateSharedAuthStatus() {
+  const status = byId("sharedAuthStatus");
+  if (!status) return;
+  const message = window.OPXAuth.getSharedAuthStatus?.() || "Shared login not checked yet.";
+  status.textContent = message;
+  status.className = message.includes("failed") || message.includes("not ready") ? "error-text" : "data-status";
 }
 
 const BACKUP_PREFIXES = ["transport_crm_", "opx_auth_"];
@@ -589,7 +761,7 @@ function toDbRowsForKey(key, rows) {
   if (key === "transport_crm_roster") {
     return rows.map((x) => ({
       id: x.id, driver_name: x.driverName || "", truck_number: x.truckNumber || "",
-      shift_date: x.shiftDate || null, shift_time: x.shiftTime || "", route: x.route || "", status: x.status || ""
+      run_type: x.nightRun ? "Night Run +" : "", shift_date: x.shiftDate || null, shift_time: x.shiftTime || "", route: x.route || "", status: x.status || ""
     }));
   }
   if (key === "transport_crm_logs") {
@@ -619,7 +791,7 @@ async function syncRestoredKeysToSupabase(keys) {
     localStorage.setItem(key, JSON.stringify(rows));
     const dbRows = toDbRowsForKey(key, rows);
 
-    const { error } = await supabase.from(table).upsert(dbRows, { onConflict: "id" });
+    const { error } = await controlPanelSupabase.from(table).upsert(dbRows, { onConflict: "id" });
     if (error) {
       console.error(`Supabase restore sync failed for ${table}:`, error.message);
       continue;
@@ -627,12 +799,15 @@ async function syncRestoredKeysToSupabase(keys) {
 
     syncedAny = true;
     const ids = dbRows.map((r) => r.id);
+    if (key === "transport_crm_logs") {
+      continue;
+    }
     if (!ids.length) {
-      await supabase.from(table).delete().not("id", "is", null);
+      await controlPanelSupabase.from(table).delete().not("id", "is", null);
       continue;
     }
     const inList = `(${ids.map((id) => `"${String(id).replaceAll('"', "")}"`).join(",")})`;
-    await supabase.from(table).delete().not("id", "in", inList);
+    await controlPanelSupabase.from(table).delete().not("id", "in", inList);
   }
 
   return syncedAny;
@@ -752,11 +927,12 @@ function hookBackupActions() {
   }
 }
 
-document.getElementById("roleForm").addEventListener("submit", (e) => {
+function bindControlPanelEvents() {
+  byId("roleForm")?.addEventListener("submit", (e) => {
   e.preventDefault();
 
-  const roleId = document.getElementById("roleId").value;
-  const roleName = document.getElementById("roleName").value.trim();
+  const roleId = byId("roleId")?.value || "";
+  const roleName = (byId("roleName")?.value || "").trim();
   if (!roleName) return;
 
   const payload = {
@@ -776,16 +952,16 @@ document.getElementById("roleForm").addEventListener("submit", (e) => {
 
   resetRoleForm();
   refresh();
-});
+  });
 
-document.getElementById("userForm").addEventListener("submit", (e) => {
+  byId("userForm")?.addEventListener("submit", (e) => {
   e.preventDefault();
 
-  const userId = document.getElementById("userId").value;
-  const username = document.getElementById("userName").value.trim();
-  const password = document.getElementById("userPassword").value;
-  const roleId = document.getElementById("userRole").value;
-  const active = document.getElementById("userActive").value === "true";
+  const userId = byId("userId")?.value || "";
+  const username = (byId("userName")?.value || "").trim();
+  const password = byId("userPassword")?.value || "";
+  const roleId = byId("userRole")?.value || "";
+  const active = byId("userActive")?.value === "true";
 
   if (!username || !roleId) return;
 
@@ -810,24 +986,29 @@ document.getElementById("userForm").addEventListener("submit", (e) => {
 
   resetUserForm();
   refresh();
-});
+  });
 
-document.getElementById("cancelRoleEdit").addEventListener("click", resetRoleForm);
-document.getElementById("cancelUserEdit").addEventListener("click", resetUserForm);
-document.getElementById("roleSelectAllBtn")?.addEventListener("click", () => {
+  byId("cancelRoleEdit")?.addEventListener("click", resetRoleForm);
+  byId("cancelUserEdit")?.addEventListener("click", resetUserForm);
+  byId("rolePresets")?.addEventListener("click", (event) => {
+  const button = event.target.closest("button[data-role-preset]");
+  if (!button) return;
+  setRolePreset(button.dataset.rolePreset);
+  });
+  byId("roleSelectAllBtn")?.addEventListener("click", () => {
   PERMISSIONS.forEach((perm) => {
-    const checkbox = document.getElementById(`perm_${perm.key}`);
+    const checkbox = byId(`perm_${perm.key}`);
     if (checkbox) checkbox.checked = true;
   });
-});
-document.getElementById("roleClearAllBtn")?.addEventListener("click", () => {
+  });
+  byId("roleClearAllBtn")?.addEventListener("click", () => {
   PERMISSIONS.forEach((perm) => {
-    const checkbox = document.getElementById(`perm_${perm.key}`);
+    const checkbox = byId(`perm_${perm.key}`);
     if (checkbox) checkbox.checked = false;
   });
-});
+  });
 
-document.body.addEventListener("click", (e) => {
+  document.body.addEventListener("click", (e) => {
   const button = e.target.closest("button[data-action]");
   if (!button) return;
 
@@ -871,15 +1052,46 @@ document.body.addEventListener("click", (e) => {
 
     refresh();
   }
-});
+  });
+}
 
-renderPermissionChecklist();
-resetRoleForm();
-resetUserForm();
-refresh();
-hookBackupActions();
-initSupabaseConfigPanel();
+async function refreshSharedAuth() {
+  try {
+    const hydrated = await window.OPXAuth.hydrateAuthFromSupabase?.();
+    updateSharedAuthStatus();
+    if (!hydrated) return;
+    resetRoleForm();
+    resetUserForm();
+    refresh();
+  } catch (error) {
+    showControlPanelError(error);
+  }
+}
 
-if (document.getElementById("restoreBackupBtn")) {
-  setBackupStatus("Backup actions ready.");
+function startControlPanel() {
+  renderPermissionChecklist();
+  bindControlPanelEvents();
+  resetRoleForm();
+  resetUserForm();
+  refresh();
+  hookBackupActions();
+  initSupabaseConfigPanel();
+
+  if (window.OPXSupabase?.isReady) {
+    void refreshSharedAuth();
+  }
+
+  window.addEventListener("opx:supabase-ready", () => {
+    void refreshSharedAuth();
+  });
+
+  if (byId("restoreBackupBtn")) {
+    setBackupStatus("Backup actions ready.");
+  }
+}
+
+try {
+  startControlPanel();
+} catch (error) {
+  showControlPanelError(error);
 }
