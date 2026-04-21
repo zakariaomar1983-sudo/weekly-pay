@@ -1,6 +1,10 @@
 module.exports = async function handler(req, res) {
   const apiKey = process.env.RESEND_API_KEY;
-  const fromEmail = process.env.PAYSLIP_FROM_EMAIL || process.env.RESEND_FROM_EMAIL || "";
+  const configuredFromEmail = process.env.PAYSLIP_FROM_EMAIL || process.env.RESEND_FROM_EMAIL || "";
+  const normalizedFromEmail = normalizeSenderAddress(configuredFromEmail);
+  const fromEmail = shouldUseResendTestSender(normalizedFromEmail)
+    ? "onboarding@resend.dev"
+    : (normalizedFromEmail || "onboarding@resend.dev");
   const replyTo = process.env.PAYSLIP_REPLY_TO || "";
 
   if (req.method === "GET") {
@@ -95,4 +99,19 @@ function escapeHtml(value) {
     .replaceAll(">", "&gt;")
     .replaceAll('"', "&quot;")
     .replaceAll("'", "&#39;");
+}
+
+function shouldUseResendTestSender(value) {
+  const normalized = String(value || "").trim().toLowerCase();
+  return normalized.includes("@onpointgroupes.com");
+}
+
+function normalizeSenderAddress(value) {
+  const normalized = String(value || "").trim();
+  if (!normalized) {
+    return "";
+  }
+
+  // Correct the common missing-"e" typo if it made its way into env config.
+  return normalized.replaceAll("onpointgroups.com", "onpointgroupes.com");
 }

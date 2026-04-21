@@ -7,7 +7,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=Manrope:wght@400;500;700&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="./style.css?v=20260416g" />
+  <link rel="stylesheet" href="./style.css?v=20260421k" />
 </head>
 <body>
   <main class="app-shell">
@@ -19,6 +19,7 @@
       <div class="topbar-actions">
         <span id="currentUserChip" class="user-chip"></span>
         <a class="btn btn-outline" href="./index.html">Home</a>
+        <a id="reportsLink" class="btn btn-outline" href="./reports.html">Reports</a>
         <a class="btn btn-outline" href="./trucks.html">Trucks</a>
         <a id="rosterLink" class="btn btn-outline" href="./roster.html">Roster</a>
         <a id="financeLink" class="btn btn-outline" href="./finance.html">Finance</a>
@@ -34,6 +35,8 @@
       <div class="panel-head">
         <h2>Driver Details</h2>
       </div>
+      <p id="driversSyncStatus" class="sync-badge sync-badge-neutral">Checking sync...</p>
+      <p id="driversQueueBanner" class="queue-banner queue-banner-pending" hidden></p>
       <form class="form-grid" onsubmit="return false;">
         <label class="full">Search History
           <input id="driversSearch" type="text" placeholder="Search name, phone, email, license, status..." />
@@ -60,6 +63,20 @@
         </label>
         <label class="full">Address<input id="driverAddress" type="text" /></label>
         <label class="full">Emergency Contact<input id="emergencyContact" type="text" placeholder="Name + phone" /></label>
+        <section class="full attachment-panel">
+          <div class="attachment-panel-head">
+            <div>
+              <strong>Driver Documents</strong>
+              <p class="muted">Attach licence, ID, contract, or any driver paperwork.</p>
+            </div>
+            <label class="btn btn-outline attachment-upload-btn">
+              Add Files
+              <input id="driverAttachmentsInput" type="file" accept=".pdf,image/*" multiple hidden />
+            </label>
+          </div>
+          <div id="driverAttachmentsList" class="attachment-list"></div>
+          <p id="driverAttachmentsStatus" class="attachment-status muted">Attachments stay available on this CRM browser profile.</p>
+        </section>
         <div class="actions full">
           <button class="btn" type="submit">Save Driver</button>
           <button id="cancelDriverEdit" class="btn btn-muted" type="button">Cancel Edit</button>
@@ -106,8 +123,8 @@
       }
     }, true);
   </script>
-  <script src="./auth.js?v=20260416g"></script>
-  <script type="module" src="./drivers-entry.js?v=20260416g"></script>
+  <script src="./auth.js?v=20260421k"></script>
+  <script type="module" src="./drivers-entry.js?v=20260421k"></script>
   <script src="./emergency-fill.js?v=20260413g"></script>
 </body>
 </html>

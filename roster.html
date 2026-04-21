@@ -7,7 +7,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=Manrope:wght@400;500;700&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="./style.css?v=20260415r" />
+  <link rel="stylesheet" href="./style.css?v=20260421k" />
 </head>
 <body>
   <main class="app-shell">
@@ -19,6 +19,7 @@
       <div class="topbar-actions">
         <span id="currentUserChip" class="user-chip"></span>
         <a class="btn btn-outline" href="./index.html">Home</a>
+        <a id="reportsLink" class="btn btn-outline" href="./reports.html">Reports</a>
         <a class="btn btn-outline" href="./drivers.html">Drivers</a>
         <a class="btn btn-outline" href="./trucks.html">Trucks</a>
         <a id="financeLink" class="btn btn-outline" href="./finance.html">Finance</a>
@@ -58,6 +59,8 @@
       <div class="panel-head">
         <h2>Add Shift</h2>
       </div>
+      <p id="rosterSyncStatus" class="sync-badge sync-badge-neutral">Checking sync...</p>
+      <p id="rosterQueueBanner" class="queue-banner queue-banner-pending" hidden></p>
       <form id="rosterForm" class="form-grid">
         <input type="hidden" id="rosterId" />
         <label>Driver Name
@@ -93,7 +96,13 @@
         </label>
         <label>Shift Date<input id="shiftDate" type="date" required /></label>
         <label>Shift Time<input id="shiftTime" type="text" placeholder="06:00 - 14:00" required /></label>
-        <label>Route<input id="route" type="text" placeholder="Sydney to Newcastle" required /></label>
+        <label>Start Location
+          <select id="startLocation" required>
+            <option value="LG, Altona to As- Directed">LG, Altona to As- Directed</option>
+            <option value="Allied Express, Broadmeadows As-Directed">Allied Express, Broadmeadows As-Directed</option>
+          </select>
+        </label>
+        <label>Route<input id="route" type="text" placeholder="As-Directed" required /></label>
         <label>Status
           <select id="rosterStatus" required>
             <option value="Scheduled">Scheduled</option>
@@ -147,9 +156,22 @@
         </label>
         <div class="actions full">
           <button id="saveWeekTemplate" class="btn" type="button">Save Week Template</button>
+          <button id="setWeekDraft" class="btn btn-outline" type="button">Set Draft</button>
+          <button id="approveWeekPlan" class="btn btn-outline" type="button">Approve Week</button>
+          <button id="markWeekSent" class="btn btn-outline" type="button">Mark Sent To Drivers</button>
+          <button id="openWhatsAppWeekDispatch" class="btn btn-outline" type="button">Send Week View To Drivers</button>
+          <button id="copyWeekViewSummary" class="btn btn-outline" type="button">Copy All Week View</button>
           <button id="clearRosterFilters" class="btn btn-outline" type="button">Clear Filters</button>
         </div>
       </form>
+      <div class="week-workflow-strip" id="weekWorkflowStrip">
+        <div class="week-workflow-main">
+          <p class="muted">Week Workflow</p>
+          <h3 id="weekWorkflowTitle">Draft</h3>
+          <span id="weekWorkflowMeta" class="muted">Choose a week to manage its approval flow.</span>
+        </div>
+        <div id="weekWorkflowBadgeWrap"></div>
+      </div>
       <div class="roster-board-topline">
         <p id="rosterBoardSummary" class="muted"></p>
       </div>
@@ -173,6 +195,11 @@
         </table>
       </div>
       <div id="rosterCoverageNotes" class="roster-note-grid"></div>
+      <div class="panel-head">
+        <h3>WhatsApp Dispatch</h3>
+      </div>
+      <p id="rosterDispatchStatus" class="data-status muted">Use the selected week to prepare messages for each driver.</p>
+      <div id="rosterWhatsAppDispatch" class="roster-note-grid"></div>
       <div class="table-wrap">
         <table>
           <thead>
@@ -188,26 +215,35 @@
   <script src="./supabase-config.js?v=20260413g"></script>
   <script src="./supabase-client.js?v=20260413g"></script>
   <script src="./seed-data.js?v=20260413d"></script>
-  <script src="./auth.js?v=20260414b"></script>
-  <script src="./roster.js?v=20260415ac"></script>
+  <script src="./auth.js?v=20260421k"></script>
+  <script src="./roster.js?v=20260421k"></script>
   <script>
     (function rosterWeekFallback() {
       const ROSTER_KEY = "transport_crm_roster";
       const DRIVERS_KEY = "transport_crm_drivers";
       const TRUCKS_KEY = "transport_crm_trucks";
       const DEFAULT_SHIFT_TIME = "06:00 - 14:00";
-      const DEFAULT_ROUTE = "Sydney to Newcastle";
+      const DEFAULT_ROUTE = "As-Directed";
       const LEAVE_SHIFT_TIME = "On Leave";
       const LEAVE_ROUTE = "Driver away";
-      const fallbackPairs = [
-        { name: "Abdirizak Ahmed", truck: "620" },
-        { name: "Imran Abdella", truck: "672" },
-        { name: "Ramzi Mohamed", truck: "840" },
-        { name: "Samatar Yusuf", truck: "841" },
-        { name: "Sharmake Hashi", truck: "853" },
-        { name: "Soleh Sungkar", truck: "855" },
-        { name: "Suhen Omar", truck: "881" }
+      const START_LOCATION_OPTIONS = [
+        "LG, Altona to As- Directed",
+        "Allied Express, Broadmeadows As-Directed"
       ];
+      const DEFAULT_START_LOCATION = START_LOCATION_OPTIONS[0];
+      const ROUTE_LOCATION_SEPARATOR = "|||opx-start-location|||";
+      const fallbackPairs = [
+        { name: "Abdirizak Ahmed", truck: "853" },
+        { name: "Imran Abdella", truck: "881" },
+        { name: "Ramzi Mohamed", truck: "841" },
+        { name: "Samatar Yusuf", truck: "855" },
+        { name: "Sharmake Hashi", truck: "672" },
+        { name: "Soleh Sungkar", truck: "840" },
+        { name: "Suhen Omar", truck: "620" }
+      ];
+      const legacyDriverNameAliases = new Map([
+        ["Khalid Aden", "Suhen Omar"]
+      ]);
       const dayNames = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
       const boardDragState = { shiftId: "" };
       const fallbackRenderState = { queued: false };
@@ -297,10 +333,78 @@
         return `${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
       }
 
+      function canonicalDriverName(value) {
+        const trimmed = String(value || "").trim();
+        return legacyDriverNameAliases.get(trimmed) || trimmed;
+      }
+
+      function configuredTruckForDriver(driverName) {
+        return fallbackPairs.find((item) => item.name === canonicalDriverName(driverName))?.truck || "";
+      }
+
+      function normalizeDriverRows(rows) {
+        const mergedByName = new Map();
+        rows
+          .filter((item) => item && typeof item === "object")
+          .forEach((item, index) => {
+            const normalizedName = canonicalDriverName(item.name);
+            if (!normalizedName) return;
+            const normalized = { ...item, id: item.id || `fallback-driver-${index}`, name: normalizedName };
+            const existing = mergedByName.get(normalizedName);
+            if (!existing) {
+              mergedByName.set(normalizedName, normalized);
+              return;
+            }
+            mergedByName.set(normalizedName, {
+              ...existing,
+              ...normalized,
+              id: existing.id || normalized.id,
+              name: normalizedName,
+              phone: existing.phone || normalized.phone || "",
+              email: existing.email || normalized.email || "",
+              licenseNumber: existing.licenseNumber || normalized.licenseNumber || "",
+              licenseExpiry: existing.licenseExpiry || normalized.licenseExpiry || "",
+              hireDate: existing.hireDate || normalized.hireDate || "",
+              status: existing.status || normalized.status || "",
+              address: existing.address || normalized.address || "",
+              emergencyContact: existing.emergencyContact || normalized.emergencyContact || ""
+            });
+          });
+        return Array.from(mergedByName.values());
+      }
+
+      function normalizeRosterRows(rows) {
+        return rows
+          .filter((item) => item && typeof item === "object")
+          .map((item) => {
+            const originalDriverName = String(item.driverName || "").trim();
+            const driverName = canonicalDriverName(originalDriverName);
+            const aliasChanged = Boolean(driverName && driverName !== originalDriverName);
+            const isLeave = String(item.status || "").trim() === "Leave";
+            const unpackedRoute = unpackRouteValue(item.route || "");
+            return normalizePayload({
+              ...item,
+              route: unpackedRoute.route || String(item.route || "").trim(),
+              startLocation: item.startLocation || unpackedRoute.startLocation || "",
+              driverName,
+              truckNumber: aliasChanged && !isLeave ? (configuredTruckForDriver(driverName) || String(item.truckNumber || "").trim()) : String(item.truckNumber || "").trim()
+            });
+          });
+      }
+
       function readArray(key) {
         try {
           const parsed = JSON.parse(localStorage.getItem(key) || "[]");
-          return Array.isArray(parsed) ? parsed : [];
+          const rows = Array.isArray(parsed) ? parsed : [];
+          const normalized = key === DRIVERS_KEY
+            ? normalizeDriverRows(rows)
+            : key === ROSTER_KEY
+              ? normalizeRosterRows(rows)
+              : rows;
+          if (JSON.stringify(rows) !== JSON.stringify(normalized)) {
+            localStorage.setItem(key, JSON.stringify(normalized));
+          }
+          return normalized;
         } catch {
           return [];
         }
@@ -326,7 +430,13 @@
           .filter(Boolean)
           .sort((a, b) => a.localeCompare(b));
         if (!drivers.length || !trucks.length) return fallbackPairs;
-        return drivers.slice(0, 7).map((name, index) => ({ name, truck: trucks[index] || "" })).filter((item) => item.name && item.truck);
+        const activeTruckSet = new Set(trucks);
+        return drivers.slice(0, 7)
+          .map((name, index) => {
+            const mapped = fallbackPairs.find((item) => item.name === name)?.truck || "";
+            return { name, truck: activeTruckSet.has(mapped) ? mapped : (trucks[index] || "") };
+          })
+          .filter((item) => item.name && item.truck);
       }
 
       function getBatchDates(anchorDate) {
@@ -345,14 +455,58 @@
       }
 
       function normalizePayload(payload) {
-        if (payload.status !== "Leave") return payload;
+        if (payload.status !== "Leave") {
+          return {
+            ...payload,
+            startLocation: normalizeStartLocation(payload.startLocation, payload.route)
+          };
+        }
         return {
           ...payload,
           truckNumber: "",
           nightRun: false,
           shiftTime: payload.shiftTime || LEAVE_SHIFT_TIME,
-          route: payload.route || LEAVE_ROUTE
+          route: payload.route || LEAVE_ROUTE,
+          startLocation: ""
         };
+      }
+
+      function inferStartLocationFromRoute(route) {
+        const text = String(route || "").trim().toLowerCase();
+        if (!text || text === LEAVE_ROUTE.toLowerCase()) return "";
+        if (text.includes("allied") || text.includes("broadmeadows") || text.includes("north")) return START_LOCATION_OPTIONS[1];
+        if (text.includes("lg") || text.includes("altona") || text.includes("west") || text.includes("south")) return START_LOCATION_OPTIONS[0];
+        return DEFAULT_START_LOCATION;
+      }
+
+      function normalizeStartLocation(value, fallbackRoute = "") {
+        const trimmed = String(value || "").trim();
+        if (START_LOCATION_OPTIONS.includes(trimmed)) return trimmed;
+        return inferStartLocationFromRoute(fallbackRoute) || DEFAULT_START_LOCATION;
+      }
+
+      function unpackRouteValue(value) {
+        const text = String(value || "").trim();
+        if (!text) return { route: "", startLocation: "" };
+        const parts = text.split(ROUTE_LOCATION_SEPARATOR);
+        if (parts.length > 1) {
+          const [rawLocation, ...rest] = parts;
+          const route = rest.join(ROUTE_LOCATION_SEPARATOR).trim();
+          return {
+            route,
+            startLocation: normalizeStartLocation(rawLocation, route)
+          };
+        }
+        return {
+          route: text,
+          startLocation: inferStartLocationFromRoute(text)
+        };
+      }
+
+      function packRouteValue(route, startLocation) {
+        const cleanRoute = String(route || "").trim();
+        if (!cleanRoute || cleanRoute === LEAVE_ROUTE) return cleanRoute;
+        return `${normalizeStartLocation(startLocation, cleanRoute)}${ROUTE_LOCATION_SEPARATOR}${cleanRoute}`;
       }
 
       function dedupeRows(rows) {
@@ -392,13 +546,149 @@
         return digits;
       }
 
+      function openWhatsApp(phone, text, driverName) {
+        const whatsappNumber = toWhatsAppNumber(phone);
+        if (!whatsappNumber) {
+          alert(`WhatsApp number is not valid for ${driverName}.`);
+          return;
+        }
+        window.location.href = `https://api.whatsapp.com/send?phone=${whatsappNumber}&text=${encodeURIComponent(text)}`;
+      }
+
       function driverContactByName(driverName) {
         return readArray(DRIVERS_KEY).find((item) => item.name === driverName) || {};
       }
 
       function shiftMessage(row) {
-        const nightText = row.nightRun ? " plus Night Run" : "";
-        return `Hi ${row.driverName}, your Onpoint Express shift is ${row.shiftDate} from ${displayTime(row)} with truck ${displayTruck(row)} on route ${displayRoute(row)}${nightText}. Status: ${row.status}.`;
+        const truckLabel = displayTruck(row) === "-" ? "No truck assigned" : `Truck ${displayTruck(row)}`;
+        return [
+          `Hi ${row.driverName},`,
+          `Your Onpoint Express shift for ${row.shiftDate}:`,
+          [displayStartLocation(row), `${truckLabel}${row.nightRun ? " + Night Run" : ""}`, displayTime(row), `${row.status}.`].filter(Boolean).join(" | "),
+          "",
+          "Please confirm when received."
+        ].join("\n");
+      }
+
+      function weekKeysForRow(row) {
+        const selected = selectedWeekKey();
+        const selectedKeys = selected ? weekDates(selected).map(keyOf) : [];
+        if (selectedKeys.includes(row.shiftDate)) return selectedKeys;
+        const monday = mondayOf(row.shiftDate);
+        return monday ? weekDates(keyOf(monday)).map(keyOf) : [];
+      }
+
+      function summarizeWeekDay(entries) {
+        if (!entries.length) return "Off";
+        if (entries.some((entry) => entry.status === "Leave")) return "On Leave";
+        return entries.map((entry) => {
+          const dispatchLabel = displayTruck(entry) === "-" ? "Delivery run" : `Truck ${displayTruck(entry)} delivery run`;
+          return `${displayStartLocation(entry)} | ${dispatchLabel}${entry.nightRun ? " + Night Run" : ""}`.trim();
+        }).join(" | ");
+      }
+
+      function weeklyWhatsAppMessage(row) {
+        const keys = weekKeysForRow(row);
+        if (!keys.length) return shiftMessage(row);
+
+        const driverRows = dedupeRows(readRoster().filter((item) => item.driverName === row.driverName && keys.includes(item.shiftDate)));
+        const lines = keys.map((dateKey, index) => {
+          const entries = driverRows.filter((item) => item.shiftDate === dateKey);
+          return `${dayNames[index]}: ${summarizeWeekDay(entries)}`;
+        });
+
+        return [
+          `Hi ${row.driverName},`,
+          "Your Onpoint Express roster for this week:",
+          ...lines,
+          "",
+          "Please confirm when received."
+        ].join("\n");
+      }
+
+      async function copyText(text, successMessage) {
+        try {
+          await navigator.clipboard.writeText(text);
+          return successMessage || "Copied to clipboard.";
+        } catch {
+          const area = document.createElement("textarea");
+          area.value = text;
+          document.body.appendChild(area);
+          area.select();
+          document.execCommand("copy");
+          area.remove();
+          return successMessage || "Copied to clipboard.";
+        }
+      }
+
+      function setDispatchStatus(message, tone = "muted") {
+        const status = document.getElementById("rosterDispatchStatus");
+        if (!status) return;
+        status.textContent = message || "";
+        status.className = `data-status ${tone}`.trim();
+      }
+
+      function driverWeekMessageByName(driverName, weekKeys, mergedRows) {
+        const name = String(driverName || "").trim();
+        if (!name || !weekKeys.length) return "";
+        const driverRows = dedupeRows(mergedRows.filter((item) => item.driverName === name && weekKeys.includes(item.shiftDate)));
+        const lines = weekKeys.map((dateKey, index) => {
+          const entries = driverRows.filter((item) => item.shiftDate === dateKey);
+          return `${dayNames[index]}: ${summarizeWeekDay(entries)}`;
+        });
+        return [
+          `Hi ${name},`,
+          "Your Onpoint Express roster for this week:",
+          ...lines,
+          "",
+          "Please confirm when received."
+        ].join("\n");
+      }
+
+      function buildAllDriversWeekSummary(weekKey, weekKeys, mergedRows) {
+        const driverNames = [...new Set(activePairs().map((item) => item.name).concat(mergedRows.map((item) => item.driverName)).filter(Boolean))];
+        return [
+          `Onpoint Express Week View ${weekKey}`,
+          "",
+          driverNames.map((driverName) => driverWeekMessageByName(driverName, weekKeys, mergedRows)).join("\n\n--------------------\n\n")
+        ].join("\n");
+      }
+
+      function renderDispatchCards(weekKey, weekKeys, mergedRows) {
+        const container = document.getElementById("rosterWhatsAppDispatch");
+        if (!container) return;
+        const driverNames = [...new Set(activePairs().map((item) => item.name).concat(mergedRows.map((item) => item.driverName)).filter(Boolean))];
+        if (!driverNames.length) {
+          container.innerHTML = "";
+          setDispatchStatus("No drivers are available for this week yet.");
+          return;
+        }
+        const cards = driverNames.map((driverName) => {
+          const contact = driverContactByName(driverName);
+          const phone = cleanPhone(contact.phone);
+          const message = driverWeekMessageByName(driverName, weekKeys, mergedRows);
+          const workedDays = new Set(mergedRows.filter((row) => row.driverName === driverName && row.status !== "Leave").map((row) => row.shiftDate)).size;
+          const leaveDays = new Set(mergedRows.filter((row) => row.driverName === driverName && row.status === "Leave").map((row) => row.shiftDate)).size;
+          return `
+            <article class="note-card">
+              <p>Driver Dispatch</p>
+              <h3>${driverName}</h3>
+              <span>${phone ? `WhatsApp ready for ${phone}` : "Missing phone number on Drivers page."}</span>
+              <span>${workedDays} planned day${workedDays === 1 ? "" : "s"} | ${leaveDays} leave day${leaveDays === 1 ? "" : "s"}</span>
+              <div class="table-actions table-actions-stack">
+                <div class="contact-actions">
+                  <button type="button" class="contact-link contact-link-whatsapp" data-action="whatsapp-week-driver" data-driver-name="${driverName}" ${phone ? "" : "disabled"}>WhatsApp</button>
+                  <button type="button" class="contact-link contact-link-sms" data-action="copy-week-driver" data-driver-name="${driverName}">Copy Message</button>
+                </div>
+                <span class="muted">${message.split("\n").slice(0, 2).join(" ")}</span>
+              </div>
+            </article>
+          `;
+        }).join("");
+        container.innerHTML = cards;
+        const readyCount = driverNames.filter((driverName) => Boolean(cleanPhone(driverContactByName(driverName).phone))).length;
+        const missingCount = driverNames.length - readyCount;
+        setDispatchStatus(`${readyCount}/${driverNames.length} drivers have WhatsApp-ready phone numbers for week ${weekKey}.${missingCount ? ` ${missingCount} still need a phone number on the Drivers page.` : ""}`);
       }
 
       function renderContactButtons(row) {
@@ -407,9 +697,9 @@
         const phone = cleanPhone(contact.phone);
         return `
           <div class="contact-actions">
-            <button type="button" class="contact-link" data-action="email-shift" data-id="${row.id}" ${email ? "" : "disabled"}>Email</button>
-            <button type="button" class="contact-link" data-action="sms-shift" data-id="${row.id}" ${phone ? "" : "disabled"}>SMS</button>
-            <button type="button" class="contact-link" data-action="whatsapp-shift" data-id="${row.id}" ${phone ? "" : "disabled"}>WhatsApp</button>
+            <button type="button" class="contact-link contact-link-whatsapp" data-action="whatsapp-shift" data-id="${row.id}" ${phone ? "" : "disabled"}>WhatsApp</button>
+            <button type="button" class="contact-link contact-link-sms" data-action="sms-shift" data-id="${row.id}" ${phone ? "" : "disabled"}>SMS</button>
+            <button type="button" class="contact-link contact-link-email" data-action="email-shift" data-id="${row.id}" ${email ? "" : "disabled"}>Email</button>
           </div>
         `;
       }
@@ -441,12 +731,7 @@
         }
 
         if (action === "whatsapp-shift") {
-          const whatsappNumber = toWhatsAppNumber(phone);
-          if (!whatsappNumber) {
-            alert(`WhatsApp number is not valid for ${row.driverName}.`);
-            return;
-          }
-          window.open(`https://wa.me/${whatsappNumber}?text=${message}`, "_blank", "noopener,noreferrer");
+          openWhatsApp(phone, weeklyWhatsAppMessage(row), row.driverName);
         }
       }
 
@@ -473,6 +758,7 @@
               nightRun: false,
               shiftDate,
               shiftTime: DEFAULT_SHIFT_TIME,
+              startLocation: DEFAULT_START_LOCATION,
               route: DEFAULT_ROUTE,
               status: "Scheduled",
               isTemplate: true
@@ -495,22 +781,36 @@
         return row.route || (row.status === "Leave" ? LEAVE_ROUTE : DEFAULT_ROUTE);
       }
 
+      function displayStartLocation(row) {
+        if (row.status === "Leave") return "";
+        return normalizeStartLocation(row.startLocation, row.route);
+      }
+
       function scrollFormIntoView() {
         document.getElementById("rosterForm")?.scrollIntoView?.({ behavior: "smooth", block: "start" });
       }
 
       function loadTemplateIntoForm(row) {
         document.getElementById("rosterForm")?.reset();
-        document.getElementById("rosterId").value = "";
+        document.getElementById("rosterId").value = row.isTemplate ? "" : (row.id || "");
         document.getElementById("shiftDate").value = row.shiftDate || "";
         document.getElementById("driverName").value = row.driverName || "";
         document.getElementById("truckNumber").value = row.truckNumber || "";
         document.getElementById("rosterNightRun").checked = Boolean(row.nightRun);
         document.getElementById("shiftTime").value = row.shiftTime || DEFAULT_SHIFT_TIME;
+        document.getElementById("startLocation").value = row.startLocation || DEFAULT_START_LOCATION;
         document.getElementById("route").value = row.route || DEFAULT_ROUTE;
         document.getElementById("rosterStatus").value = row.status || "Scheduled";
         syncStatusFields();
         scrollFormIntoView();
+      }
+
+      function canEditRoster() {
+        try {
+          return Boolean(window.OPXAuth?.can?.("editRoster"));
+        } catch {
+          return true;
+        }
       }
 
       function hasTruckConflict(rows, truckNumber, shiftDate, excludeIds = []) {
@@ -587,14 +887,18 @@
         const status = document.getElementById("rosterStatus");
         const truck = document.getElementById("truckNumber");
         const time = document.getElementById("shiftTime");
+        const startLocation = document.getElementById("startLocation");
         const route = document.getElementById("route");
         const nightRun = document.getElementById("rosterNightRun");
-        if (!status || !truck || !time || !route || !nightRun) return;
+        if (!status || !truck || !time || !startLocation || !route || !nightRun) return;
 
         if (status.value === "Leave") {
           truck.required = false;
           truck.disabled = true;
           truck.value = "";
+          startLocation.required = false;
+          startLocation.disabled = true;
+          startLocation.value = "";
           nightRun.checked = false;
           nightRun.disabled = true;
           if (!time.value || time.value === DEFAULT_SHIFT_TIME) time.value = LEAVE_SHIFT_TIME;
@@ -604,6 +908,9 @@
 
         truck.disabled = false;
         truck.required = true;
+        startLocation.disabled = false;
+        startLocation.required = true;
+        if (!startLocation.value) startLocation.value = DEFAULT_START_LOCATION;
         nightRun.disabled = false;
         if (time.value === LEAVE_SHIFT_TIME) time.value = DEFAULT_SHIFT_TIME;
         if (route.value === LEAVE_ROUTE) route.value = DEFAULT_ROUTE;
@@ -620,7 +927,7 @@
           run_type: row.nightRun ? "Night Run +" : "",
           shift_date: row.shiftDate || null,
           shift_time: row.shiftTime || "",
-          route: row.route || "",
+          route: packRouteValue(row.route || "", row.startLocation || ""),
           status: row.status || "Scheduled"
         }));
         await client.from("roster").upsert(payload, { onConflict: "id" });
@@ -641,7 +948,7 @@
           plannedDays,
           nightRuns,
           leaveDays,
-          weekKeys.map((dateKey) => driverRows.filter((row) => row.shiftDate === dateKey).map((row) => `${row.id}:${row.status}:${row.truckNumber}:${row.nightRun ? 1 : 0}:${row.isTemplate ? 1 : 0}`).join("|")).join("~")
+          weekKeys.map((dateKey) => driverRows.filter((row) => row.shiftDate === dateKey).map((row) => `${row.id}:${row.status}:${row.truckNumber}:${row.startLocation || ""}:${row.route || ""}:${row.nightRun ? 1 : 0}:${row.isTemplate ? 1 : 0}`).join("|")).join("~")
         ].join("::");
 
         const cells = weekKeys.map((dateKey, index) => {
@@ -655,6 +962,7 @@
               data-board-truck="${row.truckNumber || ""}"
               data-board-status="${row.status}"
               data-board-shift-time="${row.shiftTime || ""}"
+              data-board-start-location="${row.startLocation || ""}"
               data-board-route="${row.route || ""}"
               data-board-night-run="${row.nightRun ? "true" : "false"}"
               data-template="${row.isTemplate ? "true" : "false"}"
@@ -733,7 +1041,7 @@
             .filter((row) => !statusFilter || row.status === statusFilter)
             .filter((row) => {
               if (!query) return true;
-              const hay = `${row.driverName} ${displayTruck(row)} ${displayTime(row)} ${displayRoute(row)} ${row.status}`.toLowerCase();
+              const hay = `${row.driverName} ${displayTruck(row)} ${displayTime(row)} ${displayStartLocation(row)} ${displayRoute(row)} ${row.status}`.toLowerCase();
               return hay.includes(query);
             })
             .sort((a, b) => String(a.driverName || "").localeCompare(String(b.driverName || "")));
@@ -751,7 +1059,7 @@
               <td>${displayTime(row)}</td>
               <td>${displayRoute(row)}</td>
               <td>${row.status}</td>
-              <td>${row.isTemplate ? '<span class="muted">Week template</span>' : `${renderContactButtons(row)}<span class="muted">${row.status === "Leave" ? "Leave saved" : "Saved shift"}</span>`}</td>
+              <td>${row.isTemplate ? '<span class="muted">Week template</span>' : `${renderContactButtons(row)}${canEditRoster() ? `<div class="table-actions"><button type="button" data-action="edit-shift" data-id="${row.id}">Edit</button><button type="button" data-action="delete-shift" data-id="${row.id}">Delete</button></div>` : ""}<span class="muted">${row.status === "Leave" ? "Leave saved" : "Saved shift"}</span>`}</td>
             </tr>
           `).join("");
         }).join("");
@@ -765,6 +1073,7 @@
             <article class="note-card"><p>Leave</p><h3>Auto highlighted</h3><span>Set Status to Leave and the week view will show that driver away instead of the normal template.</span></article>
           `);
         }
+        renderDispatchCards(keyOf(monday), weekKeys, mergedRows);
         if (saveTemplateBtn) {
           const nextLabel = templateCount ? `Save Week Template (${templateCount})` : "Week Template Saved";
           if (saveTemplateBtn.textContent !== nextLabel) saveTemplateBtn.textContent = nextLabel;
@@ -789,6 +1098,7 @@
                 data-board-truck="${row.truckNumber || ""}"
                 data-board-status="${row.status}"
                 data-board-shift-time="${row.shiftTime || ""}"
+                data-board-start-location="${row.startLocation || ""}"
                 data-board-route="${row.route || ""}"
                 data-board-night-run="${row.nightRun ? "true" : "false"}"
                 data-template="${row.isTemplate ? "true" : "false"}"
@@ -830,7 +1140,7 @@
             .filter((row) => !statusFilter || row.status === statusFilter)
             .filter((row) => {
               if (!query) return true;
-              const hay = `${row.driverName} ${displayTruck(row)} ${displayTime(row)} ${displayRoute(row)} ${row.status}`.toLowerCase();
+              const hay = `${row.driverName} ${displayTruck(row)} ${displayTime(row)} ${displayStartLocation(row)} ${displayRoute(row)} ${row.status}`.toLowerCase();
               return hay.includes(query);
             })
             .sort((a, b) => String(a.driverName || "").localeCompare(String(b.driverName || "")));
@@ -849,7 +1159,7 @@
               <td>${displayTime(row)}</td>
               <td>${displayRoute(row)}</td>
               <td>${row.status}</td>
-              <td>${row.isTemplate ? '<span class="muted">Week template</span>' : `${renderContactButtons(row)}<span class="muted">${row.status === "Leave" ? "Leave saved" : "Saved shift"}</span>`}</td>
+              <td>${row.isTemplate ? '<span class="muted">Week template</span>' : `${renderContactButtons(row)}${canEditRoster() ? `<div class="table-actions"><button type="button" data-action="edit-shift" data-id="${row.id}">Edit</button><button type="button" data-action="delete-shift" data-id="${row.id}">Delete</button></div>` : ""}<span class="muted">${row.status === "Leave" ? "Leave saved" : "Saved shift"}</span>`}</td>
             </tr>
           `).join("");
         }).join("");
@@ -896,6 +1206,19 @@
             document.getElementById("weekStart").value = keyOf(monday);
             renderFallback();
           });
+          document.getElementById("openWhatsAppWeekDispatch")?.addEventListener("click", () => {
+            renderFallback();
+            document.getElementById("rosterWhatsAppDispatch")?.scrollIntoView?.({ behavior: "smooth", block: "start" });
+          });
+          document.getElementById("copyWeekViewSummary")?.addEventListener("click", async () => {
+            const monday = mondayOf(document.getElementById("weekStart")?.value || "");
+            const weekKeys = weekKeysFrom(monday);
+            const weekSet = new Set(weekKeys);
+            const actualRows = readRoster().filter((row) => weekSet.has(row.shiftDate));
+            const mergedRows = buildWeekRows(weekKeys, actualRows);
+            const status = await copyText(buildAllDriversWeekSummary(keyOf(monday), weekKeys, mergedRows), "Full week view copied. You can paste it into WhatsApp or any message.");
+            setDispatchStatus(status);
+          });
           document.getElementById("saveWeekTemplate")?.addEventListener("click", async () => {
             const weekStart = document.getElementById("weekStart");
             const monday = mondayOf(weekStart?.value || "");
@@ -925,6 +1248,7 @@
               nightRun: Boolean(document.getElementById("rosterNightRun")?.checked),
               shiftDate: String(document.getElementById("shiftDate")?.value || "").trim(),
               shiftTime: String(document.getElementById("shiftTime")?.value || "").trim(),
+              startLocation: String(document.getElementById("startLocation")?.value || "").trim(),
               route: String(document.getElementById("route")?.value || "").trim(),
               status: String(document.getElementById("rosterStatus")?.value || "Scheduled")
             });
@@ -932,8 +1256,8 @@
               alert("Choose a driver and date first.");
               return;
             }
-            if (payload.status !== "Leave" && (!payload.truckNumber || !payload.shiftTime || !payload.route)) {
-              alert("Driver, truck, time, and route are required for a real shift.");
+            if (payload.status !== "Leave" && (!payload.truckNumber || !payload.shiftTime || !payload.startLocation || !payload.route)) {
+              alert("Driver, truck, time, depot, and route are required for a real shift.");
               return;
             }
 
@@ -982,11 +1306,12 @@
                 id: boardChip.dataset.boardId || "",
                 driverName: boardChip.dataset.boardDriver || "",
                 shiftDate: boardChip.dataset.boardDate || "",
-                truckNumber: boardChip.dataset.boardTruck || "",
-                status: boardChip.dataset.boardStatus || "Scheduled",
-                shiftTime: boardChip.dataset.boardShiftTime || "",
-                route: boardChip.dataset.boardRoute || "",
-                nightRun: boardChip.dataset.boardNightRun === "true",
+              truckNumber: boardChip.dataset.boardTruck || "",
+              status: boardChip.dataset.boardStatus || "Scheduled",
+              shiftTime: boardChip.dataset.boardShiftTime || "",
+              startLocation: boardChip.dataset.boardStartLocation || "",
+              route: boardChip.dataset.boardRoute || "",
+              nightRun: boardChip.dataset.boardNightRun === "true",
                 isTemplate: boardChip.dataset.template === "true"
               };
               if (boardItem.isTemplate) {
@@ -1002,8 +1327,43 @@
             const action = button.dataset.action;
             if (!action) return;
             const row = readRoster().find((item) => item.id === button.dataset.id);
+            if (action === "email-shift" || action === "sms-shift" || action === "whatsapp-shift") {
+              if (!row) return;
+              openShiftContact(action, row);
+              return;
+            }
+            if (action === "whatsapp-week-driver" || action === "copy-week-driver") {
+              const driverName = button.dataset.driverName || "";
+              const monday = mondayOf(document.getElementById("weekStart")?.value || "");
+              const weekKeys = weekKeysFrom(monday);
+              const weekSet = new Set(weekKeys);
+              const actualRows = readRoster().filter((item) => weekSet.has(item.shiftDate));
+              const mergedRows = buildWeekRows(weekKeys, actualRows);
+              const message = driverWeekMessageByName(driverName, weekKeys, mergedRows);
+              const contact = driverContactByName(driverName);
+              if (action === "copy-week-driver") {
+                copyText(message, `Copied ${driverName}'s week view.`).then((status) => setDispatchStatus(status));
+                return;
+              }
+              if (!cleanPhone(contact.phone)) {
+                setDispatchStatus(`${driverName} does not have a saved phone number on the Drivers page.`, "error-text");
+                return;
+              }
+              openWhatsApp(contact.phone, message, driverName);
+              return;
+            }
             if (!row) return;
-            openShiftContact(action, row);
+            if (!canEditRoster()) return;
+            if (action === "edit-shift") {
+              loadTemplateIntoForm({ ...row, isTemplate: false });
+              return;
+            }
+            if (action === "delete-shift") {
+              if (!window.confirm(`Delete shift for ${row.driverName} on ${row.shiftDate}?`)) return;
+              const nextRows = readRoster().filter((item) => item.id !== row.id);
+              writeRoster(nextRows);
+              syncSupabaseRoster(nextRows).finally(renderFallback);
+            }
           });
           document.body.addEventListener("dragstart", (event) => {
             const chip = event.target.closest(".board-chip[data-board-id]");

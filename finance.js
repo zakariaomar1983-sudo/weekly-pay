@@ -12,12 +12,19 @@ const KEYS = {
   expense: "transport_crm_spending",
   pay: "transport_crm_payslips"
 };
+const FINANCE_SYNC_STATUS_KEY = "transport_crm_finance_sync_status";
+const FINANCE_SYNC_RETRY_DELAYS_MS = [2000, 5000, 10000, 30000];
 const DRIVERS_KEY = "transport_crm_drivers";
 const ROSTER_KEY = "transport_crm_roster";
 const TABLE_BY_KEY = {
   [KEYS.income]: "truck_income",
   [KEYS.expense]: "truck_expense",
   [KEYS.pay]: "payslips"
+};
+const FINANCE_SOURCE_BY_KEY = {
+  [KEYS.income]: "Truck Income",
+  [KEYS.expense]: "Truck Expense",
+  [KEYS.pay]: "Driver Pay"
 };
 
 function applyFinanceResetFromUrl() {
@@ -39,6 +46,117 @@ const state = {
   payslipEmailConfigured: false
 };
 const sendingPayEmails = new Set();
+const financeSyncTimers = new Map();
+const financeRetryTimers = new Map();
+const financeRetryAttempts = new Map();
+const financeSyncInFlight = new Set();
+const financeSyncQueued = new Map();
+let financeSearchTimerId = 0;
+
+function formatFinanceSyncTime(value = Date.now()) {
+  return new Date(value).toLocaleTimeString("en-AU", { hour: "numeric", minute: "2-digit" });
+}
+
+function formatFinanceRetryDelay(ms) {
+  if (ms >= 60000) return `${Math.round(ms / 60000)}m`;
+  return `${Math.round(ms / 1000)}s`;
+}
+
+function readFinanceSyncStatus() {
+  try {
+    const parsed = JSON.parse(localStorage.getItem(FINANCE_SYNC_STATUS_KEY) || "null");
+    return parsed && typeof parsed === "object" ? parsed : null;
+  } catch {
+    return null;
+  }
+}
+
+function financeSourceForKey(key) {
+  return FINANCE_SOURCE_BY_KEY[key] || "Finance";
+}
+
+function setFinanceSyncStatus(message, tone = "neutral", { at = Date.now(), persist = true, source = "Finance" } = {}) {
+  const status = document.getElementById("financeSyncStatus");
+  if (!status) return;
+  status.textContent = `${message} Last updated ${formatFinanceSyncTime(at)}.`;
+  status.className = `sync-badge sync-badge-${tone}`;
+  if (persist) {
+    localStorage.setItem(FINANCE_SYNC_STATUS_KEY, JSON.stringify({ message, tone, at }));
+  }
+  window.dispatchEvent(new CustomEvent("opx:sync-health-change", { detail: { source, message, tone, at } }));
+  updateFinanceQueueBanner();
+}
+
+function restoreFinanceSyncStatus() {
+  const saved = readFinanceSyncStatus();
+  if (!saved?.message) return false;
+  setFinanceSyncStatus(saved.message, saved.tone || "neutral", { at: saved.at || Date.now(), persist: false });
+  return true;
+}
+
+function setFinanceQueueBanner(message = "", tone = "pending", visible = false) {
+  const banner = document.getElementById("financeQueueBanner");
+  if (!banner) return;
+  banner.hidden = !visible;
+  if (!visible) {
+    banner.textContent = "";
+    banner.className = "queue-banner queue-banner-pending";
+    return;
+  }
+  banner.textContent = message;
+  banner.className = `queue-banner queue-banner-${tone}`;
+}
+
+function financePendingQueueCount() {
+  return Object.values(KEYS).filter((key) =>
+    financeRetryAttempts.has(key) || financeRetryTimers.has(key) || financeSyncQueued.has(key)
+  ).length;
+}
+
+function updateFinanceQueueBanner() {
+  if (!isSupabaseReady()) {
+    setFinanceQueueBanner("", "pending", false);
+    return;
+  }
+  if (navigator.onLine === false) {
+    setFinanceQueueBanner("Offline mode: finance changes are saving on this device and will sync automatically when internet returns.", "offline", true);
+    return;
+  }
+  const pendingCount = financePendingQueueCount();
+  if (pendingCount) {
+    const label = pendingCount === 1 ? "1 finance data set is queued" : `${pendingCount} finance data sets are queued`;
+    setFinanceQueueBanner(`Sync queue active: ${label} and retrying automatically in the background.`, "pending", true);
+    return;
+  }
+  setFinanceQueueBanner("", "pending", false);
+}
+
+function clearFinanceSyncRetry(key, resetAttempt = true) {
+  const timerId = financeRetryTimers.get(key);
+  if (timerId) window.clearTimeout(timerId);
+  financeRetryTimers.delete(key);
+  if (resetAttempt) financeRetryAttempts.delete(key);
+}
+
+function queueFinanceSyncRetry(key, errorMessage = "") {
+  if (!isSupabaseReady()) return;
+  clearFinanceSyncRetry(key, false);
+  const currentAttempt = financeRetryAttempts.get(key) || 0;
+  const delay = FINANCE_SYNC_RETRY_DELAYS_MS[Math.min(currentAttempt, FINANCE_SYNC_RETRY_DELAYS_MS.length - 1)];
+  financeRetryAttempts.set(key, currentAttempt + 1);
+  const source = financeSourceForKey(key);
+  const waitingForInternet = navigator.onLine === false;
+  const retryMessage = waitingForInternet
+    ? `${source} saved here. Waiting for internet to retry shared sync.`
+    : `${source} saved here. Retrying shared sync in ${formatFinanceRetryDelay(delay)}.`;
+  const details = errorMessage ? ` ${errorMessage}` : "";
+  setFinanceSyncStatus(`${retryMessage}${details}`, "error", { source });
+  const timerId = window.setTimeout(() => {
+    financeRetryTimers.delete(key);
+    scheduleFinanceSync(key, readData(key), 0);
+  }, waitingForInternet ? Math.max(delay, 5000) : delay);
+  financeRetryTimers.set(key, timerId);
+}
 
 const money = (value) => `$${Number(value || 0).toFixed(2)}`;
 const NIGHT_DROP_DEFAULT_RATE = 90;
@@ -71,9 +189,38 @@ function readDriversData() {
 
 function saveData(key, data) {
   localStorage.setItem(key, JSON.stringify(data));
+  const source = financeSourceForKey(key);
   if (isSupabaseReady()) {
-    void syncRowsToSupabase(key, data);
+    clearFinanceSyncRetry(key, false);
+    setFinanceSyncStatus(`Syncing ${source.toLowerCase()} changes...`, "syncing", { source });
+    scheduleFinanceSync(key, data);
+  } else {
+    setFinanceSyncStatus(`${source} saved on this device only.`, "local", { source });
   }
+}
+
+function scheduleFinanceSync(key, data, delay = 300) {
+  if (!isSupabaseReady()) return;
+  const existingTimer = financeSyncTimers.get(key);
+  if (existingTimer) window.clearTimeout(existingTimer);
+  clearFinanceSyncRetry(key, false);
+  const timerId = window.setTimeout(() => {
+    financeSyncTimers.delete(key);
+    if (financeSyncInFlight.has(key)) {
+      financeSyncQueued.set(key, data);
+      return;
+    }
+    void syncRowsToSupabase(key, data);
+  }, delay);
+  financeSyncTimers.set(key, timerId);
+}
+
+function scheduleFinanceRefresh() {
+  window.clearTimeout(financeSearchTimerId);
+  financeSearchTimerId = window.setTimeout(() => {
+    financeSearchTimerId = 0;
+    refresh();
+  }, 120);
 }
 
 function uid() {
@@ -206,36 +353,61 @@ function isSupabaseReady() {
 }
 
 async function syncRowsToSupabase(key, rows) {
-  if (!isSupabaseReady()) return;
+  if (!isSupabaseReady() || financeSyncInFlight.has(key)) return false;
   const table = TABLE_BY_KEY[key];
   if (!table) return;
   const supabase = getSupabaseClient();
   if (!supabase) return;
+  const source = financeSourceForKey(key);
+  financeSyncInFlight.add(key);
   const payload = toDbRows(key, rows);
-  const { error } = await supabase.from(table).upsert(payload, { onConflict: "id" });
-  if (error) {
-    console.error(`Supabase sync failed for ${table}:`, error.message);
-    return;
-  }
+  try {
+    if (!payload.length) {
+      const wipe = await supabase.from(table).delete().not("id", "is", null);
+      if (wipe.error) {
+        console.error(`Supabase delete sync failed for ${table}:`, wipe.error.message);
+        queueFinanceSyncRetry(key, wipe.error.message);
+        return false;
+      }
+      clearFinanceSyncRetry(key);
+      setFinanceSyncStatus(`${source} changes saved and synced.`, "live", { source });
+      return true;
+    }
 
-  const ids = payload.map((r) => r.id);
-  if (!ids.length) {
-    const wipe = await supabase.from(table).delete().not("id", "is", null);
-    if (wipe.error) console.error(`Supabase delete sync failed for ${table}:`, wipe.error.message);
-    return;
-  }
+    const { error } = await supabase.from(table).upsert(payload, { onConflict: "id" });
+    if (error) {
+      console.error(`Supabase sync failed for ${table}:`, error.message);
+      queueFinanceSyncRetry(key, error.message);
+      return false;
+    }
 
-  const inList = `(${ids.map((id) => `"${String(id).replaceAll('"', "")}"`).join(",")})`;
-  const cleanup = await supabase.from(table).delete().not("id", "in", inList);
-  if (cleanup.error) {
-    console.error(`Supabase cleanup failed for ${table}:`, cleanup.error.message);
+    const ids = payload.map((r) => r.id);
+    const inList = `(${ids.map((id) => `"${String(id).replaceAll('"', "")}"`).join(",")})`;
+    const cleanup = await supabase.from(table).delete().not("id", "in", inList);
+    if (cleanup.error) {
+      console.error(`Supabase cleanup failed for ${table}:`, cleanup.error.message);
+      queueFinanceSyncRetry(key, cleanup.error.message);
+      return false;
+    }
+    clearFinanceSyncRetry(key);
+    setFinanceSyncStatus(`${source} changes saved and synced.`, "live", { source });
+    return true;
+  } finally {
+    financeSyncInFlight.delete(key);
+    if (financeSyncQueued.has(key)) {
+      const nextRows = financeSyncQueued.get(key);
+      financeSyncQueued.delete(key);
+      scheduleFinanceSync(key, nextRows, 0);
+    }
   }
 }
 
 async function hydrateFinanceFromSupabase() {
   if (!isSupabaseReady()) return;
+  setFinanceSyncStatus("Checking shared finance data...", "syncing");
   const supabase = getSupabaseClient();
   if (!supabase) return;
+  let hadLoadError = false;
 
   const [incomeRes, expenseRes, payRes] = await Promise.all([
     supabase.from(TABLE_BY_KEY[KEYS.income]).select("*"),
@@ -253,6 +425,8 @@ async function hydrateFinanceFromSupabase() {
     }
   } else if (incomeRes.error) {
     console.error("Supabase load failed for truck_income:", incomeRes.error.message);
+    hadLoadError = true;
+    setFinanceSyncStatus("Shared finance sync unavailable. Using this device's saved data.", "local");
   }
 
   if (!expenseRes.error && Array.isArray(expenseRes.data)) {
@@ -265,6 +439,8 @@ async function hydrateFinanceFromSupabase() {
     }
   } else if (expenseRes.error) {
     console.error("Supabase load failed for truck_expense:", expenseRes.error.message);
+    hadLoadError = true;
+    setFinanceSyncStatus("Shared finance sync unavailable. Using this device's saved data.", "local");
   }
 
   if (!payRes.error && Array.isArray(payRes.data)) {
@@ -277,8 +453,13 @@ async function hydrateFinanceFromSupabase() {
     }
   } else if (payRes.error) {
     console.error("Supabase load failed for payslips:", payRes.error.message);
+    hadLoadError = true;
+    setFinanceSyncStatus("Shared finance sync unavailable. Using this device's saved data.", "local");
   }
 
+  if (!hadLoadError) {
+    setFinanceSyncStatus("Shared finance data loaded.", "live");
+  }
   refresh();
 }
 
@@ -1011,6 +1192,10 @@ function weekKey(dateString) {
   return formatDateKey(start);
 }
 
+function incomeBatchDate(dateString) {
+  return weekKey(dateString);
+}
+
 function weekLabel(key) {
   const start = new Date(key);
   const end = new Date(start);
@@ -1454,26 +1639,43 @@ function drawIncome() {
   panel.style.display = "block";
   const tbody = document.getElementById("incomeTableBody");
   const query = (document.getElementById("incomeSearch")?.value || "").trim().toLowerCase();
-  const latestIncomeDate = state.income.reduce((latest, item) => {
-    const current = String(item.incomeDate || "");
+  const currentIncomeBatchDate = incomeBatchDate(formatDateKey(new Date()));
+  const latestIncomeBatchDate = state.income.reduce((latest, item) => {
+    const current = incomeBatchDate(item.incomeDate);
     if (!current) return latest;
     return !latest || current > latest ? current : latest;
   }, "");
+  const defaultIncomeBatchDate = state.income.some((item) => incomeBatchDate(item.incomeDate) === currentIncomeBatchDate)
+    ? currentIncomeBatchDate
+    : latestIncomeBatchDate;
   const filtered = state.income.filter((item) => {
-    if (!query) return !latestIncomeDate || item.incomeDate === latestIncomeDate;
+    if (!query) return !defaultIncomeBatchDate || incomeBatchDate(item.incomeDate) === defaultIncomeBatchDate;
     const hay = `${item.incomeDate} ${item.truckNumber} ${item.jobRef} ${item.client} ${item.status} ${item.notes || ""}`.toLowerCase();
     return hay.includes(query);
   });
 
   if (!filtered.length) {
-    tbody.innerHTML = `<tr><td colspan='7' class='empty'>${query ? "No income records match your search." : "No recent income records yet. Use search to find older income history."}</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan='7' class='empty'>${query ? "No income records match your search." : "No truck income records for the current Thursday batch. Use search to find older income history."}</td></tr>`;
     return;
   }
 
   tbody.innerHTML = filtered
-    .sort((a, b) => a.incomeDate < b.incomeDate ? 1 : -1)
+    .sort((a, b) => {
+      if (a.incomeDate !== b.incomeDate) return a.incomeDate < b.incomeDate ? 1 : -1;
+      return String(a.truckNumber || "").localeCompare(String(b.truckNumber || ""));
+    })
     .map((item) => `<tr><td>${item.incomeDate}</td><td>${item.truckNumber}</td><td>${item.jobRef}</td><td>${item.client}</td><td>${money(item.amount)}</td><td>${item.status}</td><td>${auth.can("editTruckIncome") ? `<div class='table-actions'><button data-action='edit-income' data-id='${item.id}'>Edit</button><button data-action='delete-income' data-id='${item.id}'>Delete</button></div>` : "<span class='muted'>View only</span>"}</td></tr>`)
     .join("");
+}
+
+function syncIncomeDateToFinanceWeek() {
+  const incomeIdInput = document.getElementById("incomeId");
+  const incomeDateInput = document.getElementById("incomeDate");
+  if (!incomeIdInput || !incomeDateInput) return;
+  if (incomeIdInput.value) return;
+  const currentBatchDate = incomeBatchDate(formatDateKey(new Date()));
+  if (!currentBatchDate) return;
+  incomeDateInput.value = currentBatchDate;
 }
 
 function drawExpense() {
@@ -1545,6 +1747,10 @@ function refresh() {
 function applyAccess() {
   document.getElementById("currentUserChip").textContent = `User: ${auth.user.username}`;
   if (!auth.can("accessControlPanel")) document.getElementById("controlPanelLink").style.display = "none";
+  if (!auth.can("viewReports")) {
+    const reportsLink = document.getElementById("reportsLink");
+    if (reportsLink) reportsLink.style.display = "none";
+  }
   if (!auth.can("accessLogs")) document.querySelector("a[href='./log.html']").style.display = "none";
   if (!auth.can("viewRoster")) {
     const rosterLink = document.getElementById("rosterLink");
@@ -1580,9 +1786,10 @@ document.getElementById("incomeForm").addEventListener("submit", (e) => {
   if (!auth.can("editTruckIncome")) return;
 
   const id = document.getElementById("incomeId").value;
+  const incomeDateValue = document.getElementById("incomeDate").value;
   const payload = {
     id: id || uid(),
-    incomeDate: document.getElementById("incomeDate").value,
+    incomeDate: incomeBatchDate(incomeDateValue) || incomeDateValue,
     truckNumber: document.getElementById("incomeTruckNumber").value.trim(),
     jobRef: document.getElementById("incomeJobRef").value.trim(),
     client: document.getElementById("incomeClient").value.trim(),
@@ -1653,6 +1860,7 @@ document.getElementById("payForm").addEventListener("submit", (e) => {
 document.getElementById("cancelIncomeEdit").addEventListener("click", () => {
   document.getElementById("incomeForm").reset();
   document.getElementById("incomeId").value = "";
+  syncIncomeDateToFinanceWeek();
 });
 
 document.getElementById("cancelExpenseEdit").addEventListener("click", () => {
@@ -1688,9 +1896,12 @@ document.getElementById("generatePayFromRoster").addEventListener("click", () =>
 });
 document.getElementById("payRosterWeekStart").addEventListener("change", syncPayDateToRosterWeek);
 
-document.getElementById("incomeSearch").addEventListener("input", refresh);
-document.getElementById("expenseSearch").addEventListener("input", refresh);
-document.getElementById("paySearch").addEventListener("input", refresh);
+document.getElementById("incomeSearch").addEventListener("input", scheduleFinanceRefresh);
+document.getElementById("incomeSearch").addEventListener("search", scheduleFinanceRefresh);
+document.getElementById("expenseSearch").addEventListener("input", scheduleFinanceRefresh);
+document.getElementById("expenseSearch").addEventListener("search", scheduleFinanceRefresh);
+document.getElementById("paySearch").addEventListener("input", scheduleFinanceRefresh);
+document.getElementById("paySearch").addEventListener("search", scheduleFinanceRefresh);
 document.getElementById("clearIncomeFilters").addEventListener("click", () => {
   document.getElementById("incomeSearch").value = "";
   refresh();
@@ -1804,12 +2015,16 @@ const initialPayWeekKey = latestRosterWeekKey(readRosterRows(), false) || monday
 if (initialPayWeekKey) {
   document.getElementById("payRosterWeekStart").value = initialPayWeekKey;
 }
+syncIncomeDateToFinanceWeek();
 syncPayDateToRosterWeek();
 document.getElementById("payTruckNumber").addEventListener("change", applyConfiguredRatesIfMatch);
 document.getElementById("payTruckNumber").addEventListener("blur", applyConfiguredRatesIfMatch);
 document.getElementById("nightRunDrops").addEventListener("input", updateNightRunPayPreview);
 document.getElementById("nightRunDrops").addEventListener("change", updateNightRunPayPreview);
 refresh();
+if (!restoreFinanceSyncStatus()) {
+  setFinanceSyncStatus(isSupabaseReady() ? "Shared finance sync ready." : "Local-only mode on this device.", isSupabaseReady() ? "neutral" : "local", { persist: false });
+}
 void hydrateFinanceFromSupabase();
 void hydratePayslipEmailStatus();
 
@@ -1823,3 +2038,38 @@ if (!isSupabaseReady()) {
     }
   }, 1500);
 }
+
+window.addEventListener("storage", (event) => {
+  if (!event.key) return;
+  if (event.key === KEYS.income) state.income = readData(KEYS.income);
+  if (event.key === KEYS.expense) state.expense = readData(KEYS.expense);
+  if (event.key === KEYS.pay) state.pay = readData(KEYS.pay);
+  if (event.key === DRIVERS_KEY || event.key === ROSTER_KEY || event.key === KEYS.income || event.key === KEYS.expense || event.key === KEYS.pay) {
+    const source = financeSourceForKey(event.key);
+    const message = FINANCE_SOURCE_BY_KEY[event.key]
+      ? `${source} updated in another tab.`
+      : "Finance data updated in another tab.";
+    setFinanceSyncStatus(message, "neutral", { source: FINANCE_SOURCE_BY_KEY[event.key] ? source : "Finance" });
+    refresh();
+  }
+});
+
+window.addEventListener("offline", updateFinanceQueueBanner);
+
+window.addEventListener("online", () => {
+  if (!isSupabaseReady()) return;
+  const retryKeys = Object.values(KEYS).filter((key) => financeRetryAttempts.has(key) || financeRetryTimers.has(key));
+  if (retryKeys.length) {
+    const source = retryKeys.length === 1 ? financeSourceForKey(retryKeys[0]) : "Finance";
+    const message = retryKeys.length === 1
+      ? `Back online. Retrying shared ${source.toLowerCase()} sync...`
+      : "Back online. Retrying shared finance sync...";
+    setFinanceSyncStatus(message, "syncing", { source });
+    retryKeys.forEach((key) => {
+      clearFinanceSyncRetry(key, false);
+      scheduleFinanceSync(key, readData(key), 0);
+    });
+    return;
+  }
+  updateFinanceQueueBanner();
+});

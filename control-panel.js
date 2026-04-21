@@ -16,6 +16,15 @@ function byId(id) {
   return document.getElementById(id);
 }
 
+function escapeHtml(value) {
+  return String(value || "")
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#39;");
+}
+
 function showControlPanelError(error) {
   const message = error?.message || String(error || "Unknown error");
   const status = byId("sharedAuthStatus");
@@ -31,6 +40,14 @@ function showControlPanelError(error) {
   console.error("Control Panel error:", error);
 }
 
+function isAdminRoleId(roleId) {
+  return String(roleId || "") === String(window.OPXAuth?.SYSTEM_ROLE_IDS?.admin || "role_admin");
+}
+
+function isProtectedOwnerUser(user) {
+  return Boolean(window.OPXAuth?.isProtectedOwnerUser?.(user));
+}
+
 function hideElement(id) {
   const element = byId(id);
   if (element) element.style.display = "none";
@@ -41,6 +58,11 @@ const ROLE_PERMISSION_GROUPS = [
     title: "Main Pages",
     help: "These control which pages appear after login.",
     keys: ["accessCRM", "accessLogs", "accessControlPanel"]
+  },
+  {
+    title: "Reports",
+    help: "Control who can open reports and who can email prepared report packs.",
+    keys: ["viewReports", "emailReports"]
   },
   {
     title: "Drivers",
@@ -80,11 +102,15 @@ const ROLE_PRESETS = {
   },
   finance: {
     name: "Finance Officer",
-    keys: ["accessCRM", "viewTruckIncome", "editTruckIncome", "viewSpending", "editSpending", "viewPayslips", "editPayslips", "viewStats"]
+    keys: ["accessCRM", "viewReports", "viewTruckIncome", "editTruckIncome", "viewSpending", "editSpending", "viewPayslips", "editPayslips", "viewStats"]
+  },
+  managementReports: {
+    name: "Management Reports",
+    keys: ["accessCRM", "accessLogs", "viewReports", "emailReports", "viewDrivers", "viewTrucks", "viewRoster", "viewTruckIncome", "viewSpending", "viewPayslips", "viewStats"]
   },
   readonly: {
     name: "Read Only",
-    keys: ["accessCRM", "viewDrivers", "viewTrucks", "viewRoster", "viewTruckIncome", "viewSpending", "viewPayslips", "viewStats"]
+    keys: ["accessCRM", "viewReports", "viewDrivers", "viewTrucks", "viewRoster", "viewTruckIncome", "viewSpending", "viewPayslips", "viewStats"]
   }
 };
 
@@ -123,7 +149,7 @@ function enforceSystemRolesAndUsers() {
   const adminPerms = allPerms(true);
   const managerPerms = allPerms(false);
   [
-    "accessCRM", "accessLogs", "accessControlPanel", "viewDrivers", "editDrivers",
+    "accessCRM", "accessLogs", "accessControlPanel", "viewReports", "emailReports", "viewDrivers", "editDrivers",
     "viewTrucks", "editTrucks", "viewTruckIncome", "editTruckIncome", "viewContracts",
     "editContracts", "viewSpending", "editSpending", "viewRoster", "editRoster",
     "viewPayslips", "editPayslips", "viewStats", "editLogs", "backupRestore"
@@ -131,18 +157,16 @@ function enforceSystemRolesAndUsers() {
 
   const viewerPerms = allPerms(false);
   [
-    "accessCRM", "accessLogs", "viewDrivers", "viewTrucks", "viewTruckIncome",
+    "accessCRM", "accessLogs", "viewReports", "emailReports", "viewDrivers", "viewTrucks", "viewTruckIncome",
     "viewContracts", "viewSpending", "viewRoster", "viewPayslips", "viewStats"
   ].forEach((k) => { viewerPerms[k] = true; });
 
   const required = [
-    { id: ids.admin, name: "Admin", system: true, permissions: adminPerms },
-    { id: ids.manager, name: "Ops Manager", system: true, permissions: managerPerms },
-    { id: ids.viewer, name: "GM", system: true, permissions: viewerPerms }
+    { id: ids.admin, name: "Admin", system: true, permissions: adminPerms }
   ];
 
   const custom = Array.isArray(roles)
-    ? roles.filter((r) => r && ![ids.admin, ids.manager, ids.viewer].includes(r.id))
+    ? roles.filter((r) => r && r.id !== ids.admin)
     : [];
   const nextRoles = [...required, ...custom];
   write(storage.roles, nextRoles);
@@ -180,10 +204,14 @@ byId("logoutBtn")?.addEventListener("click", () => {
 
 if (!auth.can("accessCRM")) {
   hideElement("openHomeBtn");
+  hideElement("openReportsBtn");
   hideElement("openDriversBtn");
   hideElement("openTrucksBtn");
   hideElement("openRosterBtn");
   hideElement("openFinanceBtn");
+}
+if (!auth.can("viewReports")) {
+  hideElement("openReportsBtn");
 }
 if (!auth.can("viewDrivers")) {
   hideElement("openDriversBtn");
@@ -203,6 +231,47 @@ if (!auth.can("accessLogs")) {
 
 function boolBadge(isTrue) {
   return isTrue ? "Active" : "Inactive";
+}
+
+function readAuditEntries() {
+  const entries = window.OPXAuth?.getAuditEntries?.();
+  return Array.isArray(entries) ? entries : [];
+}
+
+function formatAuditWhen(value) {
+  if (!value) return "-";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return value;
+  return date.toLocaleString("en-AU", {
+    year: "numeric",
+    month: "short",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit"
+  });
+}
+
+function toCsv(rows) {
+  if (!rows.length) return "";
+  const headers = Object.keys(rows[0]);
+  const esc = (value) => `"${String(value ?? "").replaceAll('"', '""')}"`;
+  const body = rows.map((row) => headers.map((header) => esc(row[header])).join(",")).join("\n");
+  return `${headers.join(",")}\n${body}`;
+}
+
+function downloadCsv(filename, rows) {
+  const csv = toCsv(rows);
+  if (!csv) {
+    alert("No audit rows to export yet.");
+    return;
+  }
+  const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = filename;
+  link.click();
+  URL.revokeObjectURL(url);
 }
 
 function checkedPermissionsFromForm() {
@@ -272,6 +341,7 @@ function accessBadge(level) {
 function rolePageLevel(role, page) {
   const p = role.permissions || {};
   if (page === "home") return p.accessCRM ? "yes" : "no";
+  if (page === "reports") return p.viewReports ? "view" : "no";
   if (page === "trucks") return p.editTrucks ? "edit" : p.viewTrucks ? "view" : "no";
   if (page === "roster") return p.editRoster ? "edit" : p.viewRoster ? "view" : "no";
   if (page === "finance") {
@@ -288,13 +358,17 @@ function renderSecurityStats() {
   const roles = window.OPXAuth.getRoles();
   const users = window.OPXAuth.getUsers();
   const activeUsers = users.filter((u) => u.active).length;
+  const auditEntries = readAuditEntries();
+  const today = new Date().toISOString().slice(0, 10);
+  const changesToday = auditEntries.filter((entry) => String(entry.at || "").slice(0, 10) === today).length;
   const statsGrid = byId("securityStats");
   if (!statsGrid) return;
 
   const stats = [
     { label: "Total Roles", value: String(roles.length) },
     { label: "Total Users", value: String(users.length) },
-    { label: "Active Users", value: String(activeUsers) }
+    { label: "Active Users", value: String(activeUsers) },
+    { label: "Changes Today", value: String(changesToday) }
   ];
 
   statsGrid.innerHTML = stats
@@ -302,22 +376,28 @@ function renderSecurityStats() {
     .join("");
 }
 
-function renderRoleOptions() {
-  const roles = getEffectiveRoles();
+function renderRoleOptions(selectedRoleId = "") {
+  const allRoles = getEffectiveRoles();
   const select = byId("userRole");
   if (!select) return;
+  const preferredRoleId = String(selectedRoleId || select.dataset.selectedRoleId || select.value || "");
+  const roles = allRoles.filter((role) => !isAdminRoleId(role.id) || role.id === preferredRoleId);
   if (!roles.length) return;
   select.innerHTML = roles.map((role) => `<option value="${role.id}">${role.name}</option>`).join("");
+
+  const matchingRole = roles.find((role) => role.id === preferredRoleId);
+  select.value = matchingRole ? matchingRole.id : roles[0].id;
+  select.dataset.selectedRoleId = select.value;
 }
 
 function renderRolesTable() {
-  const roles = getEffectiveRoles();
+  const roles = getEffectiveRoles().filter((role) => !isAdminRoleId(role.id));
   const users = window.OPXAuth.getUsers();
   const tbody = byId("rolesTableBody");
   if (!tbody) return;
 
   if (!roles.length) {
-    tbody.innerHTML = "<tr><td colspan='10' class='empty'>No roles found.</td></tr>";
+    tbody.innerHTML = "<tr><td colspan='11' class='empty'>No roles found.</td></tr>";
     return;
   }
 
@@ -333,6 +413,7 @@ function renderRolesTable() {
         <td><strong>${role.name}</strong></td>
         <td>${typeLabel}</td>
         <td>${accessBadge(rolePageLevel(role, "home"))}</td>
+        <td>${accessBadge(rolePageLevel(role, "reports"))}</td>
         <td>${accessBadge(rolePageLevel(role, "trucks"))}</td>
         <td>${accessBadge(rolePageLevel(role, "roster"))}</td>
         <td>${accessBadge(rolePageLevel(role, "finance"))}</td>
@@ -353,7 +434,7 @@ function getEffectiveRoles() {
   const adminPerms = allPerms(true);
   const managerPerms = allPerms(false);
   [
-    "accessCRM", "accessLogs", "accessControlPanel", "viewDrivers", "editDrivers",
+    "accessCRM", "accessLogs", "accessControlPanel", "viewReports", "emailReports", "viewDrivers", "editDrivers",
     "viewTrucks", "editTrucks", "viewTruckIncome", "editTruckIncome", "viewContracts",
     "editContracts", "viewSpending", "editSpending", "viewRoster", "editRoster",
     "viewPayslips", "editPayslips", "viewStats", "editLogs", "backupRestore"
@@ -361,14 +442,14 @@ function getEffectiveRoles() {
 
   const viewerPerms = allPerms(false);
   [
-    "accessCRM", "accessLogs", "viewDrivers", "viewTrucks", "viewTruckIncome",
+    "accessCRM", "accessLogs", "viewReports", "emailReports", "viewDrivers", "viewTrucks", "viewTruckIncome",
     "viewContracts", "viewSpending", "viewRoster", "viewPayslips", "viewStats"
   ].forEach((k) => { viewerPerms[k] = true; });
 
   const fallbackRoles = [
     { id: ids.admin, name: "Admin", system: true, permissions: adminPerms },
-    { id: ids.manager, name: "Ops Manager", system: true, permissions: managerPerms },
-    { id: ids.viewer, name: "GM", system: true, permissions: viewerPerms }
+    { id: ids.manager, name: "Ops Manager", system: false, permissions: managerPerms },
+    { id: ids.viewer, name: "GM", system: false, permissions: viewerPerms }
   ];
 
   localStorage.setItem(window.OPXAuth.STORAGE.roles, JSON.stringify(fallbackRoles));
@@ -388,7 +469,96 @@ function renderUsersTable() {
   }
 
   tbody.innerHTML = users
-    .map((user) => `<tr><td>${user.username}</td><td>${roleNameById[user.roleId] || "Unknown"}</td><td>${boolBadge(user.active)}</td><td><div class='table-actions'><button data-action='edit-user' data-id='${user.id}'>Edit</button><button data-action='delete-user' data-id='${user.id}'>Delete</button></div></td></tr>`)
+    .map((user) => {
+      const roleLabel = isProtectedOwnerUser(user)
+        ? "Admin (System)"
+        : (roleNameById[user.roleId] || "Unknown");
+      const deleteButton = isProtectedOwnerUser(user)
+        ? "<span class='muted'>Protected owner</span>"
+        : `<button data-action='delete-user' data-id='${user.id}'>Delete</button>`;
+      return `<tr><td>${user.username}</td><td>${roleLabel}</td><td>${boolBadge(user.active)}</td><td><div class='table-actions'><button data-action='edit-user' data-id='${user.id}'>Edit</button>${deleteButton}</div></td></tr>`;
+    })
+    .join("");
+}
+
+function filteredAuditEntries() {
+  const query = String(byId("auditSearch")?.value || "").trim().toLowerCase();
+  const actionFilter = String(byId("auditActionFilter")?.value || "").trim().toLowerCase();
+
+  return readAuditEntries().filter((entry) => {
+    if (actionFilter && String(entry.action || "").toLowerCase() !== actionFilter) return false;
+    if (!query) return true;
+    const haystack = [
+      entry.actorUsername,
+      entry.action,
+      entry.area,
+      entry.targetType,
+      entry.targetName,
+      entry.summary,
+      JSON.stringify(entry.details || {})
+    ].join(" ").toLowerCase();
+    return haystack.includes(query);
+  });
+}
+
+function compactAuditValue(value) {
+  if (value == null || value === "") return "-";
+  if (typeof value === "boolean") return value ? "Yes" : "No";
+  if (typeof value === "object") {
+    const keys = Object.keys(value);
+    return keys.length ? `${keys.length} field${keys.length === 1 ? "" : "s"}` : "{}";
+  }
+  return String(value);
+}
+
+function summarizeAuditDetails(details) {
+  if (!details || typeof details !== "object" || !Object.keys(details).length) {
+    return "<span class='muted'>No extra detail</span>";
+  }
+
+  if (details.before && details.after) {
+    const changedKeys = [...new Set([
+      ...Object.keys(details.before || {}),
+      ...Object.keys(details.after || {})
+    ])].filter((key) => JSON.stringify(details.before?.[key]) !== JSON.stringify(details.after?.[key]));
+
+    if (!changedKeys.length) {
+      return "<span class='muted'>Before/after captured</span>";
+    }
+
+    const summary = changedKeys.map((key) => `<div><strong>${key}</strong>: ${escapeHtml(compactAuditValue(details.before?.[key]))} → ${escapeHtml(compactAuditValue(details.after?.[key]))}</div>`).join("");
+    const raw = escapeHtml(JSON.stringify(details, null, 2));
+    return `<details class="audit-details"><summary>${changedKeys.length} field${changedKeys.length === 1 ? "" : "s"} changed</summary><div class="audit-detail-list">${summary}</div><pre>${raw}</pre></details>`;
+  }
+
+  const pairs = Object.entries(details).map(([key, value]) => `<div><strong>${escapeHtml(key)}</strong>: ${escapeHtml(compactAuditValue(value))}</div>`).join("");
+  const raw = escapeHtml(JSON.stringify(details, null, 2));
+  return `<details class="audit-details"><summary>View detail</summary><div class="audit-detail-list">${pairs}</div><pre>${raw}</pre></details>`;
+}
+
+function renderAuditTable() {
+  const tbody = byId("auditTableBody");
+  if (!tbody) return;
+
+  const rows = filteredAuditEntries()
+    .slice()
+    .sort((a, b) => String(b.at || "").localeCompare(String(a.at || "")));
+
+  if (!rows.length) {
+    tbody.innerHTML = "<tr><td colspan='7' class='empty'>No staff activity recorded yet.</td></tr>";
+    return;
+  }
+
+  tbody.innerHTML = rows
+    .map((entry) => `<tr>
+      <td>${formatAuditWhen(entry.at)}</td>
+      <td>${entry.actorUsername || "System"}</td>
+      <td>${entry.action || "-"}</td>
+      <td>${entry.area || "-"}</td>
+      <td>${entry.targetName || entry.targetType || "-"}</td>
+      <td>${entry.summary || "-"}</td>
+      <td>${summarizeAuditDetails(entry.details)}</td>
+    </tr>`)
     .join("");
 }
 
@@ -402,6 +572,15 @@ function resetUserForm() {
   byId("userForm")?.reset();
   const userId = byId("userId");
   if (userId) userId.value = "";
+  const userName = byId("userName");
+  const userRole = byId("userRole");
+  const userActive = byId("userActive");
+  if (userName) userName.disabled = false;
+  if (userRole) {
+    userRole.disabled = false;
+    userRole.dataset.selectedRoleId = "";
+  }
+  if (userActive) userActive.disabled = false;
   renderRoleOptions();
 }
 
@@ -426,8 +605,17 @@ function fillUserForm(user) {
   if (userId) userId.value = user.id;
   if (userName) userName.value = user.username;
   if (userPassword) userPassword.value = "";
-  if (userRole) userRole.value = user.roleId;
+  renderRoleOptions(user.roleId);
+  if (userRole) {
+    userRole.dataset.selectedRoleId = String(user.roleId || "");
+    userRole.value = String(user.roleId || userRole.value || "");
+  }
   if (userActive) userActive.value = String(Boolean(user.active));
+
+  const protectedOwner = isProtectedOwnerUser(user);
+  if (userName) userName.disabled = protectedOwner;
+  if (userRole) userRole.disabled = protectedOwner;
+  if (userActive) userActive.disabled = protectedOwner;
 }
 
 function refresh() {
@@ -435,6 +623,7 @@ function refresh() {
   renderRoleOptions();
   renderRolesTable();
   renderUsersTable();
+  renderAuditTable();
   updateSharedAuthStatus();
 }
 
@@ -442,8 +631,23 @@ function updateSharedAuthStatus() {
   const status = byId("sharedAuthStatus");
   if (!status) return;
   const message = window.OPXAuth.getSharedAuthStatus?.() || "Shared login not checked yet.";
-  status.textContent = message;
-  status.className = message.includes("failed") || message.includes("not ready") ? "error-text" : "data-status";
+  const checkedAt = new Date().toLocaleTimeString("en-AU", { hour: "numeric", minute: "2-digit" });
+  status.textContent = `${message} Last updated ${checkedAt}.`;
+  const lower = message.toLowerCase();
+  let tone = "neutral";
+  if (lower.includes("failed")) tone = "error";
+  else if (lower.includes("missing") || lower.includes("local")) tone = "local";
+  else if (lower.includes("checking")) tone = "syncing";
+  else if (lower.includes("loaded") || lower.includes("ready") || lower.includes("synced")) tone = "live";
+  status.className = `sync-badge sync-badge-${tone}`;
+  window.dispatchEvent(new CustomEvent("opx:sync-health-change", {
+    detail: {
+      source: "Control Panel",
+      message,
+      tone,
+      at: Date.now()
+    }
+  }));
 }
 
 const BACKUP_PREFIXES = ["transport_crm_", "opx_auth_"];
@@ -456,6 +660,7 @@ const CATEGORY_BACKUPS = [
   { category: "spending", key: "transport_crm_spending", filename: "spending-backup.json" },
   { category: "payslips", key: "transport_crm_payslips", filename: "payslips-backup.json" },
   { category: "logs", key: "transport_crm_logs", filename: "logs-backup.json" },
+  { category: "staff_audit", key: window.OPXAuth.STORAGE.audit, filename: "staff-audit-backup.json" },
   { category: "roles", key: window.OPXAuth.STORAGE.roles, filename: "roles-backup.json" },
   { category: "users", key: window.OPXAuth.STORAGE.users, filename: "users-backup.json" }
 ];
@@ -1006,6 +1211,27 @@ function bindControlPanelEvents() {
     const checkbox = byId(`perm_${perm.key}`);
     if (checkbox) checkbox.checked = false;
   });
+  });
+  byId("auditSearch")?.addEventListener("input", renderAuditTable);
+  byId("auditActionFilter")?.addEventListener("change", renderAuditTable);
+  byId("clearAuditFilters")?.addEventListener("click", () => {
+  const search = byId("auditSearch");
+  const action = byId("auditActionFilter");
+  if (search) search.value = "";
+  if (action) action.value = "";
+  renderAuditTable();
+  });
+  byId("exportAuditReport")?.addEventListener("click", () => {
+  const rows = filteredAuditEntries().map((entry) => ({
+    when: formatAuditWhen(entry.at),
+    staff: entry.actorUsername || "System",
+    action: entry.action || "",
+    area: entry.area || "",
+    target: entry.targetName || entry.targetType || "",
+    summary: entry.summary || "",
+    details: JSON.stringify(entry.details || {})
+  }));
+  downloadCsv("staff-activity-report.csv", rows);
   });
 
   document.body.addEventListener("click", (e) => {

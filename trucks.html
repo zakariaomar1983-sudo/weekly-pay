@@ -7,7 +7,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=Manrope:wght@400;500;700&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="./style.css" />
+  <link rel="stylesheet" href="./style.css?v=20260421k" />
 </head>
 <body>
   <main class="app-shell">
@@ -19,6 +19,7 @@
       <div class="topbar-actions">
         <span id="currentUserChip" class="user-chip"></span>
         <a class="btn btn-outline" href="./index.html">Home</a>
+        <a id="reportsLink" class="btn btn-outline" href="./reports.html">Reports</a>
         <a class="btn btn-outline" href="./drivers.html">Drivers</a>
         <a id="rosterLink" class="btn btn-outline" href="./roster.html">Roster</a>
         <a id="financeLink" class="btn btn-outline" href="./finance.html">Finance</a>
@@ -34,13 +35,18 @@
       <div class="panel-head">
         <h2>Truck Details</h2>
       </div>
+      <p id="trucksSyncStatus" class="sync-badge sync-badge-neutral">Checking sync...</p>
+      <p id="trucksQueueBanner" class="queue-banner queue-banner-pending" hidden></p>
       <div id="regoAlertsPanel" class="panel-head">
-        <p id="regoAlertsMeta" class="muted"></p>
+        <div>
+          <h3 style="margin:0 0 0.3rem;">Close Rego Expiry</h3>
+          <p id="regoAlertsMeta" class="muted"></p>
+        </div>
         <div class="actions">
           <button id="enableRegoNotifications" class="btn btn-outline" type="button">Enable Rego Notifications</button>
         </div>
       </div>
-      <div id="regoAlertsList" class="muted"></div>
+      <div id="regoAlertsList" class="roster-batch-card"></div>
       <form class="form-grid" onsubmit="return false;">
         <label class="full">Search History
           <input id="trucksSearch" type="text" placeholder="Search truck #, registration, model, rego expiry, status..." />
@@ -65,6 +71,20 @@
           </select>
         </label>
         <label class="full">Notes<input id="truckNotes" type="text" placeholder="Any notes" /></label>
+        <section class="full attachment-panel">
+          <div class="attachment-panel-head">
+            <div>
+              <strong>Truck Documents</strong>
+              <p class="muted">Attach rego, service, insurance, or compliance files.</p>
+            </div>
+            <label class="btn btn-outline attachment-upload-btn">
+              Add Files
+              <input id="truckAttachmentsInput" type="file" accept=".pdf,image/*" multiple hidden />
+            </label>
+          </div>
+          <div id="truckAttachmentsList" class="attachment-list"></div>
+          <p id="truckAttachmentsStatus" class="attachment-status muted">Attachments stay available on this CRM browser profile.</p>
+        </section>
         <div class="actions full">
           <button class="btn" type="submit">Save Truck</button>
           <button id="cancelTruckEdit" class="btn btn-muted" type="button">Cancel Edit</button>
@@ -72,7 +92,7 @@
         </div>
         <p id="trucksInfo" class="muted full"></p>
       </form>
-      <div class="table-wrap">
+      <div class="table-wrap" style="display:none;">
         <table>
           <thead>
             <tr><th>Truck #</th><th>Registration</th><th>Model</th><th>Capacity</th><th>Service Due</th><th>Rego Expiry</th><th>Status</th><th>Actions</th></tr>
@@ -87,9 +107,9 @@
   <script src="./supabase-config.js?v=20260413g"></script>
   <script src="./supabase-client.js?v=20260413g"></script>
   <script src="./seed-data.js?v=20260413g"></script>
-  <script src="./auth.js?v=20260414b"></script>
-  <script src="./trucks.js?v=20260413g"></script>
-  <script src="./emergency-fill.js?v=20260413g"></script>
+  <script src="./auth.js?v=20260421k"></script>
+  <script src="./trucks.js?v=20260421k"></script>
+  <script src="./emergency-fill.js?v=20260419m"></script>
 </body>
 </html>
 

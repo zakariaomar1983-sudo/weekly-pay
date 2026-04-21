@@ -10,11 +10,108 @@ if (!auth.can("accessLogs")) {
 
 const LOG_KEY = "transport_crm_logs";
 const LOG_BACKUP_KEY = "transport_crm_logs_recovery_snapshots";
+const LOG_SYNC_STATUS_KEY = "transport_crm_logs_sync_status";
 const LOG_TABLE = "app_logs";
+const LOG_SYNC_RETRY_DELAYS_MS = [2000, 5000, 10000, 30000];
 
 const state = {
   logs: readData()
 };
+let logSyncTimerId = 0;
+let logSearchTimerId = 0;
+let logRetryTimerId = 0;
+let logRetryAttempt = 0;
+let logSyncInFlight = false;
+let logSyncQueued = false;
+
+function formatLogsSyncTime(value = Date.now()) {
+  return new Date(value).toLocaleTimeString("en-AU", { hour: "numeric", minute: "2-digit" });
+}
+
+function formatLogRetryDelay(ms) {
+  if (ms >= 60000) return `${Math.round(ms / 60000)}m`;
+  return `${Math.round(ms / 1000)}s`;
+}
+
+function readLogsSyncStatus() {
+  try {
+    const parsed = JSON.parse(localStorage.getItem(LOG_SYNC_STATUS_KEY) || "null");
+    return parsed && typeof parsed === "object" ? parsed : null;
+  } catch {
+    return null;
+  }
+}
+
+function setLogsSyncStatus(message, tone = "neutral", { at = Date.now(), persist = true } = {}) {
+  const status = document.getElementById("logsSyncStatus");
+  if (!status) return;
+  status.textContent = `${message} Last updated ${formatLogsSyncTime(at)}.`;
+  status.className = `sync-badge sync-badge-${tone}`;
+  if (persist) {
+    localStorage.setItem(LOG_SYNC_STATUS_KEY, JSON.stringify({ message, tone, at }));
+  }
+  window.dispatchEvent(new CustomEvent("opx:sync-health-change", { detail: { source: "Logs", message, tone, at } }));
+  updateLogsQueueBanner();
+}
+
+function restoreLogsSyncStatus() {
+  const saved = readLogsSyncStatus();
+  if (!saved?.message) return false;
+  setLogsSyncStatus(saved.message, saved.tone || "neutral", { at: saved.at || Date.now(), persist: false });
+  return true;
+}
+
+function setLogsQueueBanner(message = "", tone = "pending", visible = false) {
+  const banner = document.getElementById("logsQueueBanner");
+  if (!banner) return;
+  banner.hidden = !visible;
+  if (!visible) {
+    banner.textContent = "";
+    banner.className = "queue-banner queue-banner-pending";
+    return;
+  }
+  banner.textContent = message;
+  banner.className = `queue-banner queue-banner-${tone}`;
+}
+
+function updateLogsQueueBanner() {
+  if (!isSupabaseReady()) {
+    setLogsQueueBanner("", "pending", false);
+    return;
+  }
+  if (navigator.onLine === false) {
+    setLogsQueueBanner("Offline mode: log changes are saving on this device and will sync automatically when internet returns.", "offline", true);
+    return;
+  }
+  if (logRetryAttempt || logRetryTimerId || logSyncQueued) {
+    setLogsQueueBanner("Sync queue active: log changes are saved locally and retrying automatically in the background.", "pending", true);
+    return;
+  }
+  setLogsQueueBanner("", "pending", false);
+}
+
+function clearLogSyncRetry(resetAttempt = true) {
+  window.clearTimeout(logRetryTimerId);
+  logRetryTimerId = 0;
+  if (resetAttempt) logRetryAttempt = 0;
+}
+
+function queueLogSyncRetry(errorMessage = "") {
+  if (!isSupabaseReady()) return;
+  clearLogSyncRetry(false);
+  const delay = LOG_SYNC_RETRY_DELAYS_MS[Math.min(logRetryAttempt, LOG_SYNC_RETRY_DELAYS_MS.length - 1)];
+  logRetryAttempt += 1;
+  const waitingForInternet = navigator.onLine === false;
+  const retryMessage = waitingForInternet
+    ? "Saved here. Waiting for internet to retry shared log sync."
+    : `Saved here. Retrying shared log sync in ${formatLogRetryDelay(delay)}.`;
+  const details = errorMessage ? ` ${errorMessage}` : "";
+  setLogsSyncStatus(`${retryMessage}${details}`, "error");
+  logRetryTimerId = window.setTimeout(() => {
+    logRetryTimerId = 0;
+    scheduleLogSync(0);
+  }, waitingForInternet ? Math.max(delay, 5000) : delay);
+}
 
 function isUuid(value) {
   return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(String(value || ""));
@@ -92,8 +189,34 @@ function saveData() {
   saveLogSnapshot("before-save");
   localStorage.setItem(LOG_KEY, JSON.stringify(state.logs));
   if (isSupabaseReady()) {
-    void syncLogsToSupabase();
+    clearLogSyncRetry(false);
+    setLogsSyncStatus("Syncing log changes...", "syncing");
+    scheduleLogSync();
+  } else {
+    setLogsSyncStatus("Saved on this device only.", "local");
   }
+}
+
+function scheduleLogSync(delay = 300) {
+  if (!isSupabaseReady()) return;
+  window.clearTimeout(logSyncTimerId);
+  clearLogSyncRetry(false);
+  logSyncTimerId = window.setTimeout(() => {
+    logSyncTimerId = 0;
+    if (logSyncInFlight) {
+      logSyncQueued = true;
+      return;
+    }
+    void syncLogsToSupabase();
+  }, delay);
+}
+
+function scheduleLogRefresh() {
+  window.clearTimeout(logSearchTimerId);
+  logSearchTimerId = window.setTimeout(() => {
+    logSearchTimerId = 0;
+    refresh();
+  }, 120);
 }
 
 function uid() {
@@ -136,26 +259,56 @@ function isSupabaseReady() {
 }
 
 async function syncLogsToSupabase() {
-  if (!isSupabaseReady()) return;
+  if (!isSupabaseReady() || logSyncInFlight) return false;
+  logSyncInFlight = true;
   const supabase = getSupabaseClient();
-  if (!supabase) return;
+  if (!supabase) {
+    logSyncInFlight = false;
+    return false;
+  }
 
   const rows = state.logs.map(toDbLog);
-  if (!rows.length) return;
-  const { error } = await supabase.from(LOG_TABLE).upsert(rows, { onConflict: "id" });
-  if (error) {
-    console.error("Supabase sync failed for app_logs:", error.message);
+  try {
+    if (!rows.length) {
+      const wipe = await supabase.from(LOG_TABLE).delete().not("id", "is", null);
+      if (wipe.error) {
+        console.error("Supabase clear failed for app_logs:", wipe.error.message);
+        queueLogSyncRetry(wipe.error.message);
+        return false;
+      }
+      clearLogSyncRetry();
+      setLogsSyncStatus("Log changes saved and synced.", "live");
+      return true;
+    }
+
+    const { error } = await supabase.from(LOG_TABLE).upsert(rows, { onConflict: "id" });
+    if (error) {
+      console.error("Supabase sync failed for app_logs:", error.message);
+      queueLogSyncRetry(error.message);
+      return false;
+    }
+    clearLogSyncRetry();
+    setLogsSyncStatus("Log changes saved and synced.", "live");
+    return true;
+  } finally {
+    logSyncInFlight = false;
+    if (logSyncQueued) {
+      logSyncQueued = false;
+      scheduleLogSync(0);
+    }
   }
 }
 
 async function hydrateLogsFromSupabase() {
   if (!isSupabaseReady()) return;
+  setLogsSyncStatus("Checking shared logs...", "syncing");
   const supabase = getSupabaseClient();
   if (!supabase) return;
 
   const { data, error } = await supabase.from(LOG_TABLE).select("*");
   if (error) {
     console.error("Supabase load failed for app_logs:", error.message);
+    setLogsSyncStatus("Shared logs unavailable. Using this device's saved data.", "local");
     const recoveredRows = mergeLogRows(latestSnapshotRows(), state.logs);
     if (recoveredRows.length > state.logs.length) {
       state.logs = recoveredRows;
@@ -177,12 +330,14 @@ async function hydrateLogsFromSupabase() {
     state.logs = mergedLogs;
     localStorage.setItem(LOG_KEY, JSON.stringify(state.logs));
     await syncLogsToSupabase();
+    setLogsSyncStatus("Shared logs loaded.", "live");
     refresh();
     return;
   }
 
   state.logs = [];
   localStorage.setItem(LOG_KEY, JSON.stringify(state.logs));
+  setLogsSyncStatus("Shared logs ready.", "live");
   refresh();
 }
 
@@ -309,6 +464,10 @@ function applyAccessControl() {
   if (!auth.can("accessControlPanel")) {
     controlPanelLink.style.display = "none";
   }
+  if (!auth.can("viewReports")) {
+    const reportsLink = document.getElementById("reportsLink");
+    if (reportsLink) reportsLink.style.display = "none";
+  }
 
   if (!(auth.can("viewTruckIncome") || auth.can("viewSpending") || auth.can("viewPayslips") || auth.can("viewStats"))) {
     const financeLink = document.getElementById("financeLink");
@@ -369,7 +528,8 @@ document.getElementById("exportLogs").addEventListener("click", () => {
   downloadCsv("operations_log.csv", state.logs);
 });
 
-document.getElementById("logsSearch").addEventListener("input", refresh);
+document.getElementById("logsSearch").addEventListener("input", scheduleLogRefresh);
+document.getElementById("logsSearch").addEventListener("search", scheduleLogRefresh);
 document.getElementById("logsFilterStatus").addEventListener("change", refresh);
 document.getElementById("logsFromDate").addEventListener("change", refresh);
 document.getElementById("logsToDate").addEventListener("change", refresh);
@@ -419,6 +579,9 @@ document.getElementById("clearLogsBtn").addEventListener("click", () => {
 
 applyAccessControl();
 refresh();
+if (!restoreLogsSyncStatus()) {
+  setLogsSyncStatus(isSupabaseReady() ? "Shared log sync ready." : "Local-only mode on this device.", isSupabaseReady() ? "neutral" : "local", { persist: false });
+}
 
 if (isSupabaseReady()) {
   void hydrateLogsFromSupabase();
@@ -426,6 +589,26 @@ if (isSupabaseReady()) {
 
 window.addEventListener("opx:supabase-ready", () => {
   void hydrateLogsFromSupabase();
+});
+
+window.addEventListener("storage", (event) => {
+  if (event.key !== LOG_KEY) return;
+  state.logs = readData();
+  setLogsSyncStatus("Logs updated in another tab.", "neutral");
+  refresh();
+});
+
+window.addEventListener("offline", updateLogsQueueBanner);
+
+window.addEventListener("online", () => {
+  if (!isSupabaseReady()) return;
+  if (logRetryAttempt || logRetryTimerId) {
+    clearLogSyncRetry(false);
+    setLogsSyncStatus("Back online. Retrying shared log sync...", "syncing");
+    scheduleLogSync(0);
+    return;
+  }
+  updateLogsQueueBanner();
 });
 
 setTimeout(() => {

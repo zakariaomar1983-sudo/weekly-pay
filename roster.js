@@ -7,20 +7,41 @@ if (!auth.can("accessCRM") || !auth.can("viewRoster")) {
 }
 
 const KEY = "transport_crm_roster";
+const ROSTER_ACK_KEY = "transport_crm_roster_ack";
+const ROSTER_WEEK_STATUS_KEY = "transport_crm_roster_week_status";
+const ROSTER_SYNC_STATUS_KEY = "transport_crm_roster_sync_status";
 const DRIVERS_KEY = "transport_crm_drivers";
 const CONTACT_KEY = "transport_crm_driver_contacts";
 const TRUCKS_KEY = "transport_crm_trucks";
 const DRIVERS_TABLE = "drivers";
 const ROSTER_TABLE = "roster";
 const TRUCKS_TABLE = "trucks";
+const ROSTER_SYNC_RETRY_DELAYS_MS = [2000, 5000, 10000, 30000];
 const TARGET_DRIVERS = 7;
 const TARGET_TRUCKS = 7;
 const TARGET_DAYS_PER_DRIVER = 5;
 const DAY_NAMES = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
 const DEFAULT_SHIFT_TIME = "06:00 - 14:00";
-const DEFAULT_ROUTE = "Sydney to Newcastle";
+const DEFAULT_ROUTE = "As-Directed";
 const LEAVE_SHIFT_TIME = "On Leave";
 const LEAVE_ROUTE = "Driver away";
+const START_LOCATION_OPTIONS = [
+  "LG, Altona to As- Directed",
+  "Allied Express, Broadmeadows As-Directed"
+];
+const DEFAULT_START_LOCATION = START_LOCATION_OPTIONS[0];
+const ROUTE_LOCATION_SEPARATOR = "|||opx-start-location|||";
+const ACK_STATUS_META = {
+  pending: { label: "Pending", tone: "neutral" },
+  sent: { label: "Sent", tone: "queue" },
+  viewed: { label: "Viewed", tone: "warning" },
+  confirmed: { label: "Confirmed", tone: "live" }
+};
+const WEEK_STATUS_META = {
+  draft: { label: "Draft", tone: "neutral" },
+  approved: { label: "Approved", tone: "live" },
+  sent: { label: "Sent To Drivers", tone: "queue" }
+};
 const FALLBACK_DRIVERS = [
   { id: "fallback-driver-1", name: "Sharmake Hashi", status: "Active" },
   { id: "fallback-driver-2", name: "Imran Abdella", status: "Active" },
@@ -39,15 +60,128 @@ const FALLBACK_TRUCKS = [
   { id: "fallback-truck-6", truckNumber: "620", status: "Available" },
   { id: "fallback-truck-7", truckNumber: "841", status: "Available" }
 ];
+const PRIMARY_TRUCK_BY_DRIVER = new Map([
+  ["Abdirizak Ahmed", "853"],
+  ["Imran Abdella", "881"],
+  ["Ramzi Mohamed", "841"],
+  ["Samatar Yusuf", "855"],
+  ["Sharmake Hashi", "672"],
+  ["Soleh Sungkar", "840"],
+  ["Suhen Omar", "620"]
+]);
+const LEGACY_DRIVER_NAME_ALIASES = new Map([
+  ["Khalid Aden", "Suhen Omar"]
+]);
 const supabase = window.OPXSupabase?.client || null;
 const useSupabase = Boolean(window.OPXSupabase?.isReady && supabase);
 const state = { roster: readData() };
 const boardDragState = { shiftId: "" };
 const weekRenderState = { queued: false };
+let rosterSyncTimerId = 0;
+let rosterSearchTimerId = 0;
+let rosterRetryTimerId = 0;
+let rosterRetryAttempt = 0;
+let rosterSyncInFlight = false;
+let rosterSyncQueued = false;
+
+function formatRosterSyncTime(value = Date.now()) {
+  return new Date(value).toLocaleTimeString("en-AU", { hour: "numeric", minute: "2-digit" });
+}
+
+function formatRosterRetryDelay(ms) {
+  if (ms >= 60000) return `${Math.round(ms / 60000)}m`;
+  return `${Math.round(ms / 1000)}s`;
+}
+
+function readRosterSyncStatus() {
+  try {
+    const parsed = JSON.parse(localStorage.getItem(ROSTER_SYNC_STATUS_KEY) || "null");
+    return parsed && typeof parsed === "object" ? parsed : null;
+  } catch {
+    return null;
+  }
+}
+
+function setRosterSyncStatus(message, tone = "neutral", { at = Date.now(), persist = true } = {}) {
+  const status = document.getElementById("rosterSyncStatus");
+  if (!status) return;
+  status.textContent = `${message} Last updated ${formatRosterSyncTime(at)}.`;
+  status.className = `sync-badge sync-badge-${tone}`;
+  if (persist) {
+    localStorage.setItem(ROSTER_SYNC_STATUS_KEY, JSON.stringify({ message, tone, at }));
+  }
+  window.dispatchEvent(new CustomEvent("opx:sync-health-change", { detail: { source: "Roster", message, tone, at } }));
+  updateRosterQueueBanner();
+}
+
+function restoreRosterSyncStatus() {
+  const saved = readRosterSyncStatus();
+  if (!saved?.message) return false;
+  setRosterSyncStatus(saved.message, saved.tone || "neutral", { at: saved.at || Date.now(), persist: false });
+  return true;
+}
+
+function setRosterQueueBanner(message = "", tone = "pending", visible = false) {
+  const banner = document.getElementById("rosterQueueBanner");
+  if (!banner) return;
+  banner.hidden = !visible;
+  if (!visible) {
+    banner.textContent = "";
+    banner.className = "queue-banner queue-banner-pending";
+    return;
+  }
+  banner.textContent = message;
+  banner.className = `queue-banner queue-banner-${tone}`;
+}
+
+function updateRosterQueueBanner() {
+  if (!useSupabase) {
+    setRosterQueueBanner("", "pending", false);
+    return;
+  }
+  if (navigator.onLine === false) {
+    setRosterQueueBanner("Offline mode: roster changes are saving on this device and will sync automatically when internet returns.", "offline", true);
+    return;
+  }
+  if (rosterRetryAttempt || rosterRetryTimerId || rosterSyncQueued) {
+    setRosterQueueBanner("Sync queue active: roster changes are saved locally and retrying automatically in the background.", "pending", true);
+    return;
+  }
+  setRosterQueueBanner("", "pending", false);
+}
+
+function clearRosterSyncRetry(resetAttempt = true) {
+  window.clearTimeout(rosterRetryTimerId);
+  rosterRetryTimerId = 0;
+  if (resetAttempt) rosterRetryAttempt = 0;
+}
+
+function queueRosterSyncRetry(errorMessage = "") {
+  if (!useSupabase) return;
+  clearRosterSyncRetry(false);
+  const delay = ROSTER_SYNC_RETRY_DELAYS_MS[Math.min(rosterRetryAttempt, ROSTER_SYNC_RETRY_DELAYS_MS.length - 1)];
+  rosterRetryAttempt += 1;
+  const waitingForInternet = navigator.onLine === false;
+  const retryMessage = waitingForInternet
+    ? "Saved here. Waiting for internet to retry shared roster sync."
+    : `Saved here. Retrying shared roster sync in ${formatRosterRetryDelay(delay)}.`;
+  const details = errorMessage ? ` ${errorMessage}` : "";
+  setRosterSyncStatus(`${retryMessage}${details}`, "error");
+  rosterRetryTimerId = window.setTimeout(() => {
+    rosterRetryTimerId = 0;
+    scheduleRosterSync(0);
+  }, waitingForInternet ? Math.max(delay, 5000) : delay);
+}
 
 function readData() {
   try {
-    return JSON.parse(localStorage.getItem(KEY) || "[]");
+    const parsed = JSON.parse(localStorage.getItem(KEY) || "[]");
+    const rows = Array.isArray(parsed) ? parsed : [];
+    const normalized = normalizeRosterRows(rows);
+    if (JSON.stringify(rows) !== JSON.stringify(normalized)) {
+      localStorage.setItem(KEY, JSON.stringify(normalized));
+    }
+    return normalized;
   } catch {
     return [];
   }
@@ -69,6 +203,222 @@ function readContacts() {
   } catch {
     return {};
   }
+}
+
+function readRosterAcknowledgements() {
+  try {
+    const parsed = JSON.parse(localStorage.getItem(ROSTER_ACK_KEY) || "{}");
+    return parsed && typeof parsed === "object" && !Array.isArray(parsed) ? parsed : {};
+  } catch {
+    return {};
+  }
+}
+
+function readWeekWorkflowStore() {
+  try {
+    const parsed = JSON.parse(localStorage.getItem(ROSTER_WEEK_STATUS_KEY) || "{}");
+    return parsed && typeof parsed === "object" && !Array.isArray(parsed) ? parsed : {};
+  } catch {
+    return {};
+  }
+}
+
+function writeWeekWorkflowStore(value) {
+  localStorage.setItem(ROSTER_WEEK_STATUS_KEY, JSON.stringify(value || {}));
+}
+
+function writeRosterAcknowledgements(value) {
+  localStorage.setItem(ROSTER_ACK_KEY, JSON.stringify(value || {}));
+}
+
+function acknowledgementKey(driverName, weekKey) {
+  const name = canonicalDriverName(driverName);
+  return `${String(weekKey || "").trim()}__${String(name || "").trim()}`;
+}
+
+function getWeekAcknowledgement(driverName, weekKey) {
+  const meta = ACK_STATUS_META.pending;
+  if (!driverName || !weekKey) return { status: "pending", label: meta.label, tone: meta.tone, updatedAt: "" };
+  const store = readRosterAcknowledgements();
+  const saved = store[acknowledgementKey(driverName, weekKey)] || {};
+  const status = Object.prototype.hasOwnProperty.call(ACK_STATUS_META, saved.status) ? saved.status : "pending";
+  return {
+    status,
+    label: ACK_STATUS_META[status].label,
+    tone: ACK_STATUS_META[status].tone,
+    updatedAt: saved.updatedAt || ""
+  };
+}
+
+function setWeekAcknowledgement(driverName, weekKey, status) {
+  if (!driverName || !weekKey || !Object.prototype.hasOwnProperty.call(ACK_STATUS_META, status)) return;
+  const store = readRosterAcknowledgements();
+  store[acknowledgementKey(driverName, weekKey)] = {
+    driverName: canonicalDriverName(driverName),
+    weekKey,
+    status,
+    updatedAt: new Date().toISOString()
+  };
+  writeRosterAcknowledgements(store);
+}
+
+function ensureWeekAcknowledgementAtLeast(driverName, weekKey, minimumStatus) {
+  const order = ["pending", "sent", "viewed", "confirmed"];
+  const current = getWeekAcknowledgement(driverName, weekKey).status;
+  if (order.indexOf(minimumStatus) > order.indexOf(current)) {
+    setWeekAcknowledgement(driverName, weekKey, minimumStatus);
+  }
+}
+
+function formatAcknowledgementTime(value) {
+  if (!value) return "Not updated yet";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "Not updated yet";
+  return date.toLocaleString("en-AU", {
+    day: "2-digit",
+    month: "short",
+    hour: "numeric",
+    minute: "2-digit"
+  });
+}
+
+function renderAcknowledgementBadge(driverName, weekKey, compact = false) {
+  const acknowledgement = getWeekAcknowledgement(driverName, weekKey);
+  const timeTitle = acknowledgement.updatedAt ? ` title="Updated ${escapeHtml(formatAcknowledgementTime(acknowledgement.updatedAt))}"` : "";
+  const label = compact ? acknowledgement.label : `${acknowledgement.label} ack`;
+  return `<span class="ack-chip ack-chip-${acknowledgement.tone}"${timeTitle}>${escapeHtml(label)}</span>`;
+}
+
+function acknowledgementCounts(driverNames, weekKey) {
+  return driverNames.reduce((summary, driverName) => {
+    const status = getWeekAcknowledgement(driverName, weekKey).status;
+    summary.total += 1;
+    summary[status] += 1;
+    return summary;
+  }, {
+    total: 0,
+    pending: 0,
+    sent: 0,
+    viewed: 0,
+    confirmed: 0
+  });
+}
+
+function getWeekWorkflow(weekKey) {
+  const fallback = WEEK_STATUS_META.draft;
+  if (!weekKey) return { status: "draft", label: fallback.label, tone: fallback.tone, updatedAt: "", updatedBy: "" };
+  const store = readWeekWorkflowStore();
+  const saved = store[weekKey] || {};
+  const status = Object.prototype.hasOwnProperty.call(WEEK_STATUS_META, saved.status) ? saved.status : "draft";
+  return {
+    status,
+    label: WEEK_STATUS_META[status].label,
+    tone: WEEK_STATUS_META[status].tone,
+    updatedAt: saved.updatedAt || "",
+    updatedBy: saved.updatedBy || ""
+  };
+}
+
+function setWeekWorkflowStatus(weekKey, status) {
+  if (!weekKey || !Object.prototype.hasOwnProperty.call(WEEK_STATUS_META, status)) return;
+  const store = readWeekWorkflowStore();
+  store[weekKey] = {
+    status,
+    updatedAt: new Date().toISOString(),
+    updatedBy: auth.user.username
+  };
+  writeWeekWorkflowStore(store);
+  window.OPXAuth?.recordAuditEvent?.({
+    actor: {
+      actorUserId: auth.user.id,
+      actorUsername: auth.user.username,
+      actorRoleId: auth.user.roleId
+    },
+    action: "update",
+    area: "roster",
+    targetType: "week",
+    targetId: weekKey,
+    targetName: `Roster week ${weekKey}`,
+    summary: `Set roster week ${weekKey} to ${WEEK_STATUS_META[status].label}`,
+    details: {
+      weekKey,
+      workflowStatus: status
+    }
+  });
+}
+
+function renderWeekWorkflowBadge(weekKey, compact = false) {
+  const workflow = getWeekWorkflow(weekKey);
+  const label = compact ? workflow.label : `Week ${workflow.label}`;
+  const title = workflow.updatedAt ? ` title="Updated ${escapeHtml(formatAcknowledgementTime(workflow.updatedAt))} by ${escapeHtml(workflow.updatedBy || "System")}"` : "";
+  return `<span class="ack-chip ack-chip-${workflow.tone}"${title}>${escapeHtml(label)}</span>`;
+}
+
+function canonicalDriverName(value) {
+  const trimmed = String(value || "").trim();
+  return LEGACY_DRIVER_NAME_ALIASES.get(trimmed) || trimmed;
+}
+
+function firstFilledValue(...values) {
+  for (const value of values) {
+    if (String(value ?? "").trim()) return value;
+  }
+  return "";
+}
+
+function normalizeDriverRecords(rows) {
+  const mergedByName = new Map();
+  rows
+    .filter((item) => item && typeof item === "object")
+    .forEach((item, index) => {
+      const normalizedName = canonicalDriverName(item.name);
+      if (!normalizedName) return;
+      const normalized = { ...item, id: item.id || `legacy-driver-${index}`, name: normalizedName };
+      const existing = mergedByName.get(normalizedName);
+      if (!existing) {
+        mergedByName.set(normalizedName, normalized);
+        return;
+      }
+      mergedByName.set(normalizedName, {
+        ...existing,
+        ...normalized,
+        id: existing.id || normalized.id,
+        name: normalizedName,
+        phone: firstFilledValue(existing.phone, normalized.phone),
+        email: firstFilledValue(existing.email, normalized.email),
+        licenseNumber: firstFilledValue(existing.licenseNumber, normalized.licenseNumber),
+        licenseExpiry: firstFilledValue(existing.licenseExpiry, normalized.licenseExpiry),
+        hireDate: firstFilledValue(existing.hireDate, normalized.hireDate),
+        status: firstFilledValue(existing.status, normalized.status),
+        address: firstFilledValue(existing.address, normalized.address),
+        emergencyContact: firstFilledValue(existing.emergencyContact, normalized.emergencyContact)
+      });
+    });
+  return Array.from(mergedByName.values());
+}
+
+function normalizeRosterRow(item) {
+  const originalDriverName = String(item?.driverName || "").trim();
+  const driverName = canonicalDriverName(originalDriverName);
+  const aliasChanged = Boolean(driverName && driverName !== originalDriverName);
+  const configuredTruck = getConfiguredPrimaryTruckForDriver(driverName);
+  const isLeave = String(item?.status || "").trim() === "Leave";
+  const unpackedRoute = unpackRouteValue(item?.route || "");
+  return normalizeRosterPayload({
+    ...item,
+    route: unpackedRoute.route || String(item?.route || "").trim(),
+    startLocation: item?.startLocation || unpackedRoute.startLocation || "",
+    driverName,
+    truckNumber: aliasChanged && !isLeave ? (configuredTruck || String(item?.truckNumber || "").trim()) : String(item?.truckNumber || "").trim()
+  });
+}
+
+function normalizeRosterRows(rows) {
+  return dedupeRosterRows(
+    rows
+      .filter((item) => item && typeof item === "object")
+      .map((item) => normalizeRosterRow(item))
+  );
 }
 
 function escapeHtml(value) {
@@ -130,8 +480,34 @@ function setTextIfChanged(node, text) {
 function saveData() {
   localStorage.setItem(KEY, JSON.stringify(state.roster));
   if (useSupabase) {
-    void syncRosterToSupabase();
+    clearRosterSyncRetry(false);
+    setRosterSyncStatus("Syncing roster changes...", "syncing");
+    scheduleRosterSync();
+  } else {
+    setRosterSyncStatus("Saved on this device only.", "local");
   }
+}
+
+function scheduleRosterSync(delay = 300) {
+  if (!useSupabase) return;
+  window.clearTimeout(rosterSyncTimerId);
+  clearRosterSyncRetry(false);
+  rosterSyncTimerId = window.setTimeout(() => {
+    rosterSyncTimerId = 0;
+    if (rosterSyncInFlight) {
+      rosterSyncQueued = true;
+      return;
+    }
+    void syncRosterToSupabase();
+  }, delay);
+}
+
+function scheduleWeekSearchRefresh() {
+  window.clearTimeout(rosterSearchTimerId);
+  rosterSearchTimerId = window.setTimeout(() => {
+    rosterSearchTimerId = 0;
+    refreshWeekView();
+  }, 120);
 }
 
 function uid() {
@@ -146,13 +522,14 @@ function toDbRoster(item) {
     run_type: item.nightRun ? "Night Run +" : "",
     shift_date: item.shiftDate || null,
     shift_time: item.shiftTime || "",
-    route: item.route || "",
+    route: packRouteValue(item.route || "", item.startLocation || ""),
     status: item.status || "Scheduled"
   };
 }
 
 function fromDbRoster(row) {
   const runType = String(row.run_type || "").trim().toLowerCase();
+  const unpackedRoute = unpackRouteValue(row.route || "");
   return {
     id: row.id,
     driverName: row.driver_name || "",
@@ -160,7 +537,8 @@ function fromDbRoster(row) {
     nightRun: runType === "night run" || runType === "night run +",
     shiftDate: row.shift_date || "",
     shiftTime: row.shift_time || "",
-    route: row.route || "",
+    route: unpackedRoute.route,
+    startLocation: unpackedRoute.startLocation,
     status: row.status || "Scheduled"
   };
 }
@@ -224,33 +602,56 @@ function toDbTruck(item) {
 }
 
 async function syncRosterToSupabase() {
-  if (!useSupabase) return;
+  if (!useSupabase || rosterSyncInFlight) return false;
+  rosterSyncInFlight = true;
   const rows = state.roster.map(toDbRoster);
-  const { error } = await supabase.from(ROSTER_TABLE).upsert(rows, { onConflict: "id" });
-  if (error) {
-    console.error("Supabase sync failed for roster:", error.message);
-    return;
-  }
+  try {
+    if (!rows.length) {
+      const wipe = await supabase.from(ROSTER_TABLE).delete().not("id", "is", null);
+      if (wipe.error) {
+        console.error("Supabase delete sync failed for roster:", wipe.error.message);
+        queueRosterSyncRetry(wipe.error.message);
+        return false;
+      }
+      clearRosterSyncRetry();
+      setRosterSyncStatus("Roster changes saved and synced.", "live");
+      return true;
+    }
 
-  const ids = rows.map((row) => row.id);
-  if (!ids.length) {
-    const wipe = await supabase.from(ROSTER_TABLE).delete().not("id", "is", null);
-    if (wipe.error) console.error("Supabase delete sync failed for roster:", wipe.error.message);
-    return;
-  }
+    const { error } = await supabase.from(ROSTER_TABLE).upsert(rows, { onConflict: "id" });
+    if (error) {
+      console.error("Supabase sync failed for roster:", error.message);
+      queueRosterSyncRetry(error.message);
+      return false;
+    }
 
-  const inList = `(${ids.map((id) => `"${String(id).replaceAll('"', "")}"`).join(",")})`;
-  const cleanup = await supabase.from(ROSTER_TABLE).delete().not("id", "in", inList);
-  if (cleanup.error) {
-    console.error("Supabase cleanup failed for roster:", cleanup.error.message);
+    const ids = rows.map((row) => row.id);
+    const inList = `(${ids.map((id) => `"${String(id).replaceAll('"', "")}"`).join(",")})`;
+    const cleanup = await supabase.from(ROSTER_TABLE).delete().not("id", "in", inList);
+    if (cleanup.error) {
+      console.error("Supabase cleanup failed for roster:", cleanup.error.message);
+      queueRosterSyncRetry(cleanup.error.message);
+      return false;
+    }
+    clearRosterSyncRetry();
+    setRosterSyncStatus("Roster changes saved and synced.", "live");
+    return true;
+  } finally {
+    rosterSyncInFlight = false;
+    if (rosterSyncQueued) {
+      rosterSyncQueued = false;
+      scheduleRosterSync(0);
+    }
   }
 }
 
 async function hydrateRosterFromSupabase() {
   if (!useSupabase) return;
+  setRosterSyncStatus("Checking shared roster data...", "syncing");
   const { data, error } = await supabase.from(ROSTER_TABLE).select("*");
   if (error) {
     console.error("Supabase load failed for roster:", error.message);
+    setRosterSyncStatus("Shared roster sync unavailable. Using this device's saved data.", "local");
     return;
   }
 
@@ -259,13 +660,19 @@ async function hydrateRosterFromSupabase() {
   if (!data.length && state.roster.length) {
     console.warn("Supabase roster table is empty; keeping local roster and seeding Supabase.");
     await syncRosterToSupabase();
+    setRosterSyncStatus("Local roster data copied into shared storage.", "live");
     refresh();
     return;
   }
 
-  state.roster = data.map(fromDbRoster);
+  const hydratedRoster = data.map(fromDbRoster);
+  const normalizedRoster = normalizeRosterRows(hydratedRoster);
+  const rosterChanged = JSON.stringify(hydratedRoster) !== JSON.stringify(normalizedRoster);
+  state.roster = normalizedRoster;
   localStorage.setItem(KEY, JSON.stringify(state.roster));
+  setRosterSyncStatus("Shared roster data loaded.", "live");
   refresh();
+  if (rosterChanged) scheduleRosterSync(0);
 }
 
 async function hydrateRosterReferencesFromSupabase() {
@@ -288,7 +695,7 @@ async function hydrateRosterReferencesFromSupabase() {
         localStorage.setItem(DRIVERS_KEY, JSON.stringify(localDrivers));
       }
     } else {
-      localStorage.setItem(DRIVERS_KEY, JSON.stringify(driversRes.data.map(fromDbDriver)));
+      localStorage.setItem(DRIVERS_KEY, JSON.stringify(normalizeDriverRecords(driversRes.data.map(fromDbDriver))));
     }
   } else if (driversRes.error) {
     console.error("Supabase load failed for roster drivers:", driversRes.error.message);
@@ -334,14 +741,62 @@ function toCsv(rows) {
 }
 
 function normalizeRosterPayload(payload) {
-  if (payload.status !== "Leave") return payload;
+  if (payload.status !== "Leave") {
+    return {
+      ...payload,
+      startLocation: normalizeStartLocation(payload.startLocation, payload.route)
+    };
+  }
   return {
     ...payload,
     truckNumber: "",
     nightRun: false,
     shiftTime: payload.shiftTime || LEAVE_SHIFT_TIME,
-    route: payload.route || LEAVE_ROUTE
+    route: payload.route || LEAVE_ROUTE,
+    startLocation: ""
   };
+}
+
+function inferStartLocationFromRoute(route) {
+  const text = String(route || "").trim().toLowerCase();
+  if (!text || text === LEAVE_ROUTE.toLowerCase()) return "";
+  if (text.includes("allied") || text.includes("broadmeadows") || text.includes("north")) {
+    return START_LOCATION_OPTIONS[1];
+  }
+  if (text.includes("lg") || text.includes("altona") || text.includes("west") || text.includes("south")) {
+    return START_LOCATION_OPTIONS[0];
+  }
+  return DEFAULT_START_LOCATION;
+}
+
+function normalizeStartLocation(value, fallbackRoute = "") {
+  const trimmed = String(value || "").trim();
+  if (START_LOCATION_OPTIONS.includes(trimmed)) return trimmed;
+  return inferStartLocationFromRoute(fallbackRoute) || DEFAULT_START_LOCATION;
+}
+
+function unpackRouteValue(value) {
+  const text = String(value || "").trim();
+  if (!text) return { route: "", startLocation: "" };
+  const parts = text.split(ROUTE_LOCATION_SEPARATOR);
+  if (parts.length > 1) {
+    const [rawLocation, ...rest] = parts;
+    const route = rest.join(ROUTE_LOCATION_SEPARATOR).trim();
+    return {
+      route,
+      startLocation: normalizeStartLocation(rawLocation, route)
+    };
+  }
+  return {
+    route: text,
+    startLocation: inferStartLocationFromRoute(text)
+  };
+}
+
+function packRouteValue(route, startLocation) {
+  const cleanRoute = String(route || "").trim();
+  if (!cleanRoute || cleanRoute === LEAVE_ROUTE) return cleanRoute;
+  return `${normalizeStartLocation(startLocation, cleanRoute)}${ROUTE_LOCATION_SEPARATOR}${cleanRoute}`;
 }
 
 function dedupeRosterRows(rows) {
@@ -426,13 +881,20 @@ function getActiveTrucks() {
 function ensureRosterReferenceFallbacks() {
   const drivers = readArray(DRIVERS_KEY);
   const trucks = readArray(TRUCKS_KEY);
+  const normalizedDrivers = normalizeDriverRecords(drivers);
 
   if (!drivers.length) {
     localStorage.setItem(DRIVERS_KEY, JSON.stringify(FALLBACK_DRIVERS));
+  } else if (JSON.stringify(drivers) !== JSON.stringify(normalizedDrivers)) {
+    localStorage.setItem(DRIVERS_KEY, JSON.stringify(normalizedDrivers));
   }
   if (!trucks.length) {
     localStorage.setItem(TRUCKS_KEY, JSON.stringify(FALLBACK_TRUCKS));
   }
+}
+
+function getConfiguredPrimaryTruckForDriver(driverName) {
+  return PRIMARY_TRUCK_BY_DRIVER.get(String(driverName || "").trim()) || "";
 }
 
 function getMatchedTruckForDriver(driverName) {
@@ -447,6 +909,11 @@ function getMatchedTruckForDriver(driverName) {
     }
   }
 
+  const configuredTruck = getConfiguredPrimaryTruckForDriver(name);
+  if (configuredTruck && activeTruckNumbers.has(configuredTruck)) {
+    return configuredTruck;
+  }
+
   const activeDrivers = getActiveDrivers();
   const activeTrucks = getActiveTrucks();
   const matchIndex = activeDrivers.findIndex((item) => item.name === name);
@@ -456,6 +923,8 @@ function getMatchedTruckForDriver(driverName) {
 function getPreferredTruckForDriver(driverName) {
   const matched = getMatchedTruckForDriver(driverName);
   if (matched) return matched;
+  const configuredTruck = getConfiguredPrimaryTruckForDriver(driverName);
+  if (configuredTruck) return configuredTruck;
   const activeDrivers = getActiveDrivers();
   const activeTrucks = getActiveTrucks();
   const matchIndex = activeDrivers.findIndex((item) => item.name === driverName);
@@ -465,7 +934,6 @@ function getPreferredTruckForDriver(driverName) {
 function buildWeekTemplateRows(weekKeys, actualWeekRows = []) {
   const uniqueActualRows = dedupeRosterRows(actualWeekRows);
   const activeDrivers = getActiveDrivers().slice(0, TARGET_DRIVERS);
-  const activeTrucks = getActiveTrucks().slice(0, TARGET_TRUCKS);
   const existingDriverDates = new Set();
   const existingTruckDates = new Set();
   const templateRows = [];
@@ -480,7 +948,7 @@ function buildWeekTemplateRows(weekKeys, actualWeekRows = []) {
 
   activeDrivers.forEach((driver, index) => {
     const driverName = String(driver.name || "").trim();
-    const truckNumber = String(activeTrucks[index]?.truckNumber || "").trim();
+    const truckNumber = String(getPreferredTruckForDriver(driverName) || "").trim();
     if (!driverName || !truckNumber) return;
 
     weekKeys.slice(0, 5).forEach((shiftDate) => {
@@ -492,6 +960,7 @@ function buildWeekTemplateRows(weekKeys, actualWeekRows = []) {
         nightRun: false,
         shiftDate,
         shiftTime: DEFAULT_SHIFT_TIME,
+        startLocation: DEFAULT_START_LOCATION,
         route: DEFAULT_ROUTE,
         status: "Scheduled",
         isTemplate: true
@@ -564,14 +1033,18 @@ function syncStatusDependentFields() {
   const statusField = document.getElementById("rosterStatus");
   const truckField = document.getElementById("truckNumber");
   const timeField = document.getElementById("shiftTime");
+  const startLocationField = document.getElementById("startLocation");
   const routeField = document.getElementById("route");
   const nightRunField = document.getElementById("rosterNightRun");
-  if (!statusField || !truckField || !timeField || !routeField || !nightRunField) return;
+  if (!statusField || !truckField || !timeField || !startLocationField || !routeField || !nightRunField) return;
 
   if (statusField.value === "Leave") {
     truckField.required = false;
     truckField.disabled = true;
     truckField.value = "";
+    startLocationField.required = false;
+    startLocationField.disabled = true;
+    startLocationField.value = "";
     nightRunField.checked = false;
     nightRunField.disabled = true;
     if (!timeField.value || timeField.value === DEFAULT_SHIFT_TIME) timeField.value = LEAVE_SHIFT_TIME;
@@ -581,6 +1054,9 @@ function syncStatusDependentFields() {
 
   truckField.disabled = false;
   truckField.required = true;
+  startLocationField.disabled = false;
+  startLocationField.required = true;
+  if (!startLocationField.value) startLocationField.value = DEFAULT_START_LOCATION;
   nightRunField.disabled = false;
   if (timeField.value === LEAVE_SHIFT_TIME) timeField.value = DEFAULT_SHIFT_TIME;
   if (routeField.value === LEAVE_ROUTE) routeField.value = DEFAULT_ROUTE;
@@ -598,6 +1074,7 @@ function loadTemplateIntoForm(item) {
   document.getElementById("truckNumber").value = item.truckNumber || "";
   document.getElementById("rosterNightRun").checked = Boolean(item.nightRun);
   document.getElementById("shiftTime").value = item.shiftTime || DEFAULT_SHIFT_TIME;
+  document.getElementById("startLocation").value = item.startLocation || DEFAULT_START_LOCATION;
   document.getElementById("route").value = item.route || DEFAULT_ROUTE;
   document.getElementById("rosterStatus").value = item.status || "Scheduled";
   populateRosterPickers(item.driverName || "", item.truckNumber || "", { preserveSelectedTruck: true });
@@ -742,11 +1219,32 @@ function toWhatsAppNumber(phone) {
 }
 
 function launchLink(url, target = "_blank") {
+  if (target === "_self") {
+    window.location.assign(url);
+    return;
+  }
+
+  const popup = window.open(url, target, "noopener,noreferrer");
+  if (popup) return;
+
   const anchor = document.createElement("a");
   anchor.href = url;
   anchor.target = target;
   anchor.rel = "noopener noreferrer";
+  document.body.appendChild(anchor);
   anchor.click();
+  anchor.remove();
+}
+
+function openWhatsAppContact(phone, text, driverName) {
+  const whatsappNumber = toWhatsAppNumber(phone);
+  if (!whatsappNumber) {
+    alert(`WhatsApp number is not valid for ${driverName}.`);
+    return;
+  }
+
+  const url = `https://api.whatsapp.com/send?phone=${whatsappNumber}&text=${encodeURIComponent(text)}`;
+  launchLink(url, "_self");
 }
 
 function buildDriverLookup() {
@@ -769,10 +1267,12 @@ function getDriverContactByName(driverName) {
 function renderRosterContactButtons(item) {
   const contact = getDriverContactByName(item.driverName);
   const hasPhone = Boolean(cleanPhone(contact.phone));
+  const weekKey = selectedWeekStartKey();
   return `<div class='contact-actions'>
-    <button type='button' class='contact-link' data-action='email-shift' data-id='${item.id}' ${contact.email ? "" : "disabled"}>Email</button>
-    <button type='button' class='contact-link' data-action='sms-shift' data-id='${item.id}' ${hasPhone ? "" : "disabled"}>SMS</button>
-    <button type='button' class='contact-link' data-action='whatsapp-shift' data-id='${item.id}' ${hasPhone ? "" : "disabled"}>WhatsApp</button>
+    <button type='button' class='contact-link contact-link-whatsapp' data-action='whatsapp-shift' data-id='${item.id}' ${hasPhone ? "" : "disabled"}>WhatsApp</button>
+    <button type='button' class='contact-link contact-link-sms' data-action='sms-shift' data-id='${item.id}' ${hasPhone ? "" : "disabled"}>SMS</button>
+    <button type='button' class='contact-link contact-link-email' data-action='email-shift' data-id='${item.id}' ${contact.email ? "" : "disabled"}>Email</button>
+    ${renderAcknowledgementBadge(item.driverName, weekKey, true)}
   </div>`;
 }
 
@@ -788,11 +1288,224 @@ function displayRoute(item) {
   return item.route || (item.status === "Leave" ? LEAVE_ROUTE : DEFAULT_ROUTE);
 }
 
+function displayStartLocation(item) {
+  if (item.status === "Leave") return "";
+  return normalizeStartLocation(item.startLocation, item.route);
+}
+
+function getContactWeekKeys(item) {
+  const selectedWeekKey = selectedWeekStartKey();
+  const selectedWeekKeys = getWeekDates(selectedWeekKey).map(dateToKey);
+  if (selectedWeekKeys.includes(item.shiftDate)) return selectedWeekKeys;
+
+  const monday = mondayOf(item.shiftDate);
+  return monday ? getWeekDates(dateToKey(monday)).map(dateToKey) : [];
+}
+
+function summarizeDriverDay(entries) {
+  if (!entries.length) return "Off";
+  if (entries.some((entry) => entry.status === "Leave")) return "On Leave";
+
+  return entries.map((entry) => {
+    const truck = displayTruckNumber(entry);
+    const dispatchLabel = truck === "-" ? "Delivery run" : `Truck ${truck} delivery run`;
+    const startLocation = displayStartLocation(entry);
+    return `${startLocation} | ${dispatchLabel}${entry.nightRun ? " + Night Run" : ""}`.trim();
+  }).join(" | ");
+}
+
+function buildWeeklyWhatsAppMessage(item) {
+  const weekKeys = getContactWeekKeys(item);
+  if (!weekKeys.length) {
+    const truckLabel = displayTruckNumber(item) === "-" ? "No truck assigned" : `Truck ${displayTruckNumber(item)}`;
+    return [
+      `Hi ${item.driverName},`,
+      `Your Onpoint Express shift for ${item.shiftDate}:`,
+      [displayStartLocation(item), `${truckLabel}${item.nightRun ? " + Night Run" : ""}`, displayShiftTime(item), `${item.status}.`].filter(Boolean).join(" | "),
+      "",
+      "Please confirm when received."
+    ].join("\n");
+  }
+
+  const driverWeekRows = dedupeRosterRows(
+    state.roster.filter((row) => row.driverName === item.driverName && weekKeys.includes(row.shiftDate))
+  );
+
+  const lines = weekKeys.map((dateKey, index) => {
+    const entries = driverWeekRows
+      .filter((row) => row.shiftDate === dateKey)
+      .sort((a, b) => String(displayShiftTime(a)).localeCompare(String(displayShiftTime(b))));
+    return `${DAY_NAMES[index]}: ${summarizeDriverDay(entries)}`;
+  });
+
+  return [
+    `Hi ${item.driverName},`,
+    `Your Onpoint Express roster for this week:`,
+    ...lines,
+    "",
+    "Please confirm when received."
+  ].join("\n");
+}
+
+function buildWeeklyDriverMessage(driverName, weekKeys, sourceRows = state.roster) {
+  const name = String(driverName || "").trim();
+  if (!name || !weekKeys.length) return "";
+  const driverRows = dedupeRosterRows(
+    sourceRows.filter((row) => row.driverName === name && weekKeys.includes(row.shiftDate))
+  );
+
+  const lines = weekKeys.map((dateKey, index) => {
+    const entries = driverRows
+      .filter((row) => row.shiftDate === dateKey)
+      .sort((a, b) => String(displayShiftTime(a)).localeCompare(String(displayShiftTime(b))));
+    return `${DAY_NAMES[index]}: ${summarizeDriverDay(entries)}`;
+  });
+
+  return [
+    `Hi ${name},`,
+    "Your Onpoint Express roster for this week:",
+    ...lines,
+    "",
+    "Please confirm when received."
+  ].join("\n");
+}
+
+async function copyText(text, successMessage) {
+  try {
+    await navigator.clipboard.writeText(text);
+    return successMessage || "Copied to clipboard.";
+  } catch (error) {
+    console.warn("Clipboard copy failed:", error);
+    const area = document.createElement("textarea");
+    area.value = text;
+    document.body.appendChild(area);
+    area.select();
+    document.execCommand("copy");
+    area.remove();
+    return successMessage || "Copied to clipboard.";
+  }
+}
+
+function setDispatchStatus(message, tone = "muted") {
+  const status = document.getElementById("rosterDispatchStatus");
+  if (!status) return;
+  status.textContent = message || "";
+  status.className = `data-status ${tone}`.trim();
+}
+
+function drawWeekWorkflow() {
+  const weekKey = selectedWeekStartKey();
+  const title = document.getElementById("weekWorkflowTitle");
+  const meta = document.getElementById("weekWorkflowMeta");
+  const badgeWrap = document.getElementById("weekWorkflowBadgeWrap");
+  if (!title || !meta || !badgeWrap) return;
+
+  if (!weekKey) {
+    title.textContent = "Draft";
+    meta.textContent = "Choose a week to manage its approval flow.";
+    badgeWrap.innerHTML = renderWeekWorkflowBadge("", false);
+    return;
+  }
+
+  const workflow = getWeekWorkflow(weekKey);
+  title.textContent = workflow.label;
+  meta.textContent = workflow.updatedAt
+    ? `Updated ${formatAcknowledgementTime(workflow.updatedAt)} by ${workflow.updatedBy || "System"}.`
+    : `This week is currently ${workflow.label.toLowerCase()}.`;
+  badgeWrap.innerHTML = renderWeekWorkflowBadge(weekKey, false);
+}
+
+function drawWhatsAppDispatch() {
+  const container = document.getElementById("rosterWhatsAppDispatch");
+  if (!container) return;
+
+  const { weekKey, weekKeys, weekRows } = getWeekContext();
+  if (!weekKey) {
+    setMarkupIfChanged(container, "");
+    setDispatchStatus("Choose a valid week first.", "error-text");
+    return;
+  }
+
+  const driverNames = [...new Set([
+    ...getActiveDrivers().map((driver) => String(driver.name || "").trim()).filter(Boolean),
+    ...weekRows.map((row) => String(row.driverName || "").trim()).filter(Boolean)
+  ])];
+
+  if (!driverNames.length) {
+    setMarkupIfChanged(container, "");
+    setDispatchStatus("No drivers are available for this week yet.");
+    return;
+  }
+
+  const weekWorkflowBadge = renderWeekWorkflowBadge(weekKey, true);
+  const cards = driverNames.map((driverName) => {
+    const contact = getDriverContactByName(driverName);
+    const phone = cleanPhone(contact.phone);
+    const hasPhone = Boolean(phone);
+    const message = buildWeeklyDriverMessage(driverName, weekKeys, weekRows);
+    const workedDays = new Set(weekRows.filter((row) => row.driverName === driverName && row.status !== "Leave").map((row) => row.shiftDate)).size;
+    const leaveDays = new Set(weekRows.filter((row) => row.driverName === driverName && row.status === "Leave").map((row) => row.shiftDate)).size;
+    const acknowledgement = getWeekAcknowledgement(driverName, weekKey);
+    return `
+      <article class="note-card">
+        <p>Driver Dispatch</p>
+        <h3>${escapeHtml(driverName)}</h3>
+        <span>${hasPhone ? `WhatsApp ready for ${escapeHtml(phone)}` : "Missing phone number on Drivers page."}</span>
+        <span>${workedDays} planned day${workedDays === 1 ? "" : "s"} | ${leaveDays} leave day${leaveDays === 1 ? "" : "s"}</span>
+        <div class="ack-row">
+          ${renderAcknowledgementBadge(driverName, weekKey)}
+          ${weekWorkflowBadge}
+          <span class="muted">${escapeHtml(formatAcknowledgementTime(acknowledgement.updatedAt))}</span>
+        </div>
+        <div class="table-actions table-actions-stack">
+          <div class="contact-actions">
+            <button type="button" class="contact-link contact-link-whatsapp" data-action="whatsapp-week-driver" data-driver-name="${escapeHtml(driverName)}" ${hasPhone ? "" : "disabled"}>WhatsApp</button>
+            <button type="button" class="contact-link contact-link-sms" data-action="copy-week-driver" data-driver-name="${escapeHtml(driverName)}">Copy Message</button>
+          </div>
+          <div class="contact-actions">
+            <button type="button" class="contact-link contact-link-neutral" data-action="ack-week-driver" data-driver-name="${escapeHtml(driverName)}" data-status="sent">Mark Sent</button>
+            <button type="button" class="contact-link contact-link-viewed" data-action="ack-week-driver" data-driver-name="${escapeHtml(driverName)}" data-status="viewed">Mark Viewed</button>
+            <button type="button" class="contact-link contact-link-confirmed" data-action="ack-week-driver" data-driver-name="${escapeHtml(driverName)}" data-status="confirmed">Mark Confirmed</button>
+          </div>
+          <span class="muted">${escapeHtml(message.split("\n").slice(0, 2).join(" "))}</span>
+        </div>
+      </article>
+    `;
+  }).join("");
+
+  setMarkupIfChanged(container, cards);
+  const readyCount = driverNames.filter((driverName) => Boolean(cleanPhone(getDriverContactByName(driverName).phone))).length;
+  const missingCount = driverNames.length - readyCount;
+  const counts = acknowledgementCounts(driverNames, weekKey);
+  setDispatchStatus(`${readyCount}/${driverNames.length} drivers have WhatsApp-ready phone numbers for week ${weekKey}. ${counts.confirmed}/${counts.total} confirmed, ${counts.viewed} viewed, ${counts.sent} sent.${missingCount ? ` ${missingCount} still need a phone number on the Drivers page.` : ""}`);
+}
+
+function buildAllDriversWeekSummary() {
+  const { weekKey, weekKeys, weekRows } = getWeekContext();
+  const driverNames = [...new Set([
+    ...getActiveDrivers().map((driver) => String(driver.name || "").trim()).filter(Boolean),
+    ...weekRows.map((row) => String(row.driverName || "").trim()).filter(Boolean)
+  ])];
+  const messages = driverNames.map((driverName) => buildWeeklyDriverMessage(driverName, weekKeys, weekRows));
+
+  return [
+    `Onpoint Express Week View ${weekKey}`,
+    "",
+    messages.join("\n\n--------------------\n\n")
+  ].join("\n");
+}
+
 function openShiftContact(channel, item) {
   const contact = getDriverContactByName(item.driverName);
   const phone = cleanPhone(contact.phone);
-  const nightRunText = item.nightRun ? " plus Night Run" : "";
-  const message = `Hi ${item.driverName}, your Onpoint Express shift is ${item.shiftDate} from ${item.shiftTime} with truck ${item.truckNumber} on route ${item.route}${nightRunText}. Status: ${item.status}.`;
+  const truckLabel = displayTruckNumber(item) === "-" ? "No truck assigned" : `Truck ${displayTruckNumber(item)}`;
+  const message = [
+    `Hi ${item.driverName},`,
+    `Your Onpoint Express shift for ${item.shiftDate}:`,
+    [displayStartLocation(item), `${truckLabel}${item.nightRun ? " + Night Run" : ""}`, displayShiftTime(item), `${item.status}.`].filter(Boolean).join(" | "),
+    "",
+    "Please confirm when received."
+  ].join("\n");
 
   if (channel === "email") {
     if (!contact.email) {
@@ -816,12 +1529,7 @@ function openShiftContact(channel, item) {
   }
 
   if (channel === "whatsapp") {
-    const whatsappNumber = toWhatsAppNumber(phone);
-    if (!whatsappNumber) {
-      alert(`WhatsApp number is not valid for ${item.driverName}.`);
-      return;
-    }
-    launchLink(`https://wa.me/${whatsappNumber}?text=${encodeURIComponent(message)}`);
+    openWhatsAppContact(phone, buildWeeklyWhatsAppMessage(item), item.driverName);
   }
 }
 
@@ -952,6 +1660,8 @@ function drawRosterModel() {
 }
 
 function buildBoardRowMarkup(plan, weekKeys) {
+  const weekKey = weekKeys[0] || "";
+  const acknowledgementBadge = plan.isPlaceholder ? "" : renderAcknowledgementBadge(plan.driverName, weekKey, true);
   const cells = weekKeys.map((dayKey, index) => {
     const items = plan.assignments[dayKey] || [];
     if (!items.length) {
@@ -976,6 +1686,7 @@ function buildBoardRowMarkup(plan, weekKeys) {
         data-board-truck='${escapeHtml(item.truckNumber || "")}'
         data-board-status='${escapeHtml(item.status)}'
         data-board-shift-time='${escapeHtml(item.shiftTime || "")}'
+        data-board-start-location='${escapeHtml(item.startLocation || "")}'
         data-board-route='${escapeHtml(item.route || "")}'
         data-board-night-run='${item.nightRun ? "true" : "false"}'
         data-template='${item.isTemplate ? "true" : "false"}'
@@ -1005,7 +1716,7 @@ function buildBoardRowMarkup(plan, weekKeys) {
     plan.weekendDays,
     nightRuns,
     leaveDays,
-    weekKeys.map((dayKey) => (plan.assignments[dayKey] || []).map((item) => `${item.id}:${item.status}:${item.truckNumber}:${item.nightRun ? 1 : 0}:${item.isTemplate ? 1 : 0}`).join("|")).join("~")
+    weekKeys.map((dayKey) => (plan.assignments[dayKey] || []).map((item) => `${item.id}:${item.status}:${item.truckNumber}:${item.startLocation || ""}:${item.route || ""}:${item.nightRun ? 1 : 0}:${item.isTemplate ? 1 : 0}`).join("|")).join("~")
   ].join("::");
 
   return {
@@ -1015,7 +1726,7 @@ function buildBoardRowMarkup(plan, weekKeys) {
       <td class='board-driver-cell'>
         <div class='board-driver-name'>
           <strong>${plan.driverName}</strong>
-          ${plan.isPlaceholder ? "<span class='board-slot-badge'>Open slot</span>" : `<span class='board-driver-meta'>Primary truck ${plan.truckNumber || "-"} | ${nightRuns} night run${nightRuns === 1 ? "" : "s"} | ${leaveDays} leave day${leaveDays === 1 ? "" : "s"}</span>`}
+          ${plan.isPlaceholder ? "<span class='board-slot-badge'>Open slot</span>" : `<span class='board-driver-meta'>Primary truck ${plan.truckNumber || "-"} | ${nightRuns} night run${nightRuns === 1 ? "" : "s"} | ${leaveDays} leave day${leaveDays === 1 ? "" : "s"} | ${acknowledgementBadge}</span>`}
         </div>
       </td>
       ${cells}
@@ -1102,7 +1813,7 @@ function drawWeekTable() {
       .filter((x) => !statusFilter || x.status === statusFilter)
       .filter((x) => {
         if (!query) return true;
-        const hay = `${x.driverName} ${x.truckNumber} ${x.nightRun ? "night run" : ""} ${x.shiftTime} ${x.route} ${x.status} ${x.isTemplate ? "template" : ""}`.toLowerCase();
+        const hay = `${x.driverName} ${x.truckNumber} ${x.nightRun ? "night run" : ""} ${x.shiftTime} ${x.startLocation || ""} ${x.route} ${x.status} ${x.isTemplate ? "template" : ""}`.toLowerCase();
         return hay.includes(query);
       })
       .sort((a, b) => {
@@ -1121,6 +1832,7 @@ function drawWeekTable() {
         item.status === "Leave" ? "row-leave-highlight" : "",
         item.isTemplate ? "row-template-highlight" : ""
       ].filter(Boolean).join(" ");
+      const acknowledgementBadge = item.isTemplate ? "" : renderAcknowledgementBadge(item.driverName, weekKey, true);
       const rowActions = item.isTemplate ? "<span class='muted'>Week template</span>" : renderRosterContactButtons(item);
       const adminActions = item.isTemplate
         ? "<span class='muted'>Template</span>"
@@ -1135,7 +1847,7 @@ function drawWeekTable() {
         <td>${displayShiftTime(item)}</td>
         <td>${displayRoute(item)}</td>
         <td>${item.status}</td>
-        <td><div class='table-actions table-actions-stack'>${rowActions}${adminActions}</div></td>
+        <td><div class='table-actions table-actions-stack'>${acknowledgementBadge ? `<div>${acknowledgementBadge}</div>` : ""}${rowActions}${adminActions}</div></td>
       </tr>`);
     });
   });
@@ -1145,8 +1857,10 @@ function drawWeekTable() {
 
 function refreshWeekViewNow() {
   drawStats();
+  drawWeekWorkflow();
   drawDriverBoard();
   drawWeekTable();
+  drawWhatsAppDispatch();
 }
 
 function refreshWeekView() {
@@ -1178,6 +1892,7 @@ function setForm(item) {
   document.getElementById("truckNumber").value = item.truckNumber;
   document.getElementById("rosterNightRun").checked = Boolean(item.nightRun);
   document.getElementById("shiftTime").value = item.shiftTime;
+  document.getElementById("startLocation").value = item.startLocation || DEFAULT_START_LOCATION;
   document.getElementById("route").value = item.route;
   document.getElementById("rosterStatus").value = item.status;
   populateRosterPickers(item.driverName, item.truckNumber, { preserveSelectedTruck: true });
@@ -1204,6 +1919,10 @@ function materializeWeekTemplate() {
 function applyAccess() {
   document.getElementById("currentUserChip").textContent = `User: ${auth.user.username}`;
   if (!auth.can("accessControlPanel")) document.getElementById("controlPanelLink").style.display = "none";
+  if (!auth.can("viewReports")) {
+    const reportsLink = document.getElementById("reportsLink");
+    if (reportsLink) reportsLink.style.display = "none";
+  }
   if (!auth.can("accessLogs")) document.querySelector("a[href='./log.html']").style.display = "none";
   if (!(auth.can("viewTruckIncome") || auth.can("viewSpending") || auth.can("viewPayslips") || auth.can("viewStats"))) {
     const link = document.getElementById("financeLink");
@@ -1233,6 +1952,7 @@ document.getElementById("rosterForm").addEventListener("submit", (e) => {
     nightRun: document.getElementById("rosterNightRun").checked,
     shiftDate: document.getElementById("shiftDate").value,
     shiftTime: document.getElementById("shiftTime").value.trim(),
+    startLocation: document.getElementById("startLocation").value.trim(),
     route: document.getElementById("route").value.trim(),
     status: document.getElementById("rosterStatus").value
   });
@@ -1241,8 +1961,8 @@ document.getElementById("rosterForm").addEventListener("submit", (e) => {
     alert("Choose a driver and date first.");
     return;
   }
-  if (basePayload.status !== "Leave" && (!basePayload.truckNumber || !basePayload.shiftTime || !basePayload.route)) {
-    alert("Driver, truck, time, and route are required for a real shift.");
+  if (basePayload.status !== "Leave" && (!basePayload.truckNumber || !basePayload.shiftTime || !basePayload.startLocation || !basePayload.route)) {
+    alert("Driver, truck, time, depot, and route are required for a real shift.");
     return;
   }
 
@@ -1328,7 +2048,9 @@ document.getElementById("exportRoster").addEventListener("click", () => {
 });
 
 document.getElementById("weekStart").addEventListener("change", refreshWeekView);
-document.getElementById("rosterSearch").addEventListener("input", refreshWeekView);
+document.getElementById("rosterSearch").addEventListener("input", scheduleWeekSearchRefresh);
+document.getElementById("rosterSearch").addEventListener("search", scheduleWeekSearchRefresh);
+document.getElementById("rosterSearch").addEventListener("change", scheduleWeekSearchRefresh);
 document.getElementById("rosterFilterStatus").addEventListener("change", refreshWeekView);
 document.getElementById("rosterStatus").addEventListener("change", () => {
   syncStatusDependentFields();
@@ -1357,6 +2079,30 @@ document.getElementById("saveWeekTemplate")?.addEventListener("click", () => {
   if (!auth.can("editRoster")) return;
   materializeWeekTemplate();
 });
+document.getElementById("setWeekDraft")?.addEventListener("click", () => {
+  if (!auth.can("editRoster")) return;
+  const weekKey = selectedWeekStartKey();
+  if (!weekKey) return;
+  setWeekWorkflowStatus(weekKey, "draft");
+  drawWeekWorkflow();
+  setDispatchStatus(`Week ${weekKey} is back in draft.`);
+});
+document.getElementById("approveWeekPlan")?.addEventListener("click", () => {
+  if (!auth.can("editRoster")) return;
+  const weekKey = selectedWeekStartKey();
+  if (!weekKey) return;
+  setWeekWorkflowStatus(weekKey, "approved");
+  drawWeekWorkflow();
+  setDispatchStatus(`Week ${weekKey} approved and ready for dispatch.`);
+});
+document.getElementById("markWeekSent")?.addEventListener("click", () => {
+  if (!auth.can("editRoster")) return;
+  const weekKey = selectedWeekStartKey();
+  if (!weekKey) return;
+  setWeekWorkflowStatus(weekKey, "sent");
+  drawWeekWorkflow();
+  setDispatchStatus(`Week ${weekKey} marked sent to drivers.`);
+});
 document.getElementById("clearRosterFilters").addEventListener("click", () => {
   document.getElementById("rosterSearch").value = "";
   document.getElementById("rosterFilterStatus").value = "";
@@ -1367,6 +2113,23 @@ document.getElementById("clearRosterFilters").addEventListener("click", () => {
     document.getElementById("weekStart").value = "";
   }
   refreshWeekView();
+});
+document.getElementById("openWhatsAppWeekDispatch")?.addEventListener("click", () => {
+  const weekKey = selectedWeekStartKey();
+  if (weekKey) {
+    const currentStatus = getWeekWorkflow(weekKey).status;
+    if (currentStatus === "draft") {
+      setWeekWorkflowStatus(weekKey, "approved");
+    }
+  }
+  drawWhatsAppDispatch();
+  drawWeekWorkflow();
+  document.getElementById("rosterWhatsAppDispatch")?.scrollIntoView?.({ behavior: "smooth", block: "start" });
+});
+document.getElementById("copyWeekViewSummary")?.addEventListener("click", async () => {
+  const summary = buildAllDriversWeekSummary();
+  const message = await copyText(summary, "Full week view copied. You can paste it into WhatsApp or any message.");
+  setDispatchStatus(message);
 });
 
 document.body.addEventListener("click", (e) => {
@@ -1393,6 +2156,7 @@ document.body.addEventListener("click", (e) => {
       truckNumber: boardChip.dataset.boardTruck || "",
       status: boardChip.dataset.boardStatus || "Scheduled",
       shiftTime: boardChip.dataset.boardShiftTime || "",
+      startLocation: boardChip.dataset.boardStartLocation || "",
       route: boardChip.dataset.boardRoute || "",
       nightRun: boardChip.dataset.boardNightRun === "true",
       isTemplate: boardChip.dataset.template === "true"
@@ -1418,6 +2182,49 @@ document.body.addEventListener("click", (e) => {
     if (action === "email-shift") openShiftContact("email", item);
     if (action === "sms-shift") openShiftContact("sms", item);
     if (action === "whatsapp-shift") openShiftContact("whatsapp", item);
+    return;
+  }
+
+  if (action === "whatsapp-week-driver" || action === "copy-week-driver") {
+    const driverName = button.dataset.driverName || "";
+    const { weekKeys, weekRows } = getWeekContext();
+    const weekKey = selectedWeekStartKey();
+    const message = buildWeeklyDriverMessage(driverName, weekKeys, weekRows);
+    const contact = getDriverContactByName(driverName);
+    if (action === "copy-week-driver") {
+      copyText(message, `Copied ${driverName}'s week view.`).then((status) => setDispatchStatus(status));
+      return;
+    }
+    if (!cleanPhone(contact.phone)) {
+      setDispatchStatus(`${driverName} does not have a saved phone number on the Drivers page.`, "error-text");
+      return;
+    }
+    ensureWeekAcknowledgementAtLeast(driverName, weekKey, "sent");
+    if (weekKey) {
+      const workflow = getWeekWorkflow(weekKey).status;
+      if (workflow === "draft" || workflow === "approved") {
+        setWeekWorkflowStatus(weekKey, "sent");
+      }
+    }
+    openWhatsAppContact(contact.phone, message, driverName);
+    drawWhatsAppDispatch();
+    drawWeekWorkflow();
+    drawDriverBoard();
+    drawWeekTable();
+    setDispatchStatus(`Opened WhatsApp for ${driverName}.`);
+    return;
+  }
+
+  if (action === "ack-week-driver") {
+    const driverName = button.dataset.driverName || "";
+    const status = button.dataset.status || "";
+    const weekKey = selectedWeekStartKey();
+    if (!driverName || !weekKey || !Object.prototype.hasOwnProperty.call(ACK_STATUS_META, status)) return;
+    setWeekAcknowledgement(driverName, weekKey, status);
+    drawWhatsAppDispatch();
+    drawDriverBoard();
+    drawWeekTable();
+    setDispatchStatus(`${driverName} marked ${ACK_STATUS_META[status].label.toLowerCase()} for week ${weekKey}.`);
     return;
   }
 
@@ -1492,6 +2299,9 @@ if (todayMonday) {
 resetBatchControls();
 syncStatusDependentFields();
 refresh();
+if (!restoreRosterSyncStatus()) {
+  setRosterSyncStatus(useSupabase ? "Shared roster sync ready." : "Local-only mode on this device.", useSupabase ? "neutral" : "local", { persist: false });
+}
 void hydrateRosterReferencesFromSupabase();
 void hydrateRosterFromSupabase();
 
@@ -1504,5 +2314,32 @@ if (!useSupabase) {
 window.addEventListener("storage", (event) => {
   if (event.key === DRIVERS_KEY || event.key === TRUCKS_KEY) {
     refresh();
+    return;
   }
+  if (event.key === ROSTER_WEEK_STATUS_KEY) {
+    refreshWeekView();
+    return;
+  }
+  if (event.key === ROSTER_ACK_KEY) {
+    refreshWeekView();
+    return;
+  }
+  if (event.key === KEY) {
+    state.roster = readData();
+    setRosterSyncStatus("Roster updated in another tab.", "neutral");
+    refresh();
+  }
+});
+
+window.addEventListener("offline", updateRosterQueueBanner);
+
+window.addEventListener("online", () => {
+  if (!useSupabase) return;
+  if (rosterRetryAttempt || rosterRetryTimerId) {
+    clearRosterSyncRetry(false);
+    setRosterSyncStatus("Back online. Retrying shared roster sync...", "syncing");
+    scheduleRosterSync(0);
+    return;
+  }
+  updateRosterQueueBanner();
 });

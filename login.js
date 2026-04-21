@@ -52,6 +52,10 @@ async function startLogin() {
   const firstRunPanel = document.getElementById("firstRunPanel");
   const firstRunForm = document.getElementById("firstRunForm");
 
+  if (params.get("locked") === "1") {
+    loginError.textContent = "Session locked after 5 minutes of inactivity. Please log in again.";
+  }
+
   const sessionUser = window.OPXAuth.getSessionUser();
   if (sessionUser) {
     routeUser(sessionUser);

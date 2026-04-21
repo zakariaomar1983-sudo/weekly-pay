@@ -2,14 +2,29 @@
   const STORAGE = {
     roles: "opx_auth_roles",
     users: "opx_auth_users",
-    session: "opx_auth_session"
+    session: "opx_auth_session",
+    audit: "transport_crm_staff_audit"
   };
+  const SYNC_HEALTH_STORAGE_KEYS = [
+    "transport_crm_drivers_sync_status",
+    "transport_crm_trucks_sync_status",
+    "transport_crm_roster_sync_status",
+    "transport_crm_finance_sync_status",
+    "transport_crm_logs_sync_status"
+  ];
+  const SYNC_HISTORY_KEY = "transport_crm_sync_history";
+  const IDLE_TIMEOUT_MS = 5 * 60 * 1000;
+  const ACTIVITY_TOUCH_MS = 15 * 1000;
   const AUTH_TABLES = {
     roles: "auth_roles",
     users: "auth_users"
   };
   let authSyncBusy = false;
   let sharedAuthStatus = "Shared login not checked yet.";
+  let idleTimerId = null;
+  let lastActivityTouch = 0;
+  let authSyncTimerId = null;
+  let syncToastTimerId = null;
 
   const PERMISSIONS = [
     { key: "accessCRM", label: "Access CRM page" },
@@ -27,6 +42,8 @@
     { key: "editSpending", label: "Edit Spending" },
     { key: "viewRoster", label: "View Driver Roster" },
     { key: "editRoster", label: "Edit Driver Roster" },
+    { key: "viewReports", label: "View Reports" },
+    { key: "emailReports", label: "Email Reports" },
     { key: "viewPayslips", label: "View Payslips" },
     { key: "editPayslips", label: "Edit Payslips" },
     { key: "viewStats", label: "View Dashboard Stats" },
@@ -40,8 +57,12 @@
     manager: "role_manager",
     viewer: "role_viewer"
   };
+  const IMMUTABLE_ROLE_IDS = new Set([SYSTEM_ROLE_IDS.admin]);
+  const OWNER_ADMIN_USERNAMES = new Set(["zakaria omar"]);
 
   const STARTER_CUSTOM_ROLE_IDS = {
+    manager: "role_manager",
+    viewer: "role_viewer",
     teamBasic: "role_team_basic",
     dispatcher: "role_dispatcher",
     finance: "role_finance",
@@ -50,11 +71,6 @@
     compliance: "role_compliance",
     dataEntry: "role_data_entry"
   };
-
-  const LEGACY_DISABLED_DEFAULTS = [
-    { username: "opsmanager", password: "Ops@123" },
-    { username: "gm", password: "Gm@123" }
-  ];
 
   function read(key, fallback) {
     try {
@@ -69,8 +85,401 @@
     localStorage.setItem(key, JSON.stringify(value));
   }
 
+  function readSyncHealthStatus(key) {
+    try {
+      const parsed = JSON.parse(localStorage.getItem(key) || "null");
+      return parsed && typeof parsed === "object" ? parsed : null;
+    } catch {
+      return null;
+    }
+  }
+
+  function readSyncHistory() {
+    const history = read(SYNC_HISTORY_KEY, []);
+    return Array.isArray(history) ? history : [];
+  }
+
+  function writeSyncHistory(entries) {
+    write(SYNC_HISTORY_KEY, entries.slice(0, 30));
+  }
+
+  function appendSyncHistoryEvent(detail) {
+    if (!detail?.message) return;
+    const nextEntry = {
+      source: String(detail.source || "CRM"),
+      message: String(detail.message || ""),
+      tone: String(detail.tone || "neutral"),
+      at: Number(detail.at || Date.now())
+    };
+    const history = readSyncHistory();
+    const latest = history[0];
+    if (
+      latest
+      && latest.source === nextEntry.source
+      && latest.message === nextEntry.message
+      && latest.tone === nextEntry.tone
+      && Math.abs(Number(latest.at || 0) - nextEntry.at) < 10000
+    ) {
+      return;
+    }
+    history.unshift(nextEntry);
+    writeSyncHistory(history);
+  }
+
+  function isQueuedSyncEntry(entry) {
+    const message = String(entry?.message || "").toLowerCase();
+    return entry?.tone === "error"
+      || entry?.tone === "syncing"
+      || message.includes("retry")
+      || message.includes("waiting for internet")
+      || message.includes("saved here");
+  }
+
+  function clearSyncHistory() {
+    writeSyncHistory([]);
+  }
+
+  function ensureSyncHistoryDrawer() {
+    if (typeof document === "undefined") return null;
+    let drawer = document.getElementById("syncHistoryDrawer");
+    if (drawer) return drawer;
+
+    drawer = document.createElement("aside");
+    drawer.id = "syncHistoryDrawer";
+    drawer.className = "sync-history-drawer";
+    drawer.hidden = true;
+    drawer.innerHTML = `
+      <div class="sync-history-head">
+        <div>
+          <p class="eyebrow">Sync History</p>
+          <h3>Recent activity</h3>
+        </div>
+        <div class="actions">
+          <button id="copySyncDiagnosticsBtn" class="btn btn-outline" type="button">Copy diagnostics</button>
+          <button id="clearSyncHistoryBtn" class="btn btn-outline" type="button">Clear</button>
+          <button id="closeSyncHistoryBtn" class="btn btn-muted" type="button">Close</button>
+        </div>
+      </div>
+      <p id="syncHistoryStatus" class="muted sync-history-status"></p>
+      <div id="syncHistoryList" class="sync-history-list"></div>
+    `;
+    document.body.appendChild(drawer);
+
+    drawer.querySelector("#closeSyncHistoryBtn")?.addEventListener("click", () => {
+      drawer.hidden = true;
+      document.getElementById("crmHealthChip")?.setAttribute("aria-expanded", "false");
+    });
+
+    drawer.querySelector("#clearSyncHistoryBtn")?.addEventListener("click", () => {
+      clearSyncHistory();
+      renderSyncHistoryDrawer();
+    });
+
+    drawer.querySelector("#copySyncDiagnosticsBtn")?.addEventListener("click", async () => {
+      await copySyncDiagnostics();
+    });
+
+    return drawer;
+  }
+
+  async function copyTextToClipboard(text) {
+    if (navigator?.clipboard?.writeText) {
+      await navigator.clipboard.writeText(text);
+      return true;
+    }
+
+    const textarea = document.createElement("textarea");
+    textarea.value = text;
+    textarea.setAttribute("readonly", "true");
+    textarea.style.position = "fixed";
+    textarea.style.opacity = "0";
+    document.body.appendChild(textarea);
+    textarea.select();
+    const copied = document.execCommand("copy");
+    textarea.remove();
+    return copied;
+  }
+
+  function setSyncHistoryStatus(message = "") {
+    const node = document.getElementById("syncHistoryStatus");
+    if (!node) return;
+    node.textContent = message;
+  }
+
+  function buildSyncDiagnosticsReport() {
+    const user = getSessionUser();
+    const role = user ? getRoleById(user.roleId) : null;
+    const summary = getSyncDashboardSummary();
+    const statuses = summary.statuses;
+    const history = readSyncHistory();
+    const lines = [
+      "OnPoint Express CRM diagnostics",
+      `Generated: ${new Date().toLocaleString("en-AU")}`,
+      `Page: ${window.location.href}`,
+      `Online: ${navigator.onLine ? "Yes" : "No"}`,
+      `Top bar health: ${summary.health.label}`,
+      `User: ${user ? user.username : "No active user"}`,
+      `Role: ${role?.name || "Unknown"}`,
+      `Shared auth: ${summary.sharedAuthStatus}`,
+      "",
+      "Page sync states:"
+    ];
+
+    statuses.forEach((entry) => {
+      const time = entry.at ? new Date(entry.at).toLocaleTimeString("en-AU", { hour: "numeric", minute: "2-digit" }) : "n/a";
+      lines.push(`- ${entry.label}: ${entry.message} [${entry.tone}] @ ${time}`);
+    });
+
+    lines.push("", "Recent sync history:");
+    if (!history.length) {
+      lines.push("- No recent sync events");
+    } else {
+      history.forEach((entry) => {
+        const time = new Date(Number(entry.at || Date.now())).toLocaleTimeString("en-AU", { hour: "numeric", minute: "2-digit" });
+        lines.push(`- ${time} | ${entry.source} | ${entry.tone} | ${entry.message}`);
+      });
+    }
+
+    return lines.join("\n");
+  }
+
+  async function copySyncDiagnostics() {
+    try {
+      const report = buildSyncDiagnosticsReport();
+      const copied = await copyTextToClipboard(report);
+      if (!copied) throw new Error("Clipboard copy was blocked.");
+      setSyncHistoryStatus("Diagnostics copied. You can paste them into a message or email.");
+    } catch (error) {
+      setSyncHistoryStatus(`Could not copy diagnostics: ${error.message || error}`);
+    }
+  }
+
+  function renderSyncHistoryDrawer() {
+    const drawer = ensureSyncHistoryDrawer();
+    if (!drawer) return;
+    const list = drawer.querySelector("#syncHistoryList");
+    if (!list) return;
+    setSyncHistoryStatus("");
+    const history = readSyncHistory();
+    if (!history.length) {
+      list.innerHTML = "<p class='muted'>No recent sync events yet.</p>";
+      return;
+    }
+    list.innerHTML = history.map((entry) => {
+      const time = new Date(Number(entry.at || Date.now())).toLocaleTimeString("en-AU", { hour: "numeric", minute: "2-digit" });
+      return `
+        <article class="sync-history-item sync-history-item-${entry.tone || "neutral"}">
+          <div class="sync-history-meta">
+            <strong>${entry.source}</strong>
+            <span>${time}</span>
+          </div>
+          <p>${entry.message}</p>
+        </article>
+      `;
+    }).join("");
+  }
+
+  function toggleSyncHistoryDrawer() {
+    const drawer = ensureSyncHistoryDrawer();
+    if (!drawer) return;
+    drawer.hidden = !drawer.hidden;
+    document.getElementById("crmHealthChip")?.setAttribute("aria-expanded", drawer.hidden ? "false" : "true");
+    if (!drawer.hidden) renderSyncHistoryDrawer();
+  }
+
+  function ensureSyncToast() {
+    if (typeof document === "undefined") return null;
+    let toast = document.getElementById("syncToast");
+    if (toast) return toast;
+    toast = document.createElement("aside");
+    toast.id = "syncToast";
+    toast.className = "sync-toast sync-toast-neutral";
+    toast.hidden = true;
+    document.body.appendChild(toast);
+    return toast;
+  }
+
+  function showSyncToast(message, tone = "neutral", duration = 3200) {
+    const toast = ensureSyncToast();
+    if (!toast || !message) return;
+    window.clearTimeout(syncToastTimerId);
+    toast.textContent = message;
+    toast.className = `sync-toast sync-toast-${tone}`;
+    toast.hidden = false;
+    syncToastTimerId = window.setTimeout(() => {
+      toast.hidden = true;
+    }, duration);
+  }
+
+  function ensureHealthChip() {
+    if (typeof document === "undefined") return null;
+    const actions = document.querySelector(".topbar-actions");
+    if (!actions) return null;
+    let chip = document.getElementById("crmHealthChip");
+    if (!chip) {
+      chip = document.createElement("button");
+      chip.id = "crmHealthChip";
+      chip.type = "button";
+      chip.className = "health-chip health-chip-live";
+      chip.textContent = "Live";
+      chip.setAttribute("aria-expanded", "false");
+      chip.addEventListener("click", toggleSyncHistoryDrawer);
+      const userChip = document.getElementById("currentUserChip");
+      if (userChip?.parentElement === actions) {
+        userChip.insertAdjacentElement("afterend", chip);
+      } else {
+        actions.prepend(chip);
+      }
+    }
+    return chip;
+  }
+
+  function getTopbarHealthState() {
+    if (typeof navigator !== "undefined" && navigator.onLine === false) {
+      return { label: "Offline", tone: "offline" };
+    }
+
+    const syncEntries = SYNC_HEALTH_STORAGE_KEYS.map(readSyncHealthStatus).filter(Boolean);
+    const hasQueuedSync = syncEntries.some((entry) => isQueuedSyncEntry(entry));
+
+    const sharedStatusText = String(sharedAuthStatus || "").toLowerCase();
+    const hasSharedAuthQueue = sharedStatusText.includes("checking")
+      || sharedStatusText.includes("sync failed")
+      || sharedStatusText.includes("load failed");
+
+    if (hasQueuedSync || hasSharedAuthQueue) {
+      return { label: "Sync Queue", tone: "queue" };
+    }
+
+    return { label: "Live", tone: "live" };
+  }
+
+  function getSyncDashboardSummary() {
+    const health = getTopbarHealthState();
+    const statuses = SYNC_HEALTH_STORAGE_KEYS.map((key) => {
+      const entry = readSyncHealthStatus(key);
+      return {
+        key,
+        label: key.replace("transport_crm_", "").replaceAll("_", " "),
+        message: entry?.message || "No status recorded",
+        tone: entry?.tone || "neutral",
+        at: entry?.at || null
+      };
+    });
+    const queueCount = statuses.filter((entry) => isQueuedSyncEntry(entry)).length;
+    const latest = readSyncHistory()[0] || null;
+    return {
+      health,
+      queueCount,
+      latest,
+      sharedAuthStatus,
+      statuses
+    };
+  }
+
+  function renderTopbarHealthChip() {
+    const chip = ensureHealthChip();
+    if (!chip) return;
+    const state = getTopbarHealthState();
+    chip.textContent = state.label;
+    chip.className = `health-chip health-chip-${state.tone}`;
+    chip.title = "Open recent sync activity";
+  }
+
+  function installTopbarHealthChip() {
+    if (typeof window === "undefined" || typeof document === "undefined") return;
+    if (window.__opxHealthChipInstalled) {
+      renderTopbarHealthChip();
+      renderSyncHistoryDrawer();
+      return;
+    }
+    window.__opxHealthChipInstalled = true;
+    renderTopbarHealthChip();
+    renderSyncHistoryDrawer();
+    window.addEventListener("storage", (event) => {
+      if (!event.key) return;
+      if (SYNC_HEALTH_STORAGE_KEYS.includes(event.key)) {
+        renderTopbarHealthChip();
+        return;
+      }
+      if (event.key === SYNC_HISTORY_KEY) {
+        renderSyncHistoryDrawer();
+      }
+    });
+    window.addEventListener("online", () => {
+      renderTopbarHealthChip();
+      renderSyncHistoryDrawer();
+      showSyncToast("Back online. Syncing queued changes now.", "live");
+    });
+    window.addEventListener("offline", () => {
+      renderTopbarHealthChip();
+      renderSyncHistoryDrawer();
+      showSyncToast("Offline mode: changes will save locally until the internet returns.", "offline", 4200);
+    });
+    window.addEventListener("opx:sync-health-change", (event) => {
+      appendSyncHistoryEvent(event.detail);
+      renderTopbarHealthChip();
+      renderSyncHistoryDrawer();
+    });
+  }
+
+  function getAuditEntries() {
+    const current = read(STORAGE.audit, []);
+    return Array.isArray(current) ? current : [];
+  }
+
+  function setAuditEntries(entries) {
+    write(STORAGE.audit, entries.slice(0, 400));
+  }
+
   function uid(prefix) {
     return `${prefix}_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+  }
+
+  function normalizeUsername(value) {
+    return String(value || "").trim().toLowerCase().replace(/\s+/g, " ");
+  }
+
+  function isProtectedOwnerUsername(value) {
+    return OWNER_ADMIN_USERNAMES.has(normalizeUsername(value));
+  }
+
+  function isProtectedOwnerUser(user) {
+    return isProtectedOwnerUsername(user?.username);
+  }
+
+  function getActorSnapshot() {
+    const session = read(STORAGE.session, null);
+    const users = read(STORAGE.users, []);
+    const actor = Array.isArray(users) ? users.find((user) => user?.id === session?.userId) : null;
+    return {
+      actorUserId: actor?.id || "",
+      actorUsername: actor?.username || "System",
+      actorRoleId: actor?.roleId || ""
+    };
+  }
+
+  function recordAuditEvent(input) {
+    const actor = input?.actor || getActorSnapshot();
+    const entry = {
+      id: uid("audit"),
+      at: new Date().toISOString(),
+      actorUserId: actor.actorUserId || "",
+      actorUsername: actor.actorUsername || "System",
+      actorRoleId: actor.actorRoleId || "",
+      action: String(input?.action || "update"),
+      area: String(input?.area || "control-panel"),
+      targetType: String(input?.targetType || "record"),
+      targetId: String(input?.targetId || ""),
+      targetName: String(input?.targetName || ""),
+      summary: String(input?.summary || "Record updated"),
+      details: input?.details && typeof input.details === "object" ? input.details : {}
+    };
+
+    const entries = getAuditEntries();
+    entries.unshift(entry);
+    setAuditEntries(entries);
+    return entry;
   }
 
   function allPermissions(value) {
@@ -83,6 +492,22 @@
 
   function getSupabaseClient() {
     return window.OPXSupabase?.isReady ? window.OPXSupabase.client : null;
+  }
+
+  function extractSupabaseErrorMessage(error) {
+    return String(error?.message || error?.error_description || error || "").trim();
+  }
+
+  function isMissingSharedAuthTableError(error) {
+    const message = extractSupabaseErrorMessage(error).toLowerCase();
+    return message.includes("auth_roles")
+      || message.includes("auth_users")
+      || message.includes("schema cache")
+      || message.includes("could not find the table");
+  }
+
+  function setLocalOnlySharedAuthStatus() {
+    sharedAuthStatus = "Shared login tables are not set up in Supabase yet. Control Panel is using this browser's local roles and users.";
   }
 
   function toDbRole(role) {
@@ -126,6 +551,12 @@
   function buildSystemRoleDefinitions() {
     const adminPerms = allPermissions(true);
 
+    return [
+      { id: SYSTEM_ROLE_IDS.admin, name: "Admin", system: true, permissions: adminPerms }
+    ];
+  }
+
+  function buildStarterCustomRoleDefinitions() {
     const managerPerms = allPermissions(false);
     [
       "accessCRM",
@@ -143,6 +574,8 @@
       "editSpending",
       "viewRoster",
       "editRoster",
+      "viewReports",
+      "emailReports",
       "viewPayslips",
       "editPayslips",
       "viewStats",
@@ -161,20 +594,13 @@
       "viewContracts",
       "viewSpending",
       "viewRoster",
+      "viewReports",
+      "emailReports",
       "viewPayslips",
       "viewStats"
     ].forEach((key) => {
       viewerPerms[key] = true;
     });
-
-    return [
-      { id: SYSTEM_ROLE_IDS.admin, name: "Admin", system: true, permissions: adminPerms },
-      { id: SYSTEM_ROLE_IDS.manager, name: "Ops Manager", system: true, permissions: managerPerms },
-      { id: SYSTEM_ROLE_IDS.viewer, name: "GM", system: true, permissions: viewerPerms }
-    ];
-  }
-
-  function buildStarterCustomRoleDefinitions() {
     const teamBasicPerms = allPermissions(false);
     [
       "accessCRM",
@@ -204,6 +630,7 @@
       "editTruckIncome",
       "viewSpending",
       "editSpending",
+      "viewReports",
       "viewPayslips",
       "editPayslips",
       "viewStats"
@@ -220,6 +647,7 @@
       "editTrucks",
       "viewRoster",
       "editRoster",
+      "viewReports",
       "viewStats"
     ].forEach((key) => {
       fleetPerms[key] = true;
@@ -232,6 +660,7 @@
       "editPayslips",
       "viewTruckIncome",
       "viewSpending",
+      "viewReports",
       "viewStats"
     ].forEach((key) => {
       payrollPerms[key] = true;
@@ -245,6 +674,7 @@
       "viewTrucks",
       "editTrucks",
       "viewContracts",
+      "viewReports",
       "viewStats"
     ].forEach((key) => {
       compliancePerms[key] = true;
@@ -259,6 +689,7 @@
       "editTrucks",
       "viewRoster",
       "editRoster",
+      "viewReports",
       "viewTruckIncome",
       "editTruckIncome",
       "viewSpending",
@@ -268,6 +699,8 @@
     });
 
     return [
+      { id: STARTER_CUSTOM_ROLE_IDS.manager, name: "Ops Manager", system: false, permissions: managerPerms },
+      { id: STARTER_CUSTOM_ROLE_IDS.viewer, name: "GM", system: false, permissions: viewerPerms },
       { id: STARTER_CUSTOM_ROLE_IDS.teamBasic, name: "Team - Trucks & Roster", system: false, permissions: teamBasicPerms },
       { id: STARTER_CUSTOM_ROLE_IDS.dispatcher, name: "Dispatcher", system: false, permissions: dispatcherPerms },
       { id: STARTER_CUSTOM_ROLE_IDS.finance, name: "Finance Officer", system: false, permissions: financePerms },
@@ -280,7 +713,7 @@
 
   function normalizeRoles(inputRoles) {
     const systemRoles = buildSystemRoleDefinitions();
-    const systemIds = new Set(systemRoles.map((r) => r.id));
+    const systemIds = new Set(systemRoles.filter((r) => r.system).map((r) => r.id));
     const starter = buildStarterCustomRoleDefinitions();
 
     const safeInput = Array.isArray(inputRoles) ? inputRoles : [];
@@ -306,10 +739,6 @@
     return [...systemRoles, ...custom, ...missingStarter];
   }
 
-  function isLegacyDisabledUser(user) {
-    return LEGACY_DISABLED_DEFAULTS.some((x) => x.username === user.username && x.password === user.password);
-  }
-
   function normalizeUsers(inputUsers, roles) {
     const safeInput = Array.isArray(inputUsers) ? inputUsers : [];
     const roleIds = new Set(roles.map((r) => r.id));
@@ -332,8 +761,12 @@
         active: raw.active !== false
       };
 
+      if (isProtectedOwnerUser(normalized)) {
+        normalized.roleId = SYSTEM_ROLE_IDS.admin;
+        normalized.active = true;
+      }
+
       if (normalized.username === "admin" && normalized.password === "admin123") return;
-      if (isLegacyDisabledUser(normalized)) return;
 
       seenNames.add(lowered);
       users.push(normalized);
@@ -418,6 +851,11 @@
 
       const roleResult = await client.from(AUTH_TABLES.roles).upsert(roles, { onConflict: "id" });
       if (roleResult.error) {
+        if (isMissingSharedAuthTableError(roleResult.error)) {
+          setLocalOnlySharedAuthStatus();
+          console.warn("Shared auth tables missing in Supabase; using local roles/users.");
+          return false;
+        }
         sharedAuthStatus = `Shared role sync failed: ${roleResult.error.message}`;
         console.warn("Shared role sync failed:", roleResult.error.message);
         return false;
@@ -425,6 +863,11 @@
 
       const userResult = await client.from(AUTH_TABLES.users).upsert(users, { onConflict: "id" });
       if (userResult.error) {
+        if (isMissingSharedAuthTableError(userResult.error)) {
+          setLocalOnlySharedAuthStatus();
+          console.warn("Shared auth tables missing in Supabase; using local roles/users.");
+          return false;
+        }
         sharedAuthStatus = `Shared user sync failed: ${userResult.error.message}`;
         console.warn("Shared user sync failed:", userResult.error.message);
         return false;
@@ -443,6 +886,16 @@
     }
   }
 
+  function scheduleAuthSync() {
+    const client = getSupabaseClient();
+    if (!client) return;
+    if (authSyncTimerId) window.clearTimeout(authSyncTimerId);
+    authSyncTimerId = window.setTimeout(() => {
+      authSyncTimerId = null;
+      void syncAuthToSupabase();
+    }, 300);
+  }
+
   async function hydrateAuthFromSupabase() {
     const client = getSupabaseClient();
     if (!client) return false;
@@ -455,6 +908,11 @@
 
       if (roleResult.error || userResult.error) {
         const message = roleResult.error?.message || userResult.error?.message || "Unknown Supabase auth load error";
+        if (isMissingSharedAuthTableError(roleResult.error || userResult.error || message)) {
+          setLocalOnlySharedAuthStatus();
+          console.warn("Shared auth tables missing in Supabase; using local roles/users.");
+          return false;
+        }
         sharedAuthStatus = `Shared login tables not ready: ${message}`;
         console.warn("Shared auth load failed:", message);
         return false;
@@ -477,6 +935,11 @@
       sharedAuthStatus = "Shared login tables are ready.";
       return true;
     } catch (error) {
+      if (isMissingSharedAuthTableError(error)) {
+        setLocalOnlySharedAuthStatus();
+        console.warn("Shared auth tables missing in Supabase; using local roles/users.");
+        return false;
+      }
       sharedAuthStatus = `Shared auth load failed: ${error.message || error}`;
       console.warn("Shared auth load failed:", error.message || error);
       return false;
@@ -487,12 +950,77 @@
     return read(STORAGE.session, null);
   }
 
+  function getSessionActivityAt(session) {
+    const stamp = session?.lastActivityAt || session?.loginAt || null;
+    const time = stamp ? new Date(stamp).getTime() : Number.NaN;
+    return Number.isFinite(time) ? time : 0;
+  }
+
+  function isSessionExpired(session) {
+    if (!session?.userId) return true;
+    const lastActiveAt = getSessionActivityAt(session);
+    if (!lastActiveAt) return true;
+    return Date.now() - lastActiveAt >= IDLE_TIMEOUT_MS;
+  }
+
+  function isPublicAuthPage() {
+    if (typeof window === "undefined") return false;
+    const path = String(window.location.pathname || "").toLowerCase();
+    return path.endsWith("/login.html") || path.endsWith("/logout.html");
+  }
+
   function setSession(session) {
     write(STORAGE.session, session);
   }
 
   function clearSession() {
     localStorage.removeItem(STORAGE.session);
+  }
+
+  function getIdleRedirectPath() {
+    return "./login.html?locked=1";
+  }
+
+  function clearIdleTimer() {
+    if (idleTimerId) {
+      clearTimeout(idleTimerId);
+      idleTimerId = null;
+    }
+  }
+
+  function scheduleIdleLock() {
+    clearIdleTimer();
+    if (typeof window === "undefined") return;
+
+    const session = getSession();
+    if (!session?.userId) return;
+
+    const remaining = Math.max(0, IDLE_TIMEOUT_MS - (Date.now() - getSessionActivityAt(session)));
+    idleTimerId = window.setTimeout(() => {
+      const latest = getSession();
+      if (!latest?.userId) return;
+      if (!isSessionExpired(latest)) {
+        scheduleIdleLock();
+        return;
+      }
+      forceIdleLock();
+    }, remaining || 1);
+  }
+
+  function touchSessionActivity(force = false) {
+    const session = getSession();
+    if (!session?.userId || isSessionExpired(session)) return false;
+
+    const now = Date.now();
+    if (!force && now - lastActivityTouch < ACTIVITY_TOUCH_MS) {
+      scheduleIdleLock();
+      return false;
+    }
+
+    lastActivityTouch = now;
+    setSession({ ...session, lastActivityAt: new Date(now).toISOString() });
+    scheduleIdleLock();
+    return true;
   }
 
   function getUserById(userId) {
@@ -506,6 +1034,11 @@
   function getSessionUser() {
     const session = getSession();
     if (!session || !session.userId) return null;
+    if (isSessionExpired(session)) {
+      clearSession();
+      clearIdleTimer();
+      return null;
+    }
     const user = getUserById(session.userId);
     if (!user || !user.active) return null;
     return user;
@@ -528,17 +1061,65 @@
 
   function login(username, password) {
     init();
-    const name = String(username || "").trim();
+    const name = normalizeUsername(username);
     const pass = String(password || "");
     const users = getUsers();
-    const user = users.find((u) => u.username === name && u.password === pass && u.active);
+    const user = users.find((u) => normalizeUsername(u.username) === name && u.password === pass && u.active);
     if (!user) return { ok: false, message: "Invalid username or password." };
-    setSession({ userId: user.id, loginAt: new Date().toISOString() });
+    const now = new Date().toISOString();
+    setSession({ userId: user.id, loginAt: now, lastActivityAt: now });
+    lastActivityTouch = Date.now();
+    scheduleIdleLock();
+    recordAuditEvent({
+      actor: { actorUserId: user.id, actorUsername: user.username, actorRoleId: user.roleId },
+      action: "login",
+      area: "auth",
+      targetType: "session",
+      targetId: user.id,
+      targetName: user.username,
+      summary: `${user.username} signed in`
+    });
     return { ok: true, user };
   }
 
   function logout() {
+    const actor = getActorSnapshot();
+    if (actor.actorUsername && actor.actorUsername !== "System") {
+      recordAuditEvent({
+        actor,
+        action: "logout",
+        area: "auth",
+        targetType: "session",
+        targetId: actor.actorUserId,
+        targetName: actor.actorUsername,
+        summary: `${actor.actorUsername} signed out`
+      });
+    }
     clearSession();
+    clearIdleTimer();
+  }
+
+  function forceIdleLock() {
+    const actor = getActorSnapshot();
+    if (actor.actorUsername && actor.actorUsername !== "System") {
+      recordAuditEvent({
+        actor,
+        action: "lock",
+        area: "auth",
+        targetType: "session",
+        targetId: actor.actorUserId,
+        targetName: actor.actorUsername,
+        summary: `${actor.actorUsername} was locked after 5 minutes idle`,
+        details: { idleTimeoutMinutes: 5 }
+      });
+    }
+
+    clearSession();
+    clearIdleTimer();
+
+    if (typeof window !== "undefined" && !isPublicAuthPage()) {
+      window.location.href = getIdleRedirectPath();
+    }
   }
 
   function triggerLogout(redirectPath = "./logout.html") {
@@ -570,19 +1151,134 @@
     });
   }
 
+  function disableAutofillWithin(root = document) {
+    if (!root?.querySelectorAll) return;
+
+    root.querySelectorAll("form").forEach((form) => {
+      form.setAttribute("autocomplete", "off");
+      form.setAttribute("data-form-type", "other");
+    });
+
+    root.querySelectorAll("input, textarea, select").forEach((field) => {
+      if (field.type === "hidden") return;
+      if (!field.getAttribute("autocomplete")) {
+        field.setAttribute("autocomplete", field.type === "password" ? "new-password" : "off");
+      }
+      field.setAttribute("data-lpignore", "true");
+      field.setAttribute("data-1p-ignore", "true");
+      field.setAttribute("data-bwignore", "true");
+      field.setAttribute("autocapitalize", "off");
+      field.setAttribute("autocorrect", "off");
+      field.setAttribute("spellcheck", "false");
+    });
+  }
+
+  function installAutofillBlocker() {
+    if (typeof document === "undefined") return;
+    if (window.__opxAutofillBlockerInstalled) {
+      disableAutofillWithin(document);
+      return;
+    }
+    window.__opxAutofillBlockerInstalled = true;
+
+    const apply = () => disableAutofillWithin(document);
+    if (document.readyState === "loading") {
+      document.addEventListener("DOMContentLoaded", apply, { once: true });
+    } else {
+      apply();
+    }
+
+    const observer = new MutationObserver((mutations) => {
+      mutations.forEach((mutation) => {
+        mutation.addedNodes.forEach((node) => {
+          if (node?.nodeType !== 1) return;
+          disableAutofillWithin(node);
+        });
+      });
+    });
+
+    observer.observe(document.documentElement, { childList: true, subtree: true });
+  }
+
   function requireAuth(redirectPath) {
     init();
-    const user = getSessionUser();
+    const rawSession = getSession();
+    const expired = rawSession?.userId && isSessionExpired(rawSession);
+    if (expired) {
+      clearSession();
+      clearIdleTimer();
+    }
+    const user = expired ? null : getSessionUser();
     if (!user) {
-      if (redirectPath) window.location.href = redirectPath;
+      if (redirectPath) {
+        window.location.href = expired ? getIdleRedirectPath() : redirectPath;
+      }
       return null;
     }
+
+    touchSessionActivity(true);
 
     return {
       user,
       can: (permission) => canUser(user, permission),
       permissions: getPermissionsForUser(user)
     };
+  }
+
+  function installIdleLock() {
+    if (typeof window === "undefined" || typeof document === "undefined") return;
+    if (window.__opxIdleLockInstalled) {
+      scheduleIdleLock();
+      return;
+    }
+    window.__opxIdleLockInstalled = true;
+
+    const onActivity = () => {
+      touchSessionActivity(false);
+    };
+
+    ["pointerdown", "keydown", "touchstart", "scroll", "mousemove"].forEach((eventName) => {
+      window.addEventListener(eventName, onActivity, { passive: true });
+    });
+
+    document.addEventListener("visibilitychange", () => {
+      if (document.visibilityState === "visible") {
+        const session = getSession();
+        if (session?.userId && isSessionExpired(session)) {
+          forceIdleLock();
+          return;
+        }
+        touchSessionActivity(true);
+      }
+    });
+
+    window.addEventListener("focus", () => {
+      const session = getSession();
+      if (session?.userId && isSessionExpired(session)) {
+        forceIdleLock();
+        return;
+      }
+      touchSessionActivity(true);
+    });
+
+    window.addEventListener("storage", (event) => {
+      if (event.key !== STORAGE.session) return;
+      const session = getSession();
+      if (!session?.userId) {
+        clearIdleTimer();
+        if (!isPublicAuthPage()) {
+          window.location.href = "./login.html";
+        }
+        return;
+      }
+      if (isSessionExpired(session)) {
+        forceIdleLock();
+        return;
+      }
+      scheduleIdleLock();
+    });
+
+    scheduleIdleLock();
   }
 
   function createRole(input) {
@@ -598,33 +1294,70 @@
     };
     roles.push(payload);
     setRoles(roles);
-    void syncAuthToSupabase();
+    recordAuditEvent({
+      action: "create",
+      area: "roles",
+      targetType: "role",
+      targetId: payload.id,
+      targetName: payload.name,
+      summary: `Created role ${payload.name}`,
+      details: { permissions: payload.permissions }
+    });
+    scheduleAuthSync();
     return payload;
   }
 
   function updateRole(roleId, input) {
     const roles = getRoles();
     const role = roles.find((r) => r.id === roleId);
-    if (!role || role.system) return null;
+    if (!role || IMMUTABLE_ROLE_IDS.has(role.id) || role.system) return null;
+
+    const before = {
+      name: role.name,
+      permissions: { ...(role.permissions || {}) }
+    };
 
     role.name = String(input?.name || "").trim() || role.name;
     role.permissions = { ...allPermissions(false), ...(input?.permissions || {}) };
     setRoles(roles);
-    void syncAuthToSupabase();
+    recordAuditEvent({
+      action: "update",
+      area: "roles",
+      targetType: "role",
+      targetId: role.id,
+      targetName: role.name,
+      summary: `Updated role ${role.name}`,
+      details: {
+        before,
+        after: {
+          name: role.name,
+          permissions: role.permissions
+        }
+      }
+    });
+    scheduleAuthSync();
     return role;
   }
 
   function deleteRole(roleId) {
     const roles = getRoles();
     const role = roles.find((r) => r.id === roleId);
-    if (!role || role.system) return { ok: false, message: "System role cannot be deleted." };
+    if (!role || IMMUTABLE_ROLE_IDS.has(role.id) || role.system) return { ok: false, message: "System role cannot be deleted." };
 
     const users = getUsers();
     const inUse = users.some((u) => u.roleId === roleId);
     if (inUse) return { ok: false, message: "Role is assigned to users. Reassign users first." };
 
     setRoles(roles.filter((r) => r.id !== roleId));
-    void syncAuthToSupabase();
+    recordAuditEvent({
+      action: "delete",
+      area: "roles",
+      targetType: "role",
+      targetId: role.id,
+      targetName: role.name,
+      summary: `Deleted role ${role.name}`
+    });
+    scheduleAuthSync();
     return { ok: true };
   }
 
@@ -645,9 +1378,23 @@
       active: Boolean(input?.active)
     };
 
+    if (isProtectedOwnerUser(payload)) {
+      payload.roleId = SYSTEM_ROLE_IDS.admin;
+      payload.active = true;
+    }
+
     users.push(payload);
     setUsers(users);
-    void syncAuthToSupabase();
+    recordAuditEvent({
+      action: "create",
+      area: "users",
+      targetType: "user",
+      targetId: payload.id,
+      targetName: payload.username,
+      summary: `Created user ${payload.username}`,
+      details: { roleId: payload.roleId, active: payload.active }
+    });
+    scheduleAuthSync();
     return { ok: true, user: payload };
   }
 
@@ -672,7 +1419,16 @@
     };
 
     setUsers([payload]);
-    void syncAuthToSupabase();
+    recordAuditEvent({
+      actor: { actorUserId: payload.id, actorUsername: payload.username, actorRoleId: payload.roleId },
+      action: "bootstrap",
+      area: "users",
+      targetType: "user",
+      targetId: payload.id,
+      targetName: payload.username,
+      summary: `Created first admin ${payload.username}`
+    });
+    scheduleAuthSync();
     return { ok: true, user: payload };
   }
 
@@ -731,7 +1487,19 @@
     }
 
     setUsers(payload);
-    void syncAuthToSupabase();
+    payload.forEach((entry) => {
+      recordAuditEvent({
+        actor: { actorUserId: entry.id, actorUsername: entry.username, actorRoleId: entry.roleId },
+        action: "bootstrap",
+        area: "users",
+        targetType: "user",
+        targetId: entry.id,
+        targetName: entry.username,
+        summary: `Created starter user ${entry.username}`,
+        details: { roleId: entry.roleId }
+      });
+    });
+    scheduleAuthSync();
     return { ok: true, users: payload };
   }
 
@@ -740,19 +1508,43 @@
     const user = users.find((u) => u.id === userId);
     if (!user) return { ok: false, message: "User not found." };
 
+    const before = {
+      username: user.username,
+      roleId: user.roleId,
+      active: user.active
+    };
+
     const username = String(input?.username || "").trim();
     if (!username) return { ok: false, message: "Username is required." };
 
     const duplicate = users.some((u) => u.id !== userId && u.username.toLowerCase() === username.toLowerCase());
     if (duplicate) return { ok: false, message: "Username already exists." };
 
-    user.username = username;
+    const protectedOwner = isProtectedOwnerUser(user);
+
+    user.username = protectedOwner ? user.username : username;
     if (input?.password) user.password = String(input.password);
-    user.roleId = String(input?.roleId || user.roleId);
-    user.active = Boolean(input?.active);
+    user.roleId = protectedOwner ? SYSTEM_ROLE_IDS.admin : String(input?.roleId || user.roleId);
+    user.active = protectedOwner ? true : Boolean(input?.active);
 
     setUsers(users);
-    void syncAuthToSupabase();
+    recordAuditEvent({
+      action: "update",
+      area: "users",
+      targetType: "user",
+      targetId: user.id,
+      targetName: user.username,
+      summary: `Updated user ${user.username}`,
+      details: {
+        before,
+        after: {
+          username: user.username,
+          roleId: user.roleId,
+          active: user.active
+        }
+      }
+    });
+    scheduleAuthSync();
     return { ok: true, user };
   }
 
@@ -760,6 +1552,9 @@
     const users = getUsers();
     const user = users.find((u) => u.id === userId);
     if (!user) return { ok: false, message: "User not found." };
+    if (isProtectedOwnerUser(user)) {
+      return { ok: false, message: "Zakaria Omar is the protected owner admin and cannot be deleted." };
+    }
 
     const remainingActiveAdmins = users
       .filter((u) => u.id !== userId && u.active)
@@ -770,10 +1565,19 @@
     }
 
     setUsers(users.filter((u) => u.id !== userId));
+    recordAuditEvent({
+      action: "delete",
+      area: "users",
+      targetType: "user",
+      targetId: user.id,
+      targetName: user.username,
+      summary: `Deleted user ${user.username}`,
+      details: { roleId: user.roleId, active: user.active }
+    });
 
     const session = getSession();
     if (session?.userId === userId) clearSession();
-    void syncAuthToSupabase();
+    scheduleAuthSync();
     return { ok: true };
   }
 
@@ -799,6 +1603,13 @@
     hydrateAuthFromSupabase,
     syncAuthToSupabase,
     getSharedAuthStatus: () => sharedAuthStatus,
+    getSyncDashboardSummary,
+    getSyncHistory: readSyncHistory,
+    renderTopbarHealthChip,
+    getAuditEntries,
+    recordAuditEvent,
+    isProtectedOwnerUser,
+    touchSessionActivity,
     createUser,
     updateUser,
     deleteUser,
@@ -810,6 +1621,9 @@
   init();
   recoverRolesFromUrl();
   installGlobalLogout();
+  installAutofillBlocker();
+  installIdleLock();
+  installTopbarHealthChip();
   if (getSupabaseClient()) {
     void hydrateAuthFromSupabase();
   } else if (typeof window !== "undefined") {
