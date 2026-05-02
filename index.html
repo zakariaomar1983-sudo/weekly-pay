@@ -7,7 +7,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=Manrope:wght@400;500;700&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="./style.css" />
+  <link rel="stylesheet" href="./style.css?v=20260421j" />
 </head>
 <body>
   <main class="app-shell">
@@ -24,6 +24,108 @@
 
     <section class="stats-grid" id="homeStats"></section>
 
+    <section class="panel" id="managerSummaryPanel">
+      <div class="panel-head">
+        <h2>Manager Summary</h2>
+      </div>
+      <div class="stats-grid" id="managerSummaryGrid"></div>
+      <div class="note-card" id="managerSummaryLatest">
+        <p>Latest Sync Event</p>
+        <h3 id="managerSummaryLatestTitle">Waiting for activity</h3>
+        <span id="managerSummaryLatestMeta">Recent sync activity will appear here.</span>
+      </div>
+    </section>
+
+    <section class="panel" id="attentionPanel">
+      <div class="panel-head">
+        <h2>Attention Needed</h2>
+      </div>
+      <div class="attention-grid" id="attentionGrid"></div>
+    </section>
+
+    <section class="panel" id="reminderCenterPanel">
+      <div class="panel-head">
+        <h2>Reminder Center</h2>
+      </div>
+      <div class="attention-grid" id="reminderCenterGrid"></div>
+    </section>
+
+    <section class="panel" id="weekSnapshotPanel">
+      <div class="panel-head">
+        <h2>Week Snapshot</h2>
+      </div>
+      <div class="note-card snapshot-note">
+        <p>Current Week</p>
+        <h3 id="weekSnapshotRange">Loading week range</h3>
+        <span id="weekSnapshotMeta">Live roster totals for the current Monday to Sunday window.</span>
+      </div>
+      <div class="stats-grid" id="weekSnapshotGrid"></div>
+    </section>
+
+    <section class="panel" id="todayFocusPanel">
+      <div class="panel-head">
+        <h2>Today Focus</h2>
+      </div>
+      <div class="note-card snapshot-note">
+        <p>Today</p>
+        <h3 id="todayFocusDate">Loading today</h3>
+        <span id="todayFocusMeta">Live roster and truck checks for today.</span>
+      </div>
+      <div class="attention-grid" id="todayFocusGrid"></div>
+    </section>
+
+    <section class="panel" id="performanceChartsPanel">
+      <div class="panel-head">
+        <h2>Performance Charts</h2>
+      </div>
+      <div class="charts-grid" id="performanceChartsGrid"></div>
+    </section>
+
+    <section class="panel" id="quickActionsPanel">
+      <div class="panel-head">
+        <h2>Quick Actions</h2>
+      </div>
+      <div class="quick-actions-grid" id="quickActionsGrid"></div>
+    </section>
+
+    <section class="panel" id="globalSearchPanel">
+      <div class="panel-head">
+        <h2>Global Search</h2>
+      </div>
+      <label>
+        Search Across CRM
+        <input id="globalSearchInput" type="search" placeholder="Driver, truck, rego, shift, payslip, log, user..." />
+      </label>
+      <p class="muted" id="globalSearchMeta">Start typing to search across the pages you can access.</p>
+      <div class="activity-list" id="globalSearchResults"></div>
+    </section>
+
+    <section class="panel" id="recentActivityPanel">
+      <div class="panel-head">
+        <h2>Recent Activity</h2>
+      </div>
+      <div class="activity-list" id="recentActivityList"></div>
+    </section>
+
+    <section class="panel" id="readinessChecksPanel">
+      <div class="panel-head">
+        <h2>Readiness Checks</h2>
+      </div>
+      <div class="attention-grid" id="readinessChecksGrid"></div>
+    </section>
+
+    <section class="panel" id="payrollReadinessPanel">
+      <div class="panel-head">
+        <h2>Payroll Readiness</h2>
+      </div>
+      <div class="note-card snapshot-note">
+        <p>Next Thursday Pay Run</p>
+        <h3 id="payrollReadinessDate">Loading payment date</h3>
+        <span id="payrollReadinessMeta">Current week completed roster work compared with generated payslips.</span>
+      </div>
+      <div class="attention-grid" id="payrollReadinessGrid"></div>
+    </section>
+
     <section class="panel">
       <div class="panel-head">
         <h2>Pages</h2>
@@ -36,8 +138,8 @@
   <script src="./supabase-config.js?v=20260413g"></script>
   <script src="./supabase-client.js?v=20260413g"></script>
   <script src="./seed-data.js?v=20260413d"></script>
-  <script src="./auth.js?v=20260414b"></script>
-  <script src="./index.js?v=20260414c"></script>
+  <script src="./auth.js?v=20260421k"></script>
+  <script src="./index.js?v=20260421k"></script>
 </body>
 </html>
 

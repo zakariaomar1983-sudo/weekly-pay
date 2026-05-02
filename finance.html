@@ -7,7 +7,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=Manrope:wght@400;500;700&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="./style.css" />
+  <link rel="stylesheet" href="./style.css?v=20260421k" />
 </head>
 <body>
   <main class="app-shell">
@@ -19,6 +19,7 @@
       <div class="topbar-actions">
         <span id="currentUserChip" class="user-chip"></span>
         <a class="btn btn-outline" href="./index.html">Home</a>
+        <a id="reportsLink" class="btn btn-outline" href="./reports.html">Reports</a>
         <a class="btn btn-outline" href="./drivers.html">Drivers</a>
         <a class="btn btn-outline" href="./trucks.html">Trucks</a>
         <a id="rosterLink" class="btn btn-outline" href="./roster.html">Roster</a>
@@ -29,6 +30,8 @@
     </header>
 
     <section class="stats-grid" id="financeStats"></section>
+    <p id="financeSyncStatus" class="sync-badge sync-badge-neutral">Checking sync...</p>
+    <p id="financeQueueBanner" class="queue-banner queue-banner-pending" hidden></p>
 
     <section class="panel" id="periodTotalsPanel">
       <div class="panel-head">
@@ -42,6 +45,7 @@
       <div class="panel-head">
         <h2>Weekly Profit Summary</h2>
       </div>
+      <p class="muted">Finance week runs Thursday to Wednesday.</p>
       <div class="table-wrap">
         <table>
           <thead>
@@ -56,6 +60,7 @@
       <div class="panel-head">
         <h2>Truck Income (Weekly Records)</h2>
       </div>
+      <p class="muted">Truck Income now shows this Thursday-to-Wednesday week by default. Use Search Income History to find older income.</p>
       <form id="incomeForm" class="form-grid">
         <input type="hidden" id="incomeId" />
         <label>Income Date<input id="incomeDate" type="date" required /></label>
@@ -99,6 +104,7 @@
       <div class="panel-head">
         <h2>Truck Expense</h2>
       </div>
+      <p class="muted">Truck Expense shows this Thursday-to-Wednesday week by default. Use Search Expense History to find older expenses.</p>
       <form id="expenseForm" class="form-grid">
         <input type="hidden" id="expenseId" />
         <label>Expense Date<input id="expenseDate" type="date" required /></label>
@@ -135,6 +141,16 @@
       <div class="panel-head">
         <h2>Driver Pay (Payslip)</h2>
       </div>
+      <form class="form-grid" onsubmit="return false;">
+        <label>Roster Week Start
+          <input id="payRosterWeekStart" type="date" />
+        </label>
+        <div class="actions full">
+          <button id="generatePayFromRoster" class="btn" type="button">Generate Driver Pay From Roster</button>
+        </div>
+        <p id="payGenerationStatus" class="data-status full muted">Driver Pay uses completed roster shifts from the selected week.</p>
+      </form>
+      <p class="muted">Driver Pay shows the selected week by default. Use Search Driver Pay History to find older payslips.</p>
       <form id="payForm" class="form-grid">
         <input type="hidden" id="payId" />
         <label>Driver Name<input id="payDriver" type="text" required /></label>
@@ -183,8 +199,8 @@
   <script src="./supabase-config.js?v=20260413g"></script>
   <script src="./supabase-client.js?v=20260413g"></script>
   <script src="./seed-data.js?v=20260413g"></script>
-  <script src="./auth.js?v=20260414b"></script>
-  <script src="./finance.js?v=20260414b"></script>
+  <script src="./auth.js?v=20260421k"></script>
+  <script src="./finance.js?v=20260421k"></script>
   <script src="./emergency-fill.js?v=20260413g"></script>
 </body>
 </html>
