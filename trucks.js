@@ -765,6 +765,10 @@ function applyAccessControl() {
     const financeLink = document.getElementById("financeLink");
     if (financeLink) financeLink.style.display = "none";
   }
+  if (!(auth.can("viewSpending") || auth.can("editSpending") || auth.can("accessControlPanel"))) {
+    const receiptsLink = document.getElementById("receiptsLink");
+    if (receiptsLink) receiptsLink.style.display = "none";
+  }
 
   if (!auth.can("editTrucks")) {
     const form = document.getElementById("trucksForm");

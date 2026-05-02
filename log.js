@@ -17,6 +17,10 @@ const LOG_SYNC_RETRY_DELAYS_MS = [2000, 5000, 10000, 30000];
 const state = {
   logs: readData()
 };
+const receiptsLink = document.getElementById("receiptsLink");
+if (receiptsLink && !(auth.can("accessCRM") && (auth.can("viewSpending") || auth.can("editSpending") || auth.can("accessControlPanel")))) {
+  receiptsLink.style.display = "none";
+}
 let logSyncTimerId = 0;
 let logSearchTimerId = 0;
 let logRetryTimerId = 0;

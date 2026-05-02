@@ -14,6 +14,7 @@ const links = [
   { label: "Trucks Page", href: "./trucks.html", show: auth.can("accessCRM") && auth.can("viewTrucks") },
   { label: "Weekly Roster Page", href: "./roster.html", show: auth.can("accessCRM") && auth.can("viewRoster") },
   { label: "Finance & Pay Page", href: "./finance.html", show: auth.can("accessCRM") && (auth.can("viewTruckIncome") || auth.can("viewSpending") || auth.can("viewPayslips") || auth.can("viewStats")) },
+  { label: "Receipts Inbox", href: "./receipts.html", show: auth.can("accessCRM") && (auth.can("viewSpending") || auth.can("editSpending") || auth.can("accessControlPanel")) },
   { label: "Log Page", href: "./log.html", show: auth.can("accessLogs") },
   { label: "Control Panel", href: "./control-panel.html", show: auth.can("accessControlPanel") }
 ];
@@ -31,6 +32,7 @@ const ROSTER_ACK_KEY = "transport_crm_roster_ack";
 const ROSTER_WEEK_STATUS_KEY = "transport_crm_roster_week_status";
 const INCOME_KEY = "transport_crm_truck_income";
 const EXPENSE_KEY = "transport_crm_spending";
+const RECEIPTS_KEY = "transport_crm_whatsapp_receipts";
 const PAY_KEY = "transport_crm_payslips";
 const NIGHT_DROP_DEFAULT_RATE = 90;
 
@@ -158,6 +160,7 @@ function drawStats() {
     { label: "Trucks", value: String(readCount("transport_crm_trucks")), show: auth.can("viewTrucks") },
     { label: "Roster Shifts", value: String(readCount("transport_crm_roster")), show: auth.can("viewRoster") },
     { label: "Income Rows", value: String(readCount("transport_crm_truck_income")), show: auth.can("viewTruckIncome") },
+    { label: "Receipts", value: String(readCount(RECEIPTS_KEY)), show: auth.can("accessCRM") && (auth.can("viewSpending") || auth.can("editSpending") || auth.can("accessControlPanel")) },
     { label: "Payslips", value: String(readCount("transport_crm_payslips")), show: auth.can("viewPayslips") },
     { label: "Logs", value: String(state.logCount), show: auth.can("accessLogs") },
     { label: "Users", value: String(window.OPXAuth.getUsers().length), show: auth.can("accessControlPanel") }
@@ -663,6 +666,14 @@ function quickActions() {
       tone: "warning"
     },
     {
+      label: "Receipts",
+      title: "Review Receipt Inbox",
+      meta: "Review forwarded WhatsApp receipts and convert them into truck expenses or logs.",
+      href: "./receipts.html",
+      show: auth.can("accessCRM") && (auth.can("viewSpending") || auth.can("editSpending") || auth.can("accessControlPanel")),
+      tone: "queue"
+    },
+    {
       label: "Finance",
       title: "Generate Driver Pay",
       meta: "Open Driver Pay and generate the latest week from completed roster shifts.",
@@ -1103,6 +1114,21 @@ function buildGlobalSearchResults(query) {
         title: `${item.category || "Expense"} • Truck ${item.truckNumber || "-"}`,
         meta: [item.date, item.vendor, moneyCompact(item.amount)].filter(Boolean).join(" | "),
         href: "./finance.html"
+      }));
+    });
+  }
+
+  if (auth.can("accessCRM") && (auth.can("viewSpending") || auth.can("editSpending") || auth.can("accessControlPanel"))) {
+    readRows(RECEIPTS_KEY).forEach((item) => {
+      const extracted = item.extracted || {};
+      const hay = `${item.senderName || ""} ${item.senderPhone || ""} ${extracted.truckNumber || ""} ${extracted.supplier || ""} ${extracted.reference || ""} ${item.messageText || ""} ${item.notes || ""} ${item.reviewStatus || ""}`.toLowerCase();
+      if (!hay.includes(term)) return;
+      results.push(searchEntry({
+        tone: item.reviewStatus === "Archived" ? "neutral" : item.reviewStatus === "Review Needed" ? "warning" : "queue",
+        label: "Receipts",
+        title: `${extracted.supplier || item.senderName || "Receipt"} • ${extracted.truckNumber ? `Truck ${extracted.truckNumber}` : "Truck pending"}`,
+        meta: [extracted.receiptDate || item.receivedAt || "", extracted.reference || "", moneyCompact(extracted.amount || 0), item.reviewStatus].filter(Boolean).join(" | "),
+        href: "./receipts.html"
       }));
     });
   }

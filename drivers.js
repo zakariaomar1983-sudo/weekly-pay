@@ -10,7 +10,15 @@ const KEY = "transport_crm_drivers";
 const LEGACY_CONTACT_KEY = "transport_crm_driver_contacts";
 const DRIVER_ATTACHMENTS_KEY = "transport_crm_driver_attachments";
 const DRIVERS_SYNC_STATUS_KEY = "transport_crm_drivers_sync_status";
+const DRIVERS_UPDATED_KEY = "transport_crm_drivers_updated_at";
 const DRIVERS_TABLE = "drivers";
+const EXCLUDED_DRIVER_NAMES = new Set([
+  "faaid warsame",
+  "mohamed siyad",
+  "mohammed siyad",
+  "muhamed siyad",
+  "muhammed a h siyad"
+]);
 const DRIVER_SYNC_RETRY_DELAYS_MS = [2000, 5000, 10000, 30000];
 const DRIVER_ATTACHMENT_LIMIT = 5;
 const DRIVER_ATTACHMENT_MAX_BYTES = 1.5 * 1024 * 1024;
@@ -25,6 +33,7 @@ let driverRetryTimerId = 0;
 let driverRetryAttempt = 0;
 let driverSyncInFlight = false;
 let driverSyncQueued = false;
+const driversChannel = typeof BroadcastChannel !== "undefined" ? new BroadcastChannel("opx-drivers") : null;
 
 function formatDriversSyncTime(value = Date.now()) {
   return new Date(value).toLocaleTimeString("en-AU", { hour: "numeric", minute: "2-digit" });
@@ -117,6 +126,18 @@ function queueDriverSyncRetry(errorMessage = "") {
 
 function canManageDrivers() {
   return auth.can("viewDrivers");
+}
+
+function normalizeDriverNameKey(value) {
+  return String(value || "").trim().toLowerCase().replace(/\s+/g, " ");
+}
+
+function isExcludedDriverName(name) {
+  return EXCLUDED_DRIVER_NAMES.has(normalizeDriverNameKey(name));
+}
+
+function filterExcludedDrivers(rows) {
+  return (Array.isArray(rows) ? rows : []).filter((row) => !isExcludedDriverName(row?.name));
 }
 
 function firstValue(row, keys) {
@@ -337,7 +358,12 @@ function readData() {
   try {
     const parsed = JSON.parse(localStorage.getItem(KEY) || "[]");
     const rows = Array.isArray(parsed) ? parsed.map(normalizeDriverRow) : [];
-    return mergeLegacyEmails(ensureUuidDrivers(rows)).rows;
+    const mergedRows = mergeLegacyEmails(ensureUuidDrivers(rows)).rows;
+    const filteredRows = filterExcludedDrivers(mergedRows);
+    if (filteredRows.length !== mergedRows.length) {
+      localStorage.setItem(KEY, JSON.stringify(filteredRows));
+    }
+    return filteredRows;
   } catch {
     return [];
   }
@@ -369,6 +395,14 @@ function cleanupLegacyContactsForRows(rows) {
 
 function saveData() {
   localStorage.setItem(KEY, JSON.stringify(state.drivers));
+  const updatedAt = String(Date.now());
+  localStorage.setItem(DRIVERS_UPDATED_KEY, updatedAt);
+  window.dispatchEvent(new CustomEvent("opx:drivers-updated", { detail: { updatedAt } }));
+  try {
+    driversChannel?.postMessage({ type: "drivers-updated", updatedAt });
+  } catch {
+    // no-op
+  }
   cleanupLegacyContactsForRows(state.drivers.filter((row) => row.email));
   if (useSupabase) {
     clearDriverSyncRetry(false);
@@ -567,10 +601,12 @@ async function hydrateDriversFromSupabase() {
   }
 
   const merged = mergeLegacyEmails(data.map(fromDbDriver));
-  state.drivers = merged.rows;
+  const filteredRows = filterExcludedDrivers(merged.rows);
+  const removedExcluded = filteredRows.length !== merged.rows.length;
+  state.drivers = filteredRows;
   localStorage.setItem(KEY, JSON.stringify(state.drivers));
   cleanupLegacyContactsForRows(state.drivers.filter((row) => row.email));
-  if (merged.changed) {
+  if (merged.changed || removedExcluded) {
     await syncDriversToSupabase();
   }
   setDriversSyncStatus("Shared driver data loaded.", "live");
@@ -703,6 +739,10 @@ function applyAccessControl() {
     const financeLink = document.getElementById("financeLink");
     if (financeLink) financeLink.style.display = "none";
   }
+  if (!(auth.can("viewSpending") || auth.can("editSpending") || auth.can("accessControlPanel"))) {
+    const receiptsLink = document.getElementById("receiptsLink");
+    if (receiptsLink) receiptsLink.style.display = "none";
+  }
 
   if (!canManageDrivers()) {
     const form = document.getElementById("driversForm");
@@ -735,6 +775,11 @@ document.getElementById("driversForm").addEventListener("submit", (e) => {
     address: document.getElementById("driverAddress").value.trim(),
     emergencyContact: document.getElementById("emergencyContact").value.trim()
   };
+
+  if (isExcludedDriverName(payload.name)) {
+    alert(`${payload.name} is removed from the drivers list and cannot be added here.`);
+    return;
+  }
 
   state.drivers = id ? state.drivers.map((d) => d.id === id ? payload : d) : [...state.drivers, payload];
   saveData();
@@ -858,11 +903,19 @@ window.addEventListener("storage", (event) => {
     drawTable();
     return;
   }
-  if (event.key !== KEY) return;
+  if (event.key !== KEY && event.key !== DRIVERS_UPDATED_KEY) return;
   state.drivers = readData();
   setDriversSyncStatus("Driver data updated in another tab.", "neutral");
   refresh();
 });
+
+if (driversChannel) {
+  driversChannel.addEventListener("message", (event) => {
+    if (event?.data?.type !== "drivers-updated") return;
+    state.drivers = readData();
+    refresh();
+  });
+}
 
 window.addEventListener("offline", updateDriversQueueBanner);
 

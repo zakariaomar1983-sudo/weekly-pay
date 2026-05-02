@@ -17,6 +17,23 @@ const STORAGE_KEYS = {
 const REPORT_SCHEDULER_KEY = "transport_crm_report_scheduler";
 const REPORT_SNAPSHOTS_KEY = "transport_crm_report_snapshots";
 const REPORT_SNAPSHOT_LIMIT = 12;
+const TABLE_BY_KEY = {
+  [STORAGE_KEYS.income]: "truck_income",
+  [STORAGE_KEYS.expense]: "truck_expense",
+  [STORAGE_KEYS.pay]: "payslips",
+  [STORAGE_KEYS.roster]: "roster",
+  [STORAGE_KEYS.drivers]: "drivers",
+  [STORAGE_KEYS.trucks]: "trucks"
+};
+const DATA_FIELD_BY_STORAGE_KEY = {
+  [STORAGE_KEYS.income]: "income",
+  [STORAGE_KEYS.expense]: "expense",
+  [STORAGE_KEYS.pay]: "pay",
+  [STORAGE_KEYS.roster]: "roster",
+  [STORAGE_KEYS.drivers]: "drivers",
+  [STORAGE_KEYS.trucks]: "trucks"
+};
+const AWAY_STATUSES = new Set(["leave", "absent"]);
 
 const NIGHT_DROP_DEFAULT_RATE = 90;
 const reportState = {
@@ -26,7 +43,8 @@ const reportState = {
   chartSeries: [],
   snapshots: [],
   emailConfigured: false,
-  serverDeliveryActive: false
+  serverDeliveryActive: false,
+  sharedData: null
 };
 const canEmailReports = auth.can("emailReports");
 
@@ -103,8 +121,21 @@ function escapeHtml(value) {
 }
 
 function parseDateOnly(value) {
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(String(value || ""))) return null;
-  const [year, month, day] = String(value).split("-").map(Number);
+  const raw = String(value || "").trim();
+  if (!raw) return null;
+  let year;
+  let month;
+  let day;
+  if (/^\d{4}-\d{2}-\d{2}$/.test(raw)) {
+    [year, month, day] = raw.split("-").map(Number);
+  } else if (/^\d{2}\/\d{2}\/\d{4}$/.test(raw)) {
+    [day, month, year] = raw.split("/").map(Number);
+  } else {
+    const native = new Date(raw);
+    if (Number.isNaN(native.getTime())) return null;
+    native.setHours(0, 0, 0, 0);
+    return native;
+  }
   const date = new Date(year, month - 1, day);
   if (Number.isNaN(date.getTime())) return null;
   date.setHours(0, 0, 0, 0);
@@ -158,6 +189,22 @@ function latestWeekStart(rows, dateSelector, weekStartDay) {
   return dates[0] || weekStartByDay(new Date(), weekStartDay);
 }
 
+function preferredRosterWeekStart(rows) {
+  const summary = new Map();
+  rows.forEach((row) => {
+    const weekKey = rosterWeekKey(row.shiftDate);
+    if (!weekKey) return;
+    if (!summary.has(weekKey)) summary.set(weekKey, { total: 0, active: 0 });
+    const bucket = summary.get(weekKey);
+    bucket.total += 1;
+    if (!isAwayRosterStatus(row.status)) bucket.active += 1;
+  });
+  const keys = Array.from(summary.keys()).sort().reverse();
+  if (!keys.length) return weekStartByDay(new Date(), 1);
+  const activeWeekKey = keys.find((key) => (summary.get(key)?.active || 0) > 0) || keys[0];
+  return parseDateOnly(activeWeekKey) || weekStartByDay(new Date(), 1);
+}
+
 function formatShortDate(value) {
   const date = value instanceof Date ? value : parseDateOnly(value);
   if (!date) return "Unknown";
@@ -186,6 +233,14 @@ function moneyCompact(value) {
   if (Math.abs(amount) >= 1000000) return `$${(amount / 1000000).toFixed(1)}m`;
   if (Math.abs(amount) >= 1000) return `$${(amount / 1000).toFixed(1)}k`;
   return `$${amount.toFixed(0)}`;
+}
+
+function normalizeRosterStatus(value) {
+  return String(value || "").trim().toLowerCase();
+}
+
+function isAwayRosterStatus(value) {
+  return AWAY_STATUSES.has(normalizeRosterStatus(value));
 }
 
 function shortWeekLabel(weekKey) {
@@ -278,7 +333,7 @@ function payNetAmount(item) {
   return (daysWorked * dailyRate) + (nightRunDrops * NIGHT_DROP_DEFAULT_RATE) + bonus - deductions;
 }
 
-function currentData() {
+function readLocalDataSnapshot() {
   return {
     income: readRows(STORAGE_KEYS.income),
     expense: readRows(STORAGE_KEYS.expense),
@@ -287,6 +342,98 @@ function currentData() {
     drivers: readRows(STORAGE_KEYS.drivers),
     trucks: readRows(STORAGE_KEYS.trucks)
   };
+}
+
+function currentData() {
+  return reportState.sharedData || readLocalDataSnapshot();
+}
+
+function getSupabaseClient() {
+  return window.OPXSupabase?.client || null;
+}
+
+function isSupabaseReady() {
+  return Boolean(window.OPXSupabase?.isReady && getSupabaseClient());
+}
+
+function fromDbIncome(row) {
+  return {
+    id: row.id,
+    incomeDate: row.income_date || "",
+    truckNumber: row.truck_number || "",
+    jobRef: row.job_ref || "",
+    client: row.client || "",
+    amount: Number(row.amount || 0),
+    status: row.status || "",
+    notes: row.notes || ""
+  };
+}
+
+function fromDbExpense(row) {
+  return {
+    id: row.id,
+    date: row.expense_date || "",
+    truckNumber: row.truck_number || "",
+    category: row.category || "",
+    amount: Number(row.amount || 0),
+    vendor: row.vendor || "",
+    notes: row.notes || ""
+  };
+}
+
+function fromDbPay(row) {
+  return {
+    id: row.id,
+    driver: row.driver || "",
+    truckNumber: row.truck_number || "",
+    payPeriod: row.pay_period || "",
+    daysWorked: Number(row.days_worked || 0),
+    dailyRate: Number(row.daily_rate || 0),
+    nightRunDrops: Number(row.night_run_drops || 0),
+    driverBonus: Number(row.driver_bonus || 0),
+    deductions: Number(row.deductions || 0),
+    paymentDate: row.payment_date || ""
+  };
+}
+
+function fromDbRoster(row) {
+  const runType = String(row.run_type || "").trim().toLowerCase();
+  return {
+    id: row.id,
+    driverName: row.driver_name || "",
+    truckNumber: row.truck_number || "",
+    nightRun: runType === "night run" || runType === "night run +",
+    shiftDate: row.shift_date || "",
+    shiftTime: row.shift_time || "",
+    route: row.route || "",
+    status: row.status || "Scheduled"
+  };
+}
+
+function fromDbDriver(row) {
+  return {
+    id: row.id,
+    name: row.name || "",
+    status: row.status || ""
+  };
+}
+
+function fromDbTruck(row) {
+  return {
+    id: row.id,
+    truckNumber: row.truck_number || "",
+    status: row.status || ""
+  };
+}
+
+function fromDbRows(key, rows) {
+  if (key === STORAGE_KEYS.income) return rows.map(fromDbIncome);
+  if (key === STORAGE_KEYS.expense) return rows.map(fromDbExpense);
+  if (key === STORAGE_KEYS.pay) return rows.map(fromDbPay);
+  if (key === STORAGE_KEYS.roster) return rows.map(fromDbRoster);
+  if (key === STORAGE_KEYS.drivers) return rows.map(fromDbDriver);
+  if (key === STORAGE_KEYS.trucks) return rows.map(fromDbTruck);
+  return rows;
 }
 
 function primaryTruckMap(rosterRows, fallbackTrucks) {
@@ -452,9 +599,9 @@ function collectDriverReportRows(data, selectedRosterWeekKey) {
     const driverRows = rows.filter((row) => String(row.driverName || "").trim() === name);
     return {
       driver: name,
-      plannedShifts: driverRows.filter((row) => String(row.status || "").trim().toLowerCase() !== "leave").length,
-      completed: driverRows.filter((row) => String(row.status || "").trim().toLowerCase() === "completed").length,
-      leaveDays: driverRows.filter((row) => String(row.status || "").trim().toLowerCase() === "leave").length,
+      plannedShifts: driverRows.filter((row) => !isAwayRosterStatus(row.status)).length,
+      completed: driverRows.filter((row) => normalizeRosterStatus(row.status) === "completed").length,
+      leaveDays: driverRows.filter((row) => isAwayRosterStatus(row.status)).length,
       nightRuns: driverRows.filter((row) => row.nightRun).length,
       primaryTruck: primaryTrucks.get(name) || "-"
     };
@@ -552,8 +699,8 @@ function drawStats(data, selectedFinanceWeekKey, selectedRosterWeekKey) {
     .filter((row) => financeWeekKey(row.paymentDate || row.periodStart || row.periodEnd) === selectedFinanceWeekKey)
     .reduce((sum, row) => sum + payNetAmount(row), 0);
   const rosterRows = data.roster.filter((row) => rosterWeekKey(row.shiftDate) === selectedRosterWeekKey);
-  const completedShifts = rosterRows.filter((row) => String(row.status || "").trim().toLowerCase() === "completed").length;
-  const leaveDays = rosterRows.filter((row) => String(row.status || "").trim().toLowerCase() === "leave").length;
+  const completedShifts = rosterRows.filter((row) => normalizeRosterStatus(row.status) === "completed").length;
+  const leaveDays = rosterRows.filter((row) => isAwayRosterStatus(row.status)).length;
   const stats = [
     { label: "Finance Week Income", value: money(financeIncome) },
     { label: "Finance Week Expense", value: money(financeExpense) },
@@ -761,6 +908,49 @@ async function refreshServerSchedulerStatus() {
   }
 }
 
+async function hydrateReportsFromSupabase({ preserveInputs = true } = {}) {
+  if (!isSupabaseReady()) return false;
+  const supabase = getSupabaseClient();
+  if (!supabase) return false;
+
+  const localData = readLocalDataSnapshot();
+  const nextData = {
+    income: [...localData.income],
+    expense: [...localData.expense],
+    pay: [...localData.pay],
+    roster: [...localData.roster],
+    drivers: [...localData.drivers],
+    trucks: [...localData.trucks]
+  };
+
+  let loadedAny = false;
+  const keys = Object.values(STORAGE_KEYS);
+  const responses = await Promise.all(keys.map((key) => supabase.from(TABLE_BY_KEY[key]).select("*")));
+
+  responses.forEach((result, index) => {
+    const storageKey = keys[index];
+    const field = DATA_FIELD_BY_STORAGE_KEY[storageKey];
+    if (result?.error || !Array.isArray(result?.data)) {
+      if (result?.error) {
+        console.error(`Supabase load failed for ${TABLE_BY_KEY[storageKey]}:`, result.error.message);
+      }
+      return;
+    }
+
+    loadedAny = true;
+    const mappedRows = fromDbRows(storageKey, result.data);
+    if (!mappedRows.length && nextData[field].length) return;
+    nextData[field] = mappedRows;
+    localStorage.setItem(storageKey, JSON.stringify(mappedRows));
+  });
+
+  if (loadedAny) {
+    reportState.sharedData = nextData;
+    refreshReports({ preserveInputs });
+  }
+  return loadedAny;
+}
+
 async function sendPreparedReportEmail(snapshot, mode = "manual") {
   if (!canEmailReports) {
     setReportEmailStatus("Only leadership roles can email prepared reports.", "error");
@@ -875,6 +1065,10 @@ function applyAccess() {
     const link = document.getElementById("financeLink");
     if (link) link.style.display = "none";
   }
+  if (!(auth.can("accessCRM") && (auth.can("viewSpending") || auth.can("editSpending") || auth.can("accessControlPanel")))) {
+    const link = document.getElementById("receiptsLink");
+    if (link) link.style.display = "none";
+  }
   if (!auth.can("accessLogs")) {
     const link = document.getElementById("logsLink");
     if (link) link.style.display = "none";
@@ -900,7 +1094,7 @@ function refreshReports({ preserveInputs = true } = {}) {
     (row) => row.incomeDate || row.expenseDate || row.paymentDate || row.periodStart || row.periodEnd,
     4
   );
-  const latestRosterWeek = latestWeekStart(data.roster, (row) => row.shiftDate, 1);
+  const latestRosterWeek = preferredRosterWeekStart(data.roster);
   const financeWeekInput = document.getElementById("reportFinanceWeek");
   const rosterWeekInput = document.getElementById("reportRosterWeek");
 
@@ -925,12 +1119,25 @@ function refreshReports({ preserveInputs = true } = {}) {
 applyAccess();
 reportState.snapshots = readSnapshots();
 refreshReports({ preserveInputs: false });
+void hydrateReportsFromSupabase({ preserveInputs: false });
 void refreshReportEmailConfigured();
 void refreshServerSchedulerStatus();
 void maybeRunScheduler();
 
+if (!isSupabaseReady()) {
+  window.addEventListener("opx:supabase-ready", () => {
+    void hydrateReportsFromSupabase({ preserveInputs: true });
+  }, { once: true });
+  window.setTimeout(() => {
+    if (isSupabaseReady()) {
+      void hydrateReportsFromSupabase({ preserveInputs: true });
+    }
+  }, 1500);
+}
+
 document.getElementById("refreshReportsBtn").addEventListener("click", () => {
   refreshReports({ preserveInputs: true });
+  void hydrateReportsFromSupabase({ preserveInputs: true });
 });
 
 document.getElementById("resetReportsBtn").addEventListener("click", () => {
@@ -1027,10 +1234,18 @@ document.getElementById("logoutBtn").addEventListener("click", () => {
 
 window.addEventListener("focus", () => {
   void maybeRunScheduler();
+  void hydrateReportsFromSupabase({ preserveInputs: true });
 });
 
 window.addEventListener("storage", (event) => {
+  if (!event.key) return;
   if (event.key === REPORT_SCHEDULER_KEY || event.key === REPORT_SNAPSHOTS_KEY) {
     void maybeRunScheduler();
   }
+  const dataField = DATA_FIELD_BY_STORAGE_KEY[event.key];
+  if (!dataField) return;
+  if (reportState.sharedData) {
+    reportState.sharedData[dataField] = readRows(event.key);
+  }
+  refreshReports({ preserveInputs: true });
 });

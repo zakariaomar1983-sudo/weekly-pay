@@ -225,6 +225,9 @@ if (!auth.can("viewRoster")) {
 if (!(auth.can("viewTruckIncome") || auth.can("viewSpending") || auth.can("viewPayslips") || auth.can("viewStats"))) {
   hideElement("openFinanceBtn");
 }
+if (!(auth.can("accessCRM") && (auth.can("viewSpending") || auth.can("editSpending") || auth.can("accessControlPanel")))) {
+  hideElement("openReceiptsBtn");
+}
 if (!auth.can("accessLogs")) {
   hideElement("openLogsBtn");
 }

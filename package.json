@@ -1,7 +1,12 @@
 {
+  "scripts": {
+    "dev": "node local-server.js",
+    "start": "node local-server.js",
+    "health-check": "node scripts/health-check.js"
+  },
   "dependencies": {
     "@supabase/ssr": "^0.10.2",
     "@supabase/supabase-js": "^2.103.0",
-    "vercel": "^51.2.1"
+    "vercel": "^52.0.0"
   }
 }

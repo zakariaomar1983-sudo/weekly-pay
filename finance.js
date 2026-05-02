@@ -160,6 +160,7 @@ function queueFinanceSyncRetry(key, errorMessage = "") {
 
 const money = (value) => `$${Number(value || 0).toFixed(2)}`;
 const NIGHT_DROP_DEFAULT_RATE = 90;
+const PAYROLL_LAG_WEEKS = 1;
 const DAILY_RATE_BY_TRUCK_NUMBER = {
   "881": 330,
   "853": 330,
@@ -1218,6 +1219,20 @@ function mondayKeyFrom(value) {
   return start ? formatDateKey(start) : "";
 }
 
+function shiftWeekKey(weekKey, weekOffset = 0) {
+  const start = parseDateKey(weekKey);
+  if (!start) return "";
+  const shifted = new Date(start);
+  shifted.setDate(start.getDate() + (Number(weekOffset || 0) * 7));
+  return formatDateKey(shifted);
+}
+
+function sourceRosterWeekKeyFromPayWeek(payWeekKey) {
+  if (!payWeekKey) return "";
+  if (!PAYROLL_LAG_WEEKS) return payWeekKey;
+  return shiftWeekKey(payWeekKey, -PAYROLL_LAG_WEEKS);
+}
+
 function readRosterRows() {
   try {
     const parsed = JSON.parse(localStorage.getItem(ROSTER_KEY) || "[]");
@@ -1228,22 +1243,21 @@ function readRosterRows() {
 }
 
 async function getRosterRowsForPay() {
-  const localRows = readRosterRows();
+  const localRows = dedupeRosterRowsForPay(readRosterRows());
   if (isSupabaseReady()) {
     const supabase = getSupabaseClient();
     const { data, error } = await supabase.from("roster").select("*");
     if (!error && Array.isArray(data)) {
-      const remoteRows = data.map(rosterRowFromDb);
-      return dedupeRosterRowsForPay([
-        ...remoteRows,
-        ...localRows
-      ]);
+      const remoteRows = dedupeRosterRowsForPay(data.map(rosterRowFromDb));
+      // Prefer shared roster rows whenever Supabase returns data.
+      // Mixing local + remote can revive stale local shifts and overcount pay days.
+      return remoteRows.length ? remoteRows : localRows;
     }
     if (error) {
       console.error("Supabase load failed for roster pay sync:", error.message);
     }
   }
-  return dedupeRosterRowsForPay(localRows);
+  return localRows;
 }
 
 function payPeriodFromWeekKey(weekStartKey) {
@@ -1295,15 +1309,16 @@ function dedupePayRows(rows) {
   });
 }
 
-function buildPayRowsFromRoster(rows, weekStartKey) {
-  const payPeriod = payPeriodFromWeekKey(weekStartKey);
-  const paymentDate = paymentDateFromWeekKey(weekStartKey);
+function buildPayRowsFromRoster(rows, payWeekKey) {
+  const sourceWeekKey = sourceRosterWeekKeyFromPayWeek(payWeekKey) || payWeekKey;
+  const payPeriod = payPeriodFromWeekKey(sourceWeekKey);
+  const paymentDate = paymentDateFromWeekKey(payWeekKey);
   const existingByDriverPeriod = new Map(
     state.pay.map((item) => [`${String(item.driver || "").trim()}__${String(item.payPeriod || "").trim()}`, item])
   );
   const grouped = new Map();
 
-  const weekRows = rows.filter((row) => mondayKeyFrom(row.shiftDate) === weekStartKey);
+  const weekRows = rows.filter((row) => mondayKeyFrom(row.shiftDate) === sourceWeekKey);
   weekRows.forEach((row) => {
       const driverName = String(row.driverName || "").trim();
       if (!driverName) return;
@@ -1341,15 +1356,15 @@ function buildPayRowsFromRoster(rows, weekStartKey) {
     };
   }).filter((row) => row.daysWorked > 0);
 
-  return { generatedRows, weekRows };
+  return { generatedRows, weekRows, sourceWeekKey };
 }
 
 async function generatePayFromRosterWeek() {
   if (!auth.can("editPayslips")) return;
   const weekStartInput = document.getElementById("payRosterWeekStart");
   const generateButton = document.getElementById("generatePayFromRoster");
-  let weekStartKey = mondayKeyFrom(weekStartInput?.value || formatDateKey(new Date()));
-  if (!weekStartKey) {
+  let payWeekKey = mondayKeyFrom(weekStartInput?.value || formatDateKey(new Date()));
+  if (!payWeekKey) {
     setPayGenerationStatus("Choose a valid roster week first.", "error-text");
     alert("Choose a valid roster week first.");
     return;
@@ -1360,28 +1375,29 @@ async function generatePayFromRosterWeek() {
 
   try {
     const rosterRows = await getRosterRowsForPay();
-    let result = buildPayRowsFromRoster(rosterRows, weekStartKey);
+    let result = buildPayRowsFromRoster(rosterRows, payWeekKey);
 
     if (!result.generatedRows.length) {
       const fallbackWeekKey = latestRosterWeekKey(rosterRows, true);
-      if (fallbackWeekKey && fallbackWeekKey !== weekStartKey) {
-        weekStartKey = fallbackWeekKey;
-        if (weekStartInput) weekStartInput.value = fallbackWeekKey;
+      const fallbackPayWeekKey = shiftWeekKey(fallbackWeekKey, PAYROLL_LAG_WEEKS);
+      if (fallbackWeekKey && fallbackPayWeekKey && fallbackPayWeekKey !== payWeekKey) {
+        payWeekKey = fallbackPayWeekKey;
+        if (weekStartInput) weekStartInput.value = fallbackPayWeekKey;
         syncPayDateToRosterWeek();
-        result = buildPayRowsFromRoster(rosterRows, weekStartKey);
+        result = buildPayRowsFromRoster(rosterRows, payWeekKey);
       }
     }
 
-    const { generatedRows, weekRows } = result;
+    const { generatedRows, weekRows, sourceWeekKey } = result;
     if (!generatedRows.length) {
       if (weekRows.length) {
-        const message = "Roster shifts were found for that week, but none are marked Completed yet.";
+        const message = `Roster shifts were found for week ${sourceWeekKey}, but none are marked Completed yet.`;
         setPayGenerationStatus(`${message} Mark finished shifts as Completed in Week View, then generate Driver Pay again.`, "error-text");
         alert(`${message} Mark finished shifts as Completed in Week View, then generate Driver Pay again.`);
       } else {
         const latestWeek = latestRosterWeekKey(rosterRows, false);
         const message = latestWeek
-          ? `No roster shifts were found for the selected week. Latest saved roster week is ${latestWeek}.`
+          ? `No roster shifts were found for source week ${sourceWeekKey}. Latest saved roster week is ${latestWeek}.`
           : "No roster shifts were found yet. Save the roster week first.";
         setPayGenerationStatus(message, "error-text");
         alert(message);
@@ -1397,7 +1413,7 @@ async function generatePayFromRosterWeek() {
     ]);
     saveData(KEYS.pay, state.pay);
     refresh();
-    const success = `Generated driver pay for ${generatedRows.length} driver${generatedRows.length === 1 ? "" : "s"} from roster week ${weekStartKey}.`;
+    const success = `Generated driver pay for ${generatedRows.length} driver${generatedRows.length === 1 ? "" : "s"} from roster week ${sourceWeekKey} (payment week ${payWeekKey}).`;
     setPayGenerationStatus(success);
     alert(success);
   } finally {
@@ -1716,8 +1732,9 @@ function drawPay() {
   panel.style.display = "block";
   const tbody = document.getElementById("payTableBody");
   const query = (document.getElementById("paySearch")?.value || "").trim().toLowerCase();
-  const selectedWeekKey = mondayKeyFrom(document.getElementById("payRosterWeekStart")?.value || formatDateKey(new Date()));
-  const selectedPayPeriod = payPeriodFromWeekKey(selectedWeekKey);
+  const selectedPayWeekKey = mondayKeyFrom(document.getElementById("payRosterWeekStart")?.value || formatDateKey(new Date()));
+  const selectedSourceWeekKey = sourceRosterWeekKeyFromPayWeek(selectedPayWeekKey) || selectedPayWeekKey;
+  const selectedPayPeriod = payPeriodFromWeekKey(selectedSourceWeekKey);
   const filtered = state.pay.filter((item) => {
     if (!query) return !selectedPayPeriod || item.payPeriod === selectedPayPeriod;
     const hay = `${item.driver} ${item.truckNumber || ""} ${item.payPeriod} ${item.paymentDate} ${item.autoPay || ""} ${item.autoPayRef || ""}`.toLowerCase();
@@ -1752,6 +1769,10 @@ function applyAccess() {
     if (reportsLink) reportsLink.style.display = "none";
   }
   if (!auth.can("accessLogs")) document.querySelector("a[href='./log.html']").style.display = "none";
+  if (!(auth.can("viewSpending") || auth.can("editSpending") || auth.can("accessControlPanel"))) {
+    const receiptsLink = document.getElementById("receiptsLink");
+    if (receiptsLink) receiptsLink.style.display = "none";
+  }
   if (!auth.can("viewRoster")) {
     const rosterLink = document.getElementById("rosterLink");
     if (rosterLink) rosterLink.style.display = "none";
@@ -2011,7 +2032,8 @@ document.body.addEventListener("click", (e) => {
 
 applyAccess();
 document.getElementById("nightRunPay").value = "0.00";
-const initialPayWeekKey = latestRosterWeekKey(readRosterRows(), false) || mondayKeyFrom(formatDateKey(new Date()));
+const latestSavedRosterWeek = latestRosterWeekKey(readRosterRows(), false);
+const initialPayWeekKey = shiftWeekKey(latestSavedRosterWeek, PAYROLL_LAG_WEEKS) || mondayKeyFrom(formatDateKey(new Date()));
 if (initialPayWeekKey) {
   document.getElementById("payRosterWeekStart").value = initialPayWeekKey;
 }

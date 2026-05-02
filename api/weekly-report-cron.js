@@ -29,6 +29,23 @@ module.exports = async function handler(req, res) {
     return res.status(405).json({ error: "Method not allowed." });
   }
 
+  if (req.method === "GET" && req.query?.health === "1") {
+    const supabaseConfig = getSupabaseServerConfig();
+    const emailConfig = getWeeklyReportEmailConfig();
+    const recipients = getServerRecipients();
+    const configured = Boolean(supabaseConfig.configured && emailConfig.configured && recipients.length);
+    return res.status(200).json({
+      ok: true,
+      health: true,
+      configured,
+      supabaseConfigured: supabaseConfig.configured,
+      emailConfigured: emailConfig.configured,
+      recipientsConfigured: Boolean(recipients.length),
+      recipientsCount: recipients.length,
+      serverDeliveryActive: configured
+    });
+  }
+
   const requestState = getRequestState(req);
   const client = getSupabaseServerClient();
   const status = await buildServerStatus(client);

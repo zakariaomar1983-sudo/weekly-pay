@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Onpoint Express Roster Confirmation</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=Manrope:wght@400;500;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="./style.css?v=20260422e" />
+</head>
+<body>
+  <main class="app-shell">
+    <section class="panel" style="max-width: 760px; margin: 40px auto;">
+      <div class="panel-head">
+        <div>
+          <p class="eyebrow">Driver Confirmation</p>
+          <h1 id="confirmTitle">Checking roster link...</h1>
+        </div>
+      </div>
+      <p id="confirmMeta" class="muted">Please wait while we load your weekly roster confirmation.</p>
+      <div class="stats-grid">
+        <article class="stat-card">
+          <p>Current Status</p>
+          <h3 id="confirmStatusText">Loading...</h3>
+        </article>
+        <article class="stat-card">
+          <p>Week Start</p>
+          <h3 id="confirmWeekText">Loading...</h3>
+        </article>
+      </div>
+      <p id="confirmFeedback" class="data-status muted">Opening this page marks the roster as viewed.</p>
+      <div class="actions">
+        <button id="confirmRosterBtn" class="btn" type="button">Confirm Week View</button>
+        <button id="refreshConfirmBtn" class="btn btn-outline" type="button">Refresh Status</button>
+      </div>
+    </section>
+  </main>
+
+  <script src="./roster-confirm.js?v=20260422e"></script>
+</body>
+</html>
