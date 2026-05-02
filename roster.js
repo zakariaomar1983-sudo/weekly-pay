@@ -8,6 +8,7 @@ if (!auth.can("accessCRM") || !auth.can("viewRoster")) {
 
 const KEY = "transport_crm_roster";
 const DRIVERS_KEY = "transport_crm_drivers";
+const DRIVERS_UPDATED_KEY = "transport_crm_drivers_updated_at";
 const CONTACT_KEY = "transport_crm_driver_contacts";
 const TRUCKS_KEY = "transport_crm_trucks";
 const TARGET_DRIVERS = 7;
@@ -118,9 +119,25 @@ function getWeekContext() {
 }
 
 function getActiveDrivers() {
-  return readArray(DRIVERS_KEY)
+  const rows = readArray(DRIVERS_KEY)
     .filter((item) => String(item.status || "").toLowerCase() !== "inactive")
+    .map((item) => ({ ...item, name: String(item.name || "").trim() }))
+    .filter((item) => item.name);
+  const required = ["Mohamed Siyad", "Faaid Warsame"];
+  required.forEach((name) => {
+    if (!rows.some((item) => item.name.toLowerCase() === name.toLowerCase())) {
+      rows.push({ id: `required-${name.toLowerCase().replace(/\s+/g, "-")}`, name, status: "Active" });
+    }
+  });
+  return rows
     .sort((a, b) => String(a.name || "").localeCompare(String(b.name || "")));
+}
+
+function drawDriverNameOptions() {
+  const list = document.getElementById("driverNameOptions");
+  if (!list) return;
+  const names = getActiveDrivers().map((item) => String(item.name || "").trim()).filter(Boolean);
+  list.innerHTML = [...new Set(names)].map((name) => `<option value="${name}"></option>`).join("");
 }
 
 function getActiveTrucks() {
@@ -454,6 +471,7 @@ function drawWeekTable() {
 }
 
 function refresh() {
+  drawDriverNameOptions();
   drawRosterModel();
   drawStats();
   drawDriverBoard();
@@ -587,3 +605,9 @@ if (todayMonday) {
   document.getElementById("weekStart").value = dateToKey(todayMonday);
 }
 refresh();
+
+window.addEventListener("storage", (event) => {
+  if (event.key === DRIVERS_KEY || event.key === DRIVERS_UPDATED_KEY) {
+    refresh();
+  }
+});

@@ -8,6 +8,7 @@ if (!canAccessFinance) {
 }
 
 const KEYS = {
+  drivers: "transport_crm_drivers",
   income: "transport_crm_truck_income",
   expense: "transport_crm_spending",
   pay: "transport_crm_payslips"
@@ -54,6 +55,26 @@ function readData(key) {
   } catch {
     return [];
   }
+}
+
+function readArray(key) {
+  try {
+    const rows = JSON.parse(localStorage.getItem(key) || "[]");
+    return Array.isArray(rows) ? rows : [];
+  } catch {
+    return [];
+  }
+}
+
+function drawPayDriverOptions() {
+  const list = document.getElementById("payDriverOptions");
+  if (!list) return;
+  const names = readArray(KEYS.drivers)
+    .filter((item) => String(item?.status || "").toLowerCase() !== "inactive")
+    .map((item) => String(item?.name || "").trim())
+    .filter(Boolean)
+    .sort((a, b) => a.localeCompare(b));
+  list.innerHTML = [...new Set(names)].map((name) => `<option value="${name}"></option>`).join("");
 }
 
 function saveData(key, data) {
@@ -751,6 +772,7 @@ function drawPay() {
 }
 
 function refresh() {
+  drawPayDriverOptions();
   drawStats();
   drawPeriodTotalsDashboard();
   drawWeeklySummary();

@@ -8,6 +8,7 @@ if (!auth.can("accessCRM") || !auth.can("viewDrivers")) {
 
 const KEY = "transport_crm_drivers";
 const LEGACY_CONTACT_KEY = "transport_crm_driver_contacts";
+const DRIVERS_UPDATED_KEY = "transport_crm_drivers_updated_at";
 const DRIVERS_TABLE = "drivers";
 const supabase = window.OPXSupabase?.client || null;
 const useSupabase = Boolean(window.OPXSupabase?.isReady && supabase);
@@ -79,6 +80,7 @@ function cleanupLegacyContactsForRows(rows) {
 
 function saveData() {
   localStorage.setItem(KEY, JSON.stringify(state.drivers));
+  localStorage.setItem(DRIVERS_UPDATED_KEY, String(Date.now()));
   cleanupLegacyContactsForRows(state.drivers.filter((row) => row.email));
   if (useSupabase) {
     void syncDriversToSupabase();

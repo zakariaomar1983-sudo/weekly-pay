@@ -60,7 +60,8 @@
       </div>
       <form id="rosterForm" class="form-grid">
         <input type="hidden" id="rosterId" />
-        <label>Driver Name<input id="driverName" type="text" required /></label>
+        <label>Driver Name<input id="driverName" type="text" list="driverNameOptions" required /></label>
+        <datalist id="driverNameOptions"></datalist>
         <label>Truck Number<input id="truckNumber" type="text" placeholder="Truck 12" required /></label>
         <label>Shift Date<input id="shiftDate" type="date" required /></label>
         <label>Shift Time<input id="shiftTime" type="text" placeholder="06:00 - 14:00" required /></label>
