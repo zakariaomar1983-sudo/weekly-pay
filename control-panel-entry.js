@@ -1,1 +1,1 @@
-import "./control-panel.js?module=20260422c";
+import "./control-panel.js?module=20260423a";

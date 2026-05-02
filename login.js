@@ -49,6 +49,7 @@ async function startLogin() {
 
   const loginForm = document.getElementById("loginForm");
   const loginError = document.getElementById("loginError");
+  const loginStatus = document.getElementById("loginStatus");
   const firstRunPanel = document.getElementById("firstRunPanel");
   const firstRunForm = document.getElementById("firstRunForm");
 
@@ -58,8 +59,9 @@ async function startLogin() {
 
   const sessionUser = window.OPXAuth.getSessionUser();
   if (sessionUser) {
-    routeUser(sessionUser);
-    return;
+    if (loginStatus) {
+      loginStatus.textContent = `Signed in on this device as ${sessionUser.username}. Enter a username and password below to continue or switch accounts.`;
+    }
   }
 
   if (!window.OPXAuth.hasUsers()) {
