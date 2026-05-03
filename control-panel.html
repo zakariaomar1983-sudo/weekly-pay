@@ -7,7 +7,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=Manrope:wght@400;500;700&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="./style.css" />
+  <link rel="stylesheet" href="./style.css?v=20260422c" />
 </head>
 <body>
   <main class="app-shell">
@@ -19,10 +19,12 @@
       <div class="topbar-actions">
         <span id="currentUserChip" class="user-chip"></span>
         <a id="openHomeBtn" class="btn btn-outline" href="./index.html">Home</a>
+        <a id="openReportsBtn" class="btn btn-outline" href="./reports.html">Reports</a>
         <a id="openDriversBtn" class="btn btn-outline" href="./drivers.html">Drivers</a>
         <a id="openTrucksBtn" class="btn btn-outline" href="./trucks.html">Trucks</a>
         <a id="openRosterBtn" class="btn btn-outline" href="./roster.html">Roster</a>
         <a id="openFinanceBtn" class="btn btn-outline" href="./finance.html">Finance</a>
+        <a id="openReceiptsBtn" class="btn btn-outline" href="./receipts.html">Receipts</a>
         <a id="openLogsBtn" class="btn btn-outline" href="./log.html">Logs</a>
         <a id="logoutBtn" class="btn btn-muted" href="./login.html?logout=1">Logout</a>
       </div>
@@ -34,7 +36,15 @@
       <div class="panel-head">
         <h2>Role Table</h2>
       </div>
-      <p class="muted">Create and manage CRM staff roles and permissions.</p>
+      <p class="muted">Create and manage CRM staff roles by page access. Use a preset, adjust the ticks, then save the role.</p>
+      <div class="role-presets" id="rolePresets">
+        <button class="btn btn-outline" type="button" data-role-preset="teamBasic">Team: Home + Trucks + Roster</button>
+        <button class="btn btn-outline" type="button" data-role-preset="dispatcher">Dispatcher: Drivers + Trucks + Roster</button>
+        <button class="btn btn-outline" type="button" data-role-preset="finance">Finance: Pay + Expenses</button>
+        <button class="btn btn-outline" type="button" data-role-preset="managementReports">Management Reports</button>
+        <button class="btn btn-outline" type="button" data-role-preset="readonly">Read Only</button>
+      </div>
+      <p id="sharedAuthStatus" class="sync-badge sync-badge-neutral">Checking shared login roles...</p>
       <form id="roleForm" class="form-grid">
         <input type="hidden" id="roleId" />
         <label class="full">Role Name<input id="roleName" type="text" placeholder="Dispatcher" required /></label>
@@ -51,12 +61,10 @@
       <div class="table-wrap">
         <table>
           <thead>
-            <tr><th>Role ID</th><th>Role Name</th><th>Type</th><th>Permissions</th><th>Assigned Users</th><th>Actions</th></tr>
+            <tr><th>Role Name</th><th>Type</th><th>Home</th><th>Reports</th><th>Trucks</th><th>Roster</th><th>Finance</th><th>Logs</th><th>Control Panel</th><th>Assigned Users</th><th>Actions</th></tr>
           </thead>
           <tbody id="rolesTableBody">
-            <tr><td>role_admin</td><td>Admin</td><td>System</td><td>All enabled</td><td>0</td><td><span class="muted">System role</span></td></tr>
-            <tr><td>role_manager</td><td>Ops Manager</td><td>System</td><td>Operational enabled</td><td>0</td><td><span class="muted">System role</span></td></tr>
-            <tr><td>role_viewer</td><td>GM</td><td>System</td><td>View enabled</td><td>0</td><td><span class="muted">System role</span></td></tr>
+            <tr><td colspan="11" class="empty">Loading roles...</td></tr>
           </tbody>
         </table>
       </div>
@@ -72,7 +80,6 @@
         <label>Password<input id="userPassword" type="password" placeholder="Required for new user" /></label>
         <label>Role
           <select id="userRole" required>
-            <option value="role_admin">Admin</option>
             <option value="role_manager">Ops Manager</option>
             <option value="role_viewer">GM</option>
           </select>
@@ -98,19 +105,79 @@
       </div>
     </section>
 
+    <section class="panel">
+      <div class="panel-head">
+        <h2>Staff Activity Report</h2>
+      </div>
+      <p class="muted">Tracks staff and management sign-ins plus user, role, and roster workflow changes with before and after detail.</p>
+      <form class="form-grid" onsubmit="return false;">
+        <label>Search
+          <input id="auditSearch" type="text" placeholder="Staff name, role, action, summary..." />
+        </label>
+        <label>Action
+          <select id="auditActionFilter">
+            <option value="">All</option>
+            <option value="login">Login</option>
+            <option value="logout">Logout</option>
+            <option value="create">Create</option>
+            <option value="update">Update</option>
+            <option value="delete">Delete</option>
+            <option value="bootstrap">Setup</option>
+          </select>
+        </label>
+        <div class="actions full">
+          <button id="clearAuditFilters" class="btn btn-outline" type="button">Clear Filters</button>
+          <button id="exportAuditReport" class="btn btn-outline" type="button">Export Report</button>
+        </div>
+      </form>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr><th>When</th><th>Staff</th><th>Action</th><th>Area</th><th>Target</th><th>Summary</th><th>Change Detail</th></tr>
+          </thead>
+          <tbody id="auditTableBody"></tbody>
+        </table>
+      </div>
+    </section>
+
   </main>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="./supabase-config.js?v=20260413s"></script>
   <script src="./supabase-client.js?v=20260413s"></script>
   <script src="./seed-data.js?v=20260413s"></script>
-  <script src="./auth.js?v=20260414b"></script>
+  <script>
+    window.addEventListener("error", function (event) {
+      var target = event.target;
+      var status = document.getElementById("sharedAuthStatus");
+      var grid = document.getElementById("permissionsGrid");
+      var message = "";
+
+      if (target && target.tagName === "SCRIPT") {
+        message = "Could not load " + (target.getAttribute("src") || "a page script") + ". Please refresh.";
+      } else {
+        message = "Control Panel script error: " + (event.message || "Unknown browser error");
+        if (event.filename) {
+          message += " [" + event.filename.split("/").pop() + ":" + (event.lineno || 0) + "]";
+        }
+      }
+
+      if (status) {
+        status.textContent = message;
+        status.className = "error-text";
+      }
+      if (grid && !grid.innerHTML.trim()) {
+        grid.innerHTML = "<p class=\"error-text\">" + message + "</p>";
+      }
+    }, true);
+  </script>
+  <script src="./auth.js?v=20260423a"></script>
   <script>
     if (window.OPXAuth?.healCoreAccess) {
       window.OPXAuth.healCoreAccess();
     }
   </script>
-  <script src="./control-panel.js?v=20260414a"></script>
+  <script type="module" src="./control-panel-entry.js?v=20260423a"></script>
   <script src="./emergency-fill.js?v=20260413s"></script>
 </body>
 </html>

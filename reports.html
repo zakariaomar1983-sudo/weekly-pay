@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Onpoint Express Reports</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=Manrope:wght@400;500;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="./style.css?v=20260422d" />
+  <style>
+    @media print {
+      .topbar-actions,
+      .print-hidden {
+        display: none !important;
+      }
+
+      body {
+        background: #fff !important;
+      }
+
+      .app-shell {
+        width: 100%;
+        max-width: none;
+        padding: 0;
+      }
+
+      .panel,
+      .stat-card {
+        box-shadow: none !important;
+        break-inside: avoid;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="app-shell">
+    <header class="topbar">
+      <div>
+        <p class="eyebrow">Insights</p>
+        <h1>Reports</h1>
+      </div>
+      <div class="topbar-actions">
+        <span id="currentUserChip" class="user-chip"></span>
+        <a class="btn btn-outline" href="./index.html">Home</a>
+        <a id="driversLink" class="btn btn-outline" href="./drivers.html">Drivers</a>
+        <a id="trucksLink" class="btn btn-outline" href="./trucks.html">Trucks</a>
+        <a id="rosterLink" class="btn btn-outline" href="./roster.html">Roster</a>
+        <a id="financeLink" class="btn btn-outline" href="./finance.html">Finance</a>
+        <a id="receiptsLink" class="btn btn-outline" href="./receipts.html">Receipts</a>
+        <a id="logsLink" class="btn btn-outline" href="./log.html">Logs</a>
+        <a id="controlPanelLink" class="btn btn-outline" href="./control-panel.html">Control Panel</a>
+        <button id="logoutBtn" class="btn btn-muted" type="button">Logout</button>
+      </div>
+    </header>
+
+    <section class="stats-grid" id="reportsStats"></section>
+
+    <section class="panel">
+      <div class="panel-head">
+        <h2>Report Scheduler</h2>
+      </div>
+      <form class="form-grid" onsubmit="return false;">
+        <label class="roster-batch-toggle">
+          <span>Weekly Auto-Prepare</span>
+          <div class="roster-batch-inline">
+            <input id="reportSchedulerActive" type="checkbox" checked />
+            <span>Prepare the weekly report automatically every Thursday</span>
+          </div>
+        </label>
+        <label>Run Time<input id="reportSchedulerTime" type="time" value="08:00" /></label>
+        <label class="full">Email Recipients
+          <input id="reportSchedulerRecipients" type="text" placeholder="manager@company.com, finance@company.com" />
+        </label>
+        <label class="roster-batch-toggle">
+          <span>Auto Email Prepared Report</span>
+          <div class="roster-batch-inline">
+            <input id="reportSchedulerAutoEmail" type="checkbox" />
+            <span>Send the prepared weekly report automatically after it is generated</span>
+          </div>
+        </label>
+        <div class="actions full">
+          <button id="saveReportSchedulerBtn" class="btn" type="button">Save Scheduler</button>
+          <button id="runReportSchedulerNowBtn" class="btn btn-outline" type="button">Run Now</button>
+          <button id="emailPreparedReportBtn" class="btn btn-outline" type="button">Email Current Report</button>
+        </div>
+      </form>
+      <div class="stats-grid">
+        <article class="stat-card">
+          <p>Next Run</p>
+          <h3 id="reportSchedulerNextRun">Checking...</h3>
+        </article>
+        <article class="stat-card">
+          <p>Last Prepared</p>
+          <h3 id="reportSchedulerLastRun">Not prepared yet</h3>
+        </article>
+      </div>
+      <p id="reportSchedulerStatus" class="muted">The scheduler prepares the weekly report snapshot when the CRM is open, and catches up the next time Reports is opened.</p>
+      <p id="reportEmailStatus" class="muted">Checking report email sender...</p>
+      <p id="reportServerSchedulerStatus" class="muted">Checking server-side Thursday delivery...</p>
+    </section>
+
+    <section class="panel">
+      <div class="panel-head">
+        <h2>Report Filters</h2>
+      </div>
+      <form class="form-grid" onsubmit="return false;">
+        <label>Finance Week (Thursday)<input id="reportFinanceWeek" type="date" /></label>
+        <label>Roster Week (Monday)<input id="reportRosterWeek" type="date" /></label>
+        <div class="actions full">
+          <button id="refreshReportsBtn" class="btn" type="button">Refresh Report</button>
+          <button id="resetReportsBtn" class="btn btn-outline" type="button">Reset to Latest</button>
+          <button id="printReportsBtn" class="btn btn-outline print-hidden" type="button">Print / Save PDF</button>
+        </div>
+      </form>
+      <p id="reportsMeta" class="muted">Loading report windows...</p>
+    </section>
+
+    <section class="panel">
+      <div class="panel-head">
+        <h2>Prepared Reports</h2>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr><th>Prepared At</th><th>Mode</th><th>Finance Week</th><th>Roster Week</th><th>Profit</th><th>Completed Shifts</th><th>Actions</th></tr>
+          </thead>
+          <tbody id="reportsSnapshotsTableBody"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="panel">
+      <div class="panel-head">
+        <h2>Report Trend Charts</h2>
+      </div>
+      <div class="charts-grid" id="reportsChartsGrid"></div>
+    </section>
+
+    <section class="panel">
+      <div class="panel-head">
+        <h2>Weekly Finance Summary</h2>
+        <div class="actions print-hidden">
+          <button id="exportFinanceReportBtn" class="btn btn-outline" type="button">Export CSV</button>
+        </div>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr><th>Week</th><th>Truck Income</th><th>Truck Expense</th><th>Driver Pay</th><th>Profit</th></tr>
+          </thead>
+          <tbody id="reportsFinanceTableBody"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="panel">
+      <div class="panel-head">
+        <h2>Driver Operations Report</h2>
+        <div class="actions print-hidden">
+          <button id="exportDriverReportBtn" class="btn btn-outline" type="button">Export CSV</button>
+        </div>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr><th>Driver</th><th>Planned Shifts</th><th>Completed</th><th>Leave Days</th><th>Night Runs</th><th>Primary Truck</th></tr>
+          </thead>
+          <tbody id="reportsDriversTableBody"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="panel">
+      <div class="panel-head">
+        <h2>Truck Performance Report</h2>
+        <div class="actions print-hidden">
+          <button id="exportTruckReportBtn" class="btn btn-outline" type="button">Export CSV</button>
+        </div>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr><th>Truck #</th><th>Income</th><th>Expense</th><th>Net</th><th>Income Jobs</th><th>Expense Items</th></tr>
+          </thead>
+          <tbody id="reportsTrucksTableBody"></tbody>
+        </table>
+      </div>
+    </section>
+  </main>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="./supabase-config.js?v=20260413g"></script>
+  <script src="./supabase-client.js?v=20260413g"></script>
+  <script src="./seed-data.js?v=20260413g"></script>
+  <script src="./auth.js?v=20260423a"></script>
+  <script src="./reports.js?v=20260423a"></script>
+</body>
+</html>

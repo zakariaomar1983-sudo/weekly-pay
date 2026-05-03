@@ -7,7 +7,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=Manrope:wght@400;500;700&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="./style.css" />
+  <link rel="stylesheet" href="./style.css?v=20260421k" />
 </head>
 <body>
   <main class="app-shell">
@@ -19,8 +19,10 @@
       <div class="topbar-actions">
         <span id="currentUserChip" class="user-chip"></span>
         <a class="btn btn-outline" href="./index.html">Home</a>
+        <a id="reportsLink" class="btn btn-outline" href="./reports.html">Reports</a>
         <a id="financeLink" class="btn btn-outline" href="./finance.html">Finance</a>
         <a id="rosterLink" class="btn btn-outline" href="./roster.html">Roster</a>
+        <a id="receiptsLink" class="btn btn-outline" href="./receipts.html">Receipts</a>
         <a id="controlPanelLink" class="btn btn-outline" href="./control-panel.html">Control Panel</a>
         <button id="logoutBtn" class="btn btn-muted" type="button">Logout</button>
         <button id="clearLogsBtn" class="btn btn-danger" type="button">Clear Logs</button>
@@ -33,6 +35,8 @@
       <div class="panel-head">
         <h2>Daily Log</h2>
       </div>
+      <p id="logsSyncStatus" class="sync-badge sync-badge-neutral">Checking sync...</p>
+      <p id="logsQueueBanner" class="queue-banner queue-banner-pending" hidden></p>
       <form class="form-grid" onsubmit="return false;">
         <label>Search
           <input id="logsSearch" type="text" placeholder="Driver, truck, reference, description..." />
@@ -96,8 +100,8 @@
   <script src="./supabase-config.js?v=20260413g"></script>
   <script src="./supabase-client.js?v=20260413g"></script>
   <script src="./seed-data.js?v=20260413d"></script>
-  <script src="./auth.js?v=20260414b"></script>
-  <script src="./log.js?v=20260414c"></script>
+  <script src="./auth.js?v=20260423a"></script>
+  <script src="./log.js?v=20260423a"></script>
 </body>
 </html>
 

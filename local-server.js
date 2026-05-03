@@ -1,62 +1,250 @@
-﻿const http = require('http');
-const fs = require('fs');
-const path = require('path');
-const os = require('os');
+const http = require("http");
+const fs = require("fs");
+const path = require("path");
+const os = require("os");
+const querystring = require("querystring");
+const { URL } = require("url");
 
 const root = process.cwd();
 const port = 4173;
-const host = '0.0.0.0';
+const host = "0.0.0.0";
 
 const mime = {
-  '.html': 'text/html; charset=utf-8',
-  '.js': 'application/javascript; charset=utf-8',
-  '.css': 'text/css; charset=utf-8',
-  '.json': 'application/json; charset=utf-8',
-  '.png': 'image/png',
-  '.jpg': 'image/jpeg',
-  '.jpeg': 'image/jpeg',
-  '.svg': 'image/svg+xml',
-  '.ico': 'image/x-icon',
-  '.txt': 'text/plain; charset=utf-8',
-  '.xlsx': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+  ".html": "text/html; charset=utf-8",
+  ".js": "application/javascript; charset=utf-8",
+  ".css": "text/css; charset=utf-8",
+  ".json": "application/json; charset=utf-8",
+  ".png": "image/png",
+  ".jpg": "image/jpeg",
+  ".jpeg": "image/jpeg",
+  ".svg": "image/svg+xml",
+  ".ico": "image/x-icon",
+  ".txt": "text/plain; charset=utf-8",
+  ".xlsx": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
 };
 
-function send(res, status, body, type = 'text/plain; charset=utf-8') {
-  res.writeHead(status, { 'Content-Type': type });
+function send(res, status, body, type = "text/plain; charset=utf-8") {
+  res.writeHead(status, { "Content-Type": type });
   res.end(body);
 }
 
-function getLanUrls() {
+function getLanUrls(listenPort = port) {
   const nets = os.networkInterfaces();
   const urls = [];
 
   Object.values(nets).forEach((entries) => {
     (entries || []).forEach((entry) => {
-      if (entry.family !== 'IPv4' || entry.internal) return;
-      urls.push(`http://${entry.address}:${port}`);
+      if (entry.family !== "IPv4" || entry.internal) return;
+      urls.push(`http://${entry.address}:${listenPort}`);
     });
   });
 
   return urls;
 }
 
-http.createServer((req, res) => {
-  const urlPath = decodeURIComponent((req.url || '/').split('?')[0]);
-  let rel = urlPath === '/' ? '/index.html' : urlPath;
-  const full = path.normalize(path.join(root, rel));
+function getApiFile(urlPathname) {
+  const relative = urlPathname.replace(/^\/api\/?/, "");
+  if (!relative) return "";
+  const normalized = path.normalize(relative).replace(/^(\.\.(\/|\\|$))+/, "");
+  if (!normalized || normalized.includes("..")) return "";
+  return path.join(root, "api", `${normalized}.js`);
+}
 
-  if (!full.startsWith(root)) return send(res, 403, 'Forbidden');
+function parseRequestBody(req) {
+  return new Promise((resolve, reject) => {
+    const chunks = [];
 
-  fs.stat(full, (err, st) => {
-    if (err || !st.isFile()) return send(res, 404, 'Not Found');
-    const ext = path.extname(full).toLowerCase();
-    const type = mime[ext] || 'application/octet-stream';
-    res.writeHead(200, { 'Content-Type': type });
-    fs.createReadStream(full).pipe(res);
+    req.on("data", (chunk) => {
+      chunks.push(chunk);
+    });
+
+    req.on("end", () => {
+      if (!chunks.length) {
+        resolve(undefined);
+        return;
+      }
+
+      const raw = Buffer.concat(chunks).toString("utf8");
+      const contentType = String(req.headers["content-type"] || "").toLowerCase();
+
+      if (contentType.includes("application/json")) {
+        try {
+          resolve(JSON.parse(raw));
+        } catch {
+          resolve(raw);
+        }
+        return;
+      }
+
+      if (contentType.includes("application/x-www-form-urlencoded")) {
+        resolve(querystring.parse(raw));
+        return;
+      }
+
+      resolve(raw);
+    });
+
+    req.on("error", reject);
   });
-}).listen(port, host, () => {
-  console.log(`Static server running at http://localhost:${port}`);
-  getLanUrls().forEach((url) => {
-    console.log(`LAN access: ${url}`);
+}
+
+function searchParamsToQuery(searchParams) {
+  const query = {};
+
+  searchParams.forEach((value, key) => {
+    if (Object.prototype.hasOwnProperty.call(query, key)) {
+      query[key] = Array.isArray(query[key]) ? [...query[key], value] : [query[key], value];
+      return;
+    }
+    query[key] = value;
   });
-});
+
+  return query;
+}
+
+function createLocalResponse(res) {
+  let ended = false;
+
+  const localRes = {
+    statusCode: 200,
+    headers: {},
+    status(code) {
+      this.statusCode = code;
+      return this;
+    },
+    setHeader(name, value) {
+      this.headers[name] = value;
+      return this;
+    },
+    json(payload) {
+      if (ended) return this;
+      ended = true;
+      const body = JSON.stringify(payload);
+      res.writeHead(this.statusCode, {
+        "Content-Type": "application/json; charset=utf-8",
+        ...this.headers
+      });
+      res.end(body);
+      return this;
+    },
+    send(payload) {
+      if (ended) return this;
+      ended = true;
+      const isBuffer = Buffer.isBuffer(payload);
+      const body = payload == null ? "" : (isBuffer ? payload : String(payload));
+      const defaultType = isBuffer ? "application/octet-stream" : "text/plain; charset=utf-8";
+      res.writeHead(this.statusCode, {
+        "Content-Type": this.headers["Content-Type"] || defaultType,
+        ...this.headers
+      });
+      res.end(body);
+      return this;
+    },
+    ended() {
+      return ended;
+    }
+  };
+
+  return localRes;
+}
+
+async function handleApiRequest(req, res, pathname, searchParams) {
+  const apiFile = getApiFile(pathname);
+  if (!apiFile || !fs.existsSync(apiFile) || !fs.statSync(apiFile).isFile()) {
+    send(res, 404, JSON.stringify({ error: "API route not found." }), "application/json; charset=utf-8");
+    return;
+  }
+
+  let handler;
+  try {
+    delete require.cache[require.resolve(apiFile)];
+    handler = require(apiFile);
+  } catch (error) {
+    send(
+      res,
+      500,
+      JSON.stringify({ error: `Could not load API handler: ${error?.message || error}` }),
+      "application/json; charset=utf-8"
+    );
+    return;
+  }
+
+  if (typeof handler !== "function") {
+    send(res, 500, JSON.stringify({ error: "API handler must export a function." }), "application/json; charset=utf-8");
+    return;
+  }
+
+  const localReq = {
+    method: req.method,
+    headers: req.headers,
+    query: searchParamsToQuery(searchParams),
+    body: ["POST", "PUT", "PATCH"].includes(req.method || "") ? await parseRequestBody(req) : undefined,
+    url: req.url
+  };
+  const localRes = createLocalResponse(res);
+
+  try {
+    await handler(localReq, localRes);
+    if (!localRes.ended()) {
+      localRes.send("");
+    }
+  } catch (error) {
+    if (!localRes.ended()) {
+      localRes.status(500).json({ error: String(error?.message || error || "Unhandled API error.") });
+    }
+  }
+}
+
+function createLocalServer() {
+  return http.createServer(async (req, res) => {
+    const parsedUrl = new URL(req.url || "/", `http://${req.headers.host || "localhost"}`);
+    const urlPath = decodeURIComponent(parsedUrl.pathname);
+
+    if (urlPath.startsWith("/api/")) {
+      await handleApiRequest(req, res, urlPath, parsedUrl.searchParams);
+      return;
+    }
+
+    const rel = urlPath === "/" ? "/index.html" : urlPath;
+    const full = path.normalize(path.join(root, rel));
+
+    if (!full.startsWith(root)) {
+      send(res, 403, "Forbidden");
+      return;
+    }
+
+    fs.stat(full, (err, st) => {
+      if (err || !st.isFile()) {
+        send(res, 404, "Not Found");
+        return;
+      }
+      const ext = path.extname(full).toLowerCase();
+      const type = mime[ext] || "application/octet-stream";
+      res.writeHead(200, { "Content-Type": type });
+      fs.createReadStream(full).pipe(res);
+    });
+  });
+}
+
+function startLocalServer({ silent = false } = {}) {
+  const server = createLocalServer();
+  server.listen(port, host, () => {
+    if (silent) return;
+    console.log(`Static + API server running at http://localhost:${port}`);
+    getLanUrls(port).forEach((url) => {
+      console.log(`LAN access: ${url}`);
+    });
+  });
+  return server;
+}
+
+if (require.main === module) {
+  startLocalServer();
+}
+
+module.exports = {
+  createLocalServer,
+  startLocalServer,
+  port,
+  host
+};

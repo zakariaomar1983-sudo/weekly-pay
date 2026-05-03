@@ -7,7 +7,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=Manrope:wght@400;500;700&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="./style.css?v=20260414c" />
+  <link rel="stylesheet" href="./style.css?v=20260421k" />
 </head>
 <body>
   <main class="app-shell">
@@ -19,9 +19,11 @@
       <div class="topbar-actions">
         <span id="currentUserChip" class="user-chip"></span>
         <a class="btn btn-outline" href="./index.html">Home</a>
+        <a id="reportsLink" class="btn btn-outline" href="./reports.html">Reports</a>
         <a class="btn btn-outline" href="./trucks.html">Trucks</a>
         <a id="rosterLink" class="btn btn-outline" href="./roster.html">Roster</a>
         <a id="financeLink" class="btn btn-outline" href="./finance.html">Finance</a>
+        <a id="receiptsLink" class="btn btn-outline" href="./receipts.html">Receipts</a>
         <a class="btn btn-outline" href="./log.html">Logs</a>
         <a id="controlPanelLink" class="btn btn-outline" href="./control-panel.html">Control Panel</a>
         <button id="logoutBtn" class="btn btn-muted" type="button">Logout</button>
@@ -34,6 +36,8 @@
       <div class="panel-head">
         <h2>Driver Details</h2>
       </div>
+      <p id="driversSyncStatus" class="sync-badge sync-badge-neutral">Checking sync...</p>
+      <p id="driversQueueBanner" class="queue-banner queue-banner-pending" hidden></p>
       <form class="form-grid" onsubmit="return false;">
         <label class="full">Search History
           <input id="driversSearch" type="text" placeholder="Search name, phone, email, license, status..." />
@@ -41,6 +45,7 @@
         <div class="actions full">
           <button id="clearDriversFilters" class="btn btn-outline" type="button">Clear Filters</button>
         </div>
+        <p id="driversDataStatus" class="data-status full">Loading driver data...</p>
       </form>
       <form id="driversForm" class="form-grid">
         <input type="hidden" id="driverDetailsId" />
@@ -59,6 +64,20 @@
         </label>
         <label class="full">Address<input id="driverAddress" type="text" /></label>
         <label class="full">Emergency Contact<input id="emergencyContact" type="text" placeholder="Name + phone" /></label>
+        <section class="full attachment-panel">
+          <div class="attachment-panel-head">
+            <div>
+              <strong>Driver Documents</strong>
+              <p class="muted">Attach licence, ID, contract, or any driver paperwork.</p>
+            </div>
+            <label class="btn btn-outline attachment-upload-btn">
+              Add Files
+              <input id="driverAttachmentsInput" type="file" accept=".pdf,image/*" multiple hidden />
+            </label>
+          </div>
+          <div id="driverAttachmentsList" class="attachment-list"></div>
+          <p id="driverAttachmentsStatus" class="attachment-status muted">Attachments stay available on this CRM browser profile.</p>
+        </section>
         <div class="actions full">
           <button class="btn" type="submit">Save Driver</button>
           <button id="cancelDriverEdit" class="btn btn-muted" type="button">Cancel Edit</button>
@@ -68,7 +87,7 @@
       <div class="table-wrap">
         <table>
           <thead>
-            <tr><th>Name</th><th>Phone</th><th>Email</th><th>License #</th><th>Status</th><th>Emergency Contact</th><th>Actions</th></tr>
+            <tr><th>Name / Actions</th><th>Phone</th><th>Email</th><th>License #</th><th>Status</th><th>Emergency Contact</th></tr>
           </thead>
           <tbody id="driversTableBody"></tbody>
         </table>
@@ -80,8 +99,33 @@
   <script src="./supabase-config.js?v=20260413g"></script>
   <script src="./supabase-client.js?v=20260413g"></script>
   <script src="./seed-data.js?v=20260413g"></script>
-  <script src="./auth.js?v=20260414b"></script>
-  <script src="./drivers.js?v=20260414e"></script>
+  <script>
+    window.addEventListener("error", function (event) {
+      var target = event.target;
+      var status = document.getElementById("driversDataStatus");
+      var body = document.getElementById("driversTableBody");
+      var message = "";
+
+      if (target && target.tagName === "SCRIPT") {
+        message = "Could not load " + (target.getAttribute("src") || "a page script") + ". Please refresh.";
+      } else {
+        message = "Driver Data script error: " + (event.message || "Unknown browser error");
+        if (event.filename) {
+          message += " [" + event.filename.split("/").pop() + ":" + (event.lineno || 0) + "]";
+        }
+      }
+
+      if (status) {
+        status.textContent = message;
+        status.className = "data-status error-text full";
+      }
+      if (body && !body.innerHTML.trim()) {
+        body.innerHTML = "<tr><td colspan='6' class='error-text'>" + message + "</td></tr>";
+      }
+    }, true);
+  </script>
+  <script src="./auth.js?v=20260423a"></script>
+  <script type="module" src="./drivers-entry.js?v=20260423a"></script>
   <script src="./emergency-fill.js?v=20260413g"></script>
 </body>
 </html>
