@@ -17,6 +17,46 @@
         localStorage.setItem(key, JSON.stringify(value));
       }
     });
+
+    const requiredDrivers = ["Mohamed Siyad", "Faaid Warsame"];
+    try {
+      const key = "transport_crm_drivers";
+      const parsed = JSON.parse(localStorage.getItem(key) || "[]");
+      const rows = Array.isArray(parsed) ? parsed : [];
+      let changed = false;
+
+      requiredDrivers.forEach((name) => {
+        const existingIndex = rows.findIndex((row) => String(row?.name || "").trim().toLowerCase() === name.toLowerCase());
+        if (existingIndex >= 0) {
+          if (rows[existingIndex].name !== name) {
+            rows[existingIndex].name = name;
+            changed = true;
+          }
+          return;
+        }
+
+        if (existingIndex < 0) {
+          rows.push({
+            id: `${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
+            name,
+            phone: "",
+            licenseNumber: "",
+            licenseExpiry: "",
+            hireDate: "",
+            status: "Active",
+            address: "",
+            emergencyContact: ""
+          });
+          changed = true;
+        }
+      });
+
+      if (changed) {
+        localStorage.setItem(key, JSON.stringify(rows));
+      }
+    } catch {
+      // no-op
+    }
   } catch (error) {
     console.error("Seed data load failed:", error);
   }

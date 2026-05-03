@@ -154,7 +154,8 @@
       <p class="muted">Driver Pay shows the selected week by default. Use Search Driver Pay History to find older payslips.</p>
       <form id="payForm" class="form-grid">
         <input type="hidden" id="payId" />
-        <label>Driver Name<input id="payDriver" type="text" required /></label>
+        <label>Driver Name<input id="payDriver" type="text" list="payDriverOptions" required /></label>
+        <datalist id="payDriverOptions"></datalist>
         <label>Truck Number<input id="payTruckNumber" type="text" placeholder="881" required /></label>
         <label>Pay Period<input id="payPeriod" type="text" placeholder="01 Apr - 07 Apr" required /></label>
         <label>Days Worked<input id="daysWorked" type="number" min="0" step="1" required /></label>
