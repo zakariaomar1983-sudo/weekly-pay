@@ -767,6 +767,10 @@ function applyAccess() {
     const rosterLink = document.getElementById("rosterLink");
     if (rosterLink) rosterLink.style.display = "none";
   }
+  if (!auth.can("viewStats")) {
+    const reportLink = document.getElementById("reportLink");
+    if (reportLink) reportLink.style.display = "none";
+  }
 
   if (!auth.can("editTruckIncome")) {
     const form = document.getElementById("incomeForm");

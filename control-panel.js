@@ -110,6 +110,9 @@ if (!auth.can("viewRoster")) {
 if (!(auth.can("viewTruckIncome") || auth.can("viewSpending") || auth.can("viewPayslips") || auth.can("viewStats"))) {
   document.getElementById("openFinanceBtn").style.display = "none";
 }
+if (!auth.can("viewStats")) {
+  document.getElementById("openReportBtn").style.display = "none";
+}
 if (!auth.can("accessLogs")) {
   document.getElementById("openLogsBtn").style.display = "none";
 }

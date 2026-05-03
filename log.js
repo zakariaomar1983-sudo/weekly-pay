@@ -181,11 +181,6 @@ function drawStats() {
   ];
 
   const grid = document.getElementById("logStatsGrid");
-  if (!auth.can("viewStats")) {
-    grid.style.display = "none";
-    return;
-  }
-
   grid.style.display = "grid";
   grid.innerHTML = stats.map((s) => `<article class="stat-card"><p>${s.label}</p><h3>${s.value}</h3></article>`).join("");
 }
@@ -251,9 +246,23 @@ function applyAccessControl() {
     controlPanelLink.style.display = "none";
   }
 
+  if (!(auth.can("accessCRM") && auth.can("viewDrivers"))) {
+    const driversLink = document.getElementById("driversLink");
+    if (driversLink) driversLink.style.display = "none";
+  }
+
+  if (!(auth.can("accessCRM") && auth.can("viewTrucks"))) {
+    const trucksLink = document.getElementById("trucksLink");
+    if (trucksLink) trucksLink.style.display = "none";
+  }
+
   if (!(auth.can("viewTruckIncome") || auth.can("viewSpending") || auth.can("viewPayslips") || auth.can("viewStats"))) {
     const financeLink = document.getElementById("financeLink");
     if (financeLink) financeLink.style.display = "none";
+  }
+  if (!auth.can("viewStats")) {
+    const reportLink = document.getElementById("reportLink");
+    if (reportLink) reportLink.style.display = "none";
   }
 
   if (!auth.can("viewRoster")) {

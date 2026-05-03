@@ -13,12 +13,20 @@ const links = [
   { label: "Trucks Page", href: "./trucks.html", show: auth.can("accessCRM") && auth.can("viewTrucks") },
   { label: "Weekly Roster Page", href: "./roster.html", show: auth.can("accessCRM") && auth.can("viewRoster") },
   { label: "Finance & Pay Page", href: "./finance.html", show: auth.can("accessCRM") && (auth.can("viewTruckIncome") || auth.can("viewSpending") || auth.can("viewPayslips") || auth.can("viewStats")) },
+  { label: "Report Page", href: "./report.html", show: auth.can("accessCRM") && auth.can("viewStats") },
   { label: "Log Page", href: "./log.html", show: auth.can("accessLogs") },
   { label: "Control Panel", href: "./control-panel.html", show: auth.can("accessControlPanel") }
 ];
 
 const state = {
-  logCount: readCount("transport_crm_logs")
+  counts: {
+    drivers: readCount("transport_crm_drivers"),
+    trucks: readCount("transport_crm_trucks"),
+    roster: readCount("transport_crm_roster"),
+    income: readCount("transport_crm_truck_income"),
+    payslips: readCount("transport_crm_payslips"),
+    logs: readCount("transport_crm_logs")
+  }
 };
 
 function readCount(key) {
@@ -31,12 +39,12 @@ function readCount(key) {
 
 function drawStats() {
   const stats = [
-    { label: "Drivers", value: String(readCount("transport_crm_drivers")) },
-    { label: "Trucks", value: String(readCount("transport_crm_trucks")) },
-    { label: "Roster Shifts", value: String(readCount("transport_crm_roster")) },
-    { label: "Income Rows", value: String(readCount("transport_crm_truck_income")) },
-    { label: "Payslips", value: String(readCount("transport_crm_payslips")) },
-    { label: "Logs", value: String(state.logCount) },
+    { label: "Drivers", value: String(state.counts.drivers) },
+    { label: "Trucks", value: String(state.counts.trucks) },
+    { label: "Roster Shifts", value: String(state.counts.roster) },
+    { label: "Income Rows", value: String(state.counts.income) },
+    { label: "Payslips", value: String(state.counts.payslips) },
+    { label: "Logs", value: String(state.counts.logs) },
     { label: "Users", value: String(window.OPXAuth.getUsers().length) }
   ];
 
@@ -74,18 +82,47 @@ function isSupabaseReady() {
   return Boolean(window.OPXSupabase?.isReady && getSupabaseClient());
 }
 
-async function hydrateLogCountFromSupabase() {
+async function hydrateHomeCountsFromSupabase() {
   if (!isSupabaseReady()) return;
   const supabase = getSupabaseClient();
   if (!supabase) return;
 
-  const { count, error } = await supabase.from("app_logs").select("*", { count: "exact", head: true });
-  if (error) {
-    console.error("Supabase log count failed:", error.message);
+  const [
+    driversRes,
+    trucksRes,
+    rosterRes,
+    incomeRes,
+    payslipsRes,
+    logsRes
+  ] = await Promise.all([
+    supabase.from("drivers").select("*", { count: "exact", head: true }),
+    supabase.from("trucks").select("*", { count: "exact", head: true }),
+    supabase.from("roster").select("*", { count: "exact", head: true }),
+    supabase.from("truck_income").select("*", { count: "exact", head: true }),
+    supabase.from("payslips").select("*", { count: "exact", head: true }),
+    supabase.from("app_logs").select("*", { count: "exact", head: true })
+  ]);
+
+  if (driversRes.error || trucksRes.error || rosterRes.error || incomeRes.error || payslipsRes.error || logsRes.error) {
+    console.error("Supabase home stats load failed:", {
+      drivers: driversRes.error?.message || "",
+      trucks: trucksRes.error?.message || "",
+      roster: rosterRes.error?.message || "",
+      income: incomeRes.error?.message || "",
+      payslips: payslipsRes.error?.message || "",
+      logs: logsRes.error?.message || ""
+    });
     return;
   }
 
-  state.logCount = Number(count || 0);
+  state.counts = {
+    drivers: Number(driversRes.count || 0),
+    trucks: Number(trucksRes.count || 0),
+    roster: Number(rosterRes.count || 0),
+    income: Number(incomeRes.count || 0),
+    payslips: Number(payslipsRes.count || 0),
+    logs: Number(logsRes.count || 0)
+  };
   drawStats();
 }
 
@@ -93,9 +130,21 @@ drawStats();
 drawLinks();
 
 if (isSupabaseReady()) {
-  void hydrateLogCountFromSupabase();
+  void hydrateHomeCountsFromSupabase();
 }
 
 window.addEventListener("opx:supabase-ready", () => {
-  void hydrateLogCountFromSupabase();
+  void hydrateHomeCountsFromSupabase();
+});
+
+window.addEventListener("opx:data-synced", () => {
+  state.counts = {
+    drivers: readCount("transport_crm_drivers"),
+    trucks: readCount("transport_crm_trucks"),
+    roster: readCount("transport_crm_roster"),
+    income: readCount("transport_crm_truck_income"),
+    payslips: readCount("transport_crm_payslips"),
+    logs: readCount("transport_crm_logs")
+  };
+  drawStats();
 });

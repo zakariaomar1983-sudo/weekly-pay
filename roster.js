@@ -10,15 +10,54 @@ const KEY = "transport_crm_roster";
 const DRIVERS_KEY = "transport_crm_drivers";
 const CONTACT_KEY = "transport_crm_driver_contacts";
 const TRUCKS_KEY = "transport_crm_trucks";
+const ROSTER_TABLE = "roster";
+const supabase = window.OPXSupabase?.client || null;
+const useSupabase = Boolean(window.OPXSupabase?.isReady && supabase);
 const TARGET_DRIVERS = 7;
 const TARGET_TRUCKS = 7;
 const TARGET_DAYS_PER_DRIVER = 5;
 const DAY_NAMES = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
 const state = { roster: readData() };
 
+function isUuid(value) {
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(String(value || ""));
+}
+
+function newId() {
+  if (typeof crypto !== "undefined" && crypto.randomUUID) return crypto.randomUUID();
+  return `${Date.now()}${Math.random().toString(16).slice(2, 10)}`.slice(0, 32);
+}
+
+function normalizeShiftDate(value) {
+  const text = String(value || "").trim();
+  if (!text) return "";
+  if (/^\d{4}-\d{2}-\d{2}$/.test(text)) return text;
+  const isoMatch = text.match(/^(\d{4}-\d{2}-\d{2})T/);
+  if (isoMatch?.[1]) return isoMatch[1];
+  const parsed = new Date(text);
+  if (!Number.isNaN(parsed.getTime())) return dateToKey(parsed);
+  return text;
+}
+
+function normalizeRosterRows(rows) {
+  let changed = false;
+  const normalized = rows.map((row) => {
+    const nextId = isUuid(row.id) ? row.id : newId();
+    const nextShiftDate = normalizeShiftDate(row.shiftDate);
+    const nextRow = { ...row, id: nextId, shiftDate: nextShiftDate };
+    if (nextId !== row.id || nextShiftDate !== String(row.shiftDate || "")) changed = true;
+    return nextRow;
+  });
+  if (changed) {
+    localStorage.setItem(KEY, JSON.stringify(normalized));
+  }
+  return normalized;
+}
+
 function readData() {
   try {
-    return JSON.parse(localStorage.getItem(KEY) || "[]");
+    const parsed = JSON.parse(localStorage.getItem(KEY) || "[]");
+    return Array.isArray(parsed) ? normalizeRosterRows(parsed) : [];
   } catch {
     return [];
   }
@@ -44,10 +83,13 @@ function readContacts() {
 
 function saveData() {
   localStorage.setItem(KEY, JSON.stringify(state.roster));
+  if (useSupabase) {
+    void syncRosterToSupabase();
+  }
 }
 
 function uid() {
-  return `${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+  return newId();
 }
 
 function parseDateOnly(value) {
@@ -87,6 +129,89 @@ function dateToKey(d) {
   const month = String(d.getMonth() + 1).padStart(2, "0");
   const day = String(d.getDate()).padStart(2, "0");
   return `${year}-${month}-${day}`;
+}
+
+function toDbRoster(item) {
+  return {
+    id: item.id,
+    driver_name: item.driverName || "",
+    truck_number: item.truckNumber || "",
+    shift_date: normalizeShiftDate(item.shiftDate) || null,
+    shift_time: item.shiftTime || "",
+    route: item.route || "",
+    status: item.status || ""
+  };
+}
+
+function fromDbRoster(row) {
+  return {
+    id: row.id,
+    driverName: row.driver_name || "",
+    truckNumber: row.truck_number || "",
+    shiftDate: normalizeShiftDate(row.shift_date || ""),
+    shiftTime: row.shift_time || "",
+    route: row.route || "",
+    status: row.status || ""
+  };
+}
+
+async function syncRosterToSupabase() {
+  if (!useSupabase) return;
+  const rows = state.roster.map(toDbRoster);
+  const { error } = await supabase.from(ROSTER_TABLE).upsert(rows, { onConflict: "id" });
+  if (error) {
+    console.error("Supabase sync failed for roster:", error.message);
+    return;
+  }
+
+  const ids = rows.map((r) => r.id);
+  if (!ids.length) {
+    const wipe = await supabase.from(ROSTER_TABLE).delete().not("id", "is", null);
+    if (wipe.error) console.error("Supabase delete sync failed for roster:", wipe.error.message);
+    return;
+  }
+
+  const inList = `(${ids.map((id) => `"${String(id).replaceAll('"', "")}"`).join(",")})`;
+  const cleanup = await supabase.from(ROSTER_TABLE).delete().not("id", "in", inList);
+  if (cleanup.error) {
+    console.error("Supabase cleanup failed for roster:", cleanup.error.message);
+  }
+}
+
+async function hydrateRosterFromSupabase() {
+  if (!useSupabase) return;
+  const { data, error } = await supabase.from(ROSTER_TABLE).select("*");
+  if (error) {
+    console.error("Supabase load failed for roster:", error.message);
+    return;
+  }
+  if (!Array.isArray(data)) return;
+  if (!data.length && state.roster.length) {
+    console.warn("Supabase roster table is empty; keeping local data and seeding Supabase.");
+    await syncRosterToSupabase();
+    refresh();
+    return;
+  }
+
+  state.roster = normalizeRosterRows(data.map(fromDbRoster));
+  localStorage.setItem(KEY, JSON.stringify(state.roster));
+  refresh();
+}
+
+function defaultWeekStartKey() {
+  const todayMonday = mondayOf(todayKey());
+  let latestDate = null;
+
+  state.roster.forEach((item) => {
+    const parsed = parseDateOnly(normalizeShiftDate(item.shiftDate));
+    if (!parsed) return;
+    if (!latestDate || parsed.getTime() > latestDate.getTime()) {
+      latestDate = parsed;
+    }
+  });
+
+  const rosterMonday = latestDate ? mondayOf(dateToKey(latestDate)) : null;
+  return dateToKey(rosterMonday || todayMonday || new Date());
 }
 
 function getWeekDates(startKey) {
@@ -274,11 +399,6 @@ function targetTone(plannedDays) {
 
 function drawStats() {
   const panel = document.getElementById("rosterStats");
-  if (!auth.can("viewStats")) {
-    panel.style.display = "none";
-    return;
-  }
-
   const { weekRows } = getWeekContext();
   const activeDrivers = getActiveDrivers();
   const activeTrucks = getActiveTrucks();
@@ -478,6 +598,10 @@ function applyAccess() {
     const link = document.getElementById("financeLink");
     if (link) link.style.display = "none";
   }
+  if (!auth.can("viewStats")) {
+    const reportLink = document.getElementById("reportLink");
+    if (reportLink) reportLink.style.display = "none";
+  }
 
   if (!auth.can("editRoster")) {
     const form = document.getElementById("rosterForm");
@@ -582,8 +706,12 @@ document.body.addEventListener("click", (e) => {
 });
 
 applyAccess();
-const todayMonday = mondayOf(todayKey());
-if (todayMonday) {
-  document.getElementById("weekStart").value = dateToKey(todayMonday);
-}
+document.getElementById("weekStart").value = defaultWeekStartKey();
 refresh();
+void hydrateRosterFromSupabase();
+
+if (!useSupabase) {
+  window.addEventListener("opx:supabase-ready", () => {
+    window.location.reload();
+  }, { once: true });
+}

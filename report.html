@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Onpoint Express Reports</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=Manrope:wght@400;500;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="./style.css?v=20260414c" />
+</head>
+<body>
+  <main class="app-shell">
+    <header class="topbar">
+      <div>
+        <p class="eyebrow">Insights</p>
+        <h1>Dashboard & Reports</h1>
+      </div>
+      <div class="topbar-actions">
+        <span id="currentUserChip" class="user-chip"></span>
+        <a class="btn btn-outline" href="./index.html">Home</a>
+        <a class="btn btn-outline" href="./drivers.html">Drivers</a>
+        <a class="btn btn-outline" href="./trucks.html">Trucks</a>
+        <a class="btn btn-outline" href="./roster.html">Roster</a>
+        <a class="btn btn-outline" href="./finance.html">Finance</a>
+        <a class="btn btn-outline" href="./log.html">Logs</a>
+        <a id="controlPanelLink" class="btn btn-outline" href="./control-panel.html">Control Panel</a>
+        <button id="logoutBtn" class="btn btn-muted" type="button">Logout</button>
+      </div>
+    </header>
+
+    <section class="stats-grid" id="reportStats"></section>
+
+    <section class="panel">
+      <div class="panel-head">
+        <h2>Weekly Financial Summary</h2>
+      </div>
+      <p id="reportWeeklyMeta" class="muted"></p>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr><th>Week</th><th>Income</th><th>Truck Expense</th><th>Driver Pay</th><th>Profit</th></tr>
+          </thead>
+          <tbody id="reportWeeklyBody"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="panel">
+      <div class="panel-head">
+        <h2>Monthly Financial Summary</h2>
+      </div>
+      <p id="reportMonthlyMeta" class="muted"></p>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr><th>Month</th><th>Income</th><th>Truck Expense</th><th>Driver Pay</th><th>Profit</th></tr>
+          </thead>
+          <tbody id="reportMonthlyBody"></tbody>
+        </table>
+      </div>
+    </section>
+  </main>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="./supabase-config.js?v=20260413g"></script>
+  <script src="./supabase-client.js?v=20260413g"></script>
+  <script src="./seed-data.js?v=20260413g"></script>
+  <script src="./data-sync.js?v=20260503a"></script>
+  <script src="./auth.js?v=20260414b"></script>
+  <script src="./report.js?v=20260503a"></script>
+</body>
+</html>
