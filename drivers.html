@@ -50,11 +50,11 @@
       <form id="driversForm" class="form-grid">
         <input type="hidden" id="driverDetailsId" />
         <label>Driver Name<input id="driverDetailsName" type="text" required /></label>
-        <label>Phone<input id="driverPhone" type="text" placeholder="04xx xxx xxx" required /></label>
+        <label>Phone<input id="driverPhone" type="text" placeholder="04xx xxx xxx" /></label>
         <label>Email<input id="driverEmail" type="email" placeholder="driver@example.com" /></label>
-        <label>License Number<input id="licenseNumber" type="text" required /></label>
-        <label>License Expiry<input id="licenseExpiry" type="date" required /></label>
-        <label>Hire Date<input id="hireDate" type="date" required /></label>
+        <label>License Number<input id="licenseNumber" type="text" /></label>
+        <label>License Expiry<input id="licenseExpiry" type="date" /></label>
+        <label>Hire Date<input id="hireDate" type="date" /></label>
         <label>Status
           <select id="driverStatus" required>
             <option value="Active">Active</option>
@@ -98,7 +98,7 @@
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="./supabase-config.js?v=20260413g"></script>
   <script src="./supabase-client.js?v=20260413g"></script>
-  <script src="./seed-data.js?v=20260413g"></script>
+  <script src="./seed-data.js?v=20260504a"></script>
   <script>
     window.addEventListener("error", function (event) {
       var target = event.target;
@@ -125,7 +125,7 @@
     }, true);
   </script>
   <script src="./auth.js?v=20260423a"></script>
-  <script type="module" src="./drivers-entry.js?v=20260423a"></script>
+  <script type="module" src="./drivers-entry.js?v=20260504b"></script>
   <script src="./emergency-fill.js?v=20260413g"></script>
 </body>
 </html>
