@@ -18,7 +18,7 @@
       }
     });
 
-    const requiredDrivers = ["Mohamed Siyad", "Faaid Warsame"];
+    const requiredDrivers = ["Muhammed A H Siyad", "Faaid Warsame", "Mohamed Siyad"];
     try {
       const key = "transport_crm_drivers";
       const parsed = JSON.parse(localStorage.getItem(key) || "[]");
