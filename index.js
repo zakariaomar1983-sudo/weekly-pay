@@ -155,6 +155,7 @@ function readCount(key) {
 }
 
 function drawStats() {
+  const userCount = Array.isArray(window.OPXAuth.getUsers?.()) ? window.OPXAuth.getUsers().length : 0;
   const stats = [
     { label: "Drivers", value: String(readCount("transport_crm_drivers")), show: auth.can("viewDrivers") },
     { label: "Trucks", value: String(readCount("transport_crm_trucks")), show: auth.can("viewTrucks") },
@@ -163,7 +164,7 @@ function drawStats() {
     { label: "Receipts", value: String(readCount(RECEIPTS_KEY)), show: auth.can("accessCRM") && (auth.can("viewSpending") || auth.can("editSpending") || auth.can("accessControlPanel")) },
     { label: "Payslips", value: String(readCount("transport_crm_payslips")), show: auth.can("viewPayslips") },
     { label: "Logs", value: String(state.logCount), show: auth.can("accessLogs") },
-    { label: "Users", value: String(window.OPXAuth.getUsers().length), show: auth.can("accessControlPanel") }
+    { label: "Users", value: String(userCount), show: auth.can("accessControlPanel") }
   ].filter((item) => item.show);
 
   document.getElementById("homeStats").innerHTML = stats
@@ -1381,6 +1382,7 @@ window.addEventListener("storage", (event) => {
     drawRecentActivity();
     drawReadinessChecks();
     drawPayrollReadiness();
+    drawLinks();
   }
 });
 
@@ -1397,6 +1399,7 @@ window.addEventListener("online", () => {
   drawRecentActivity();
   drawReadinessChecks();
   drawPayrollReadiness();
+  drawLinks();
 });
 window.addEventListener("offline", () => {
   applyRoleDashboardProfile();
@@ -1411,6 +1414,7 @@ window.addEventListener("offline", () => {
   drawRecentActivity();
   drawReadinessChecks();
   drawPayrollReadiness();
+  drawLinks();
 });
 window.addEventListener("opx:sync-health-change", () => {
   applyRoleDashboardProfile();
@@ -1425,4 +1429,5 @@ window.addEventListener("opx:sync-health-change", () => {
   drawRecentActivity();
   drawReadinessChecks();
   drawPayrollReadiness();
+  drawLinks();
 });

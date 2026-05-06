@@ -89,13 +89,7 @@ const LEGACY_DRIVER_NAME_ALIASES = new Map([
   [normalizeDriverNameKey("Muhamed Siyad"), "Muhammed A H Siyad"]
 ]);
 const REQUIRED_DRIVER_NAMES = ["Soleh Sungkar"];
-const ROSTER_EXCLUDED_DRIVER_NAMES = new Set([
-  normalizeDriverNameKey("Mohamed Siyad"),
-  normalizeDriverNameKey("Mohammed Siyad"),
-  normalizeDriverNameKey("Muhamed Siyad"),
-  normalizeDriverNameKey("Muhammed A H Siyad"),
-  normalizeDriverNameKey("Faaid Warsame")
-]);
+const ROSTER_EXCLUDED_DRIVER_NAMES = new Set();
 const AUTO_TEMPLATE_BLOCKED_DRIVERS = new Set([
   normalizeDriverNameKey("Muhammed A H Siyad"),
   normalizeDriverNameKey("Faaid Warsame")
@@ -587,6 +581,22 @@ function normalizeDriverRecords(rows) {
       });
     });
   return Array.from(mergedByName.values());
+}
+
+function fallbackDriverRecordsFromRoster() {
+  const byName = new Map();
+  const add = (name) => {
+    const clean = canonicalDriverName(name);
+    if (!clean) return;
+    const key = normalizeDriverNameKey(clean);
+    if (!key || key.startsWith("open driver slot")) return;
+    if (byName.has(key)) return;
+    byName.set(key, { id: `fallback-${key.replace(/\s+/g, "-")}`, name: clean, status: "Active" });
+  };
+
+  FALLBACK_DRIVERS.forEach((item) => add(item?.name || ""));
+  state.roster.forEach((row) => add(row?.driverName || ""));
+  return Array.from(byName.values());
 }
 
 function normalizeRosterRow(item) {
@@ -1254,12 +1264,18 @@ function writeRosterDriverPoolNames(names) {
 
 function getAvailableDriverRecords() {
   const rows = normalizeDriverRecords(readArray(DRIVERS_KEY));
-  const source = rows.length ? rows : FALLBACK_DRIVERS;
-  const filtered = source
+  const source = rows.length ? rows : fallbackDriverRecordsFromRoster();
+  let filtered = source
     .filter((item) => String(item.status || "").toLowerCase() !== "inactive")
     .map((item) => ({ ...item, name: String(item.name || "").trim() }))
     .filter((item) => !ROSTER_EXCLUDED_DRIVER_NAMES.has(normalizeDriverNameKey(item.name)))
     .filter((item) => item.name);
+
+  if (!filtered.length) {
+    filtered = fallbackDriverRecordsFromRoster()
+      .map((item) => ({ ...item, name: String(item.name || "").trim() }))
+      .filter((item) => item.name);
+  }
 
   const byName = new Map(filtered.map((item) => [item.name.toLowerCase(), item]));
   REQUIRED_DRIVER_NAMES.forEach((name) => {
@@ -1287,7 +1303,7 @@ function addDriverToRosterPool(driverName) {
   const available = getAvailableDriverRecords();
   const availableKeys = new Set(available.map((item) => normalizeDriverNameKey(item.name)));
   const nameKey = normalizeDriverNameKey(name);
-  if (!availableKeys.has(nameKey)) return false;
+  // Allow adding even if not in available, to support adding new drivers
 
   const current = readRosterDriverPoolNames();
   const base = current.length ? current : available.map((item) => item.name);
@@ -1356,8 +1372,22 @@ function drawRosterDriverPoolManager() {
   const includedKeys = new Set(includedNames.map((name) => normalizeDriverNameKey(name)));
   const addableNames = availableNames.filter((name) => !includedKeys.has(normalizeDriverNameKey(name)));
 
-  setSelectOptions("rosterDriverQuickAdd", addableNames, "Select driver to add", addableNames[0] || "");
-  addBtn.disabled = !addableNames.length;
+  const quickAddPlaceholder = addableNames.length
+    ? "Type or select driver to add"
+    : "Type a driver name to add";
+  const datalist = document.getElementById("rosterDriverList");
+  if (datalist) {
+    datalist.innerHTML = addableNames.map((name) => `<option value="${escapeHtml(name)}">`).join("");
+  }
+  const input = document.getElementById("rosterDriverQuickAdd");
+  const currentValue = input?.value || "";
+  if (input) {
+    input.placeholder = quickAddPlaceholder;
+    input.value = currentValue;
+  }
+  const typedName = canonicalDriverName(currentValue);
+  const canAddTyped = Boolean(typedName) && !includedNames.some((name) => normalizeDriverNameKey(name) === normalizeDriverNameKey(typedName));
+  addBtn.disabled = !canAddTyped;
 
   chipsWrap.innerHTML = includedNames.map((name) => `
     <button type="button" class="contact-link contact-link-neutral" data-action="remove-roster-driver" data-driver-name="${escapeHtml(name)}" title="Remove ${escapeHtml(name)} from this roster">
@@ -1365,7 +1395,9 @@ function drawRosterDriverPoolManager() {
     </button>
   `).join("");
 
-  status.textContent = `${includedNames.length} driver${includedNames.length === 1 ? "" : "s"} included in this roster.`;
+  status.textContent = availableNames.length
+    ? `${includedNames.length} driver${includedNames.length === 1 ? "" : "s"} included in this roster.`
+    : "No active drivers found. Add drivers on the Drivers page first.";
 }
 
 function purgeExcludedDriversFromRoster() {
@@ -1422,9 +1454,10 @@ function ensureRosterReferenceFallbacks() {
   const drivers = readArray(DRIVERS_KEY);
   const trucks = readArray(TRUCKS_KEY);
   const normalizedDrivers = normalizeDriverRecords(drivers);
+  const validDriverCount = normalizedDrivers.filter((item) => String(item?.name || "").trim()).length;
 
-  if (!drivers.length) {
-    localStorage.setItem(DRIVERS_KEY, JSON.stringify(FALLBACK_DRIVERS));
+  if (!drivers.length || !validDriverCount) {
+    localStorage.setItem(DRIVERS_KEY, JSON.stringify(fallbackDriverRecordsFromRoster()));
   } else if (JSON.stringify(drivers) !== JSON.stringify(normalizedDrivers)) {
     localStorage.setItem(DRIVERS_KEY, JSON.stringify(normalizedDrivers));
   }
@@ -2855,6 +2888,7 @@ document.getElementById("addRosterDriverBtn")?.addEventListener("click", () => {
   setDispatchStatus(`${name} added to this roster.`, "success-text");
   refresh();
 });
+document.getElementById("rosterDriverQuickAdd")?.addEventListener("input", refresh);
 document.getElementById("resetRosterDriversBtn")?.addEventListener("click", () => {
   if (!auth.can("editRoster")) return;
   localStorage.removeItem(ROSTER_DRIVER_POOL_KEY);

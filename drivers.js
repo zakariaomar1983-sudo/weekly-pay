@@ -12,13 +12,8 @@ const DRIVER_ATTACHMENTS_KEY = "transport_crm_driver_attachments";
 const DRIVERS_SYNC_STATUS_KEY = "transport_crm_drivers_sync_status";
 const DRIVERS_UPDATED_KEY = "transport_crm_drivers_updated_at";
 const DRIVERS_TABLE = "drivers";
-const EXCLUDED_DRIVER_NAMES = new Set([
-  "faaid warsame",
-  "mohamed siyad",
-  "mohammed siyad",
-  "muhamed siyad",
-  "muhammed a h siyad"
-]);
+const EXCLUDED_DRIVER_NAMES = new Set();
+const REQUIRED_DRIVER_NAMES = ["Muhammed A H Siyad", "Faaid Warsame"];
 const DRIVER_SYNC_RETRY_DELAYS_MS = [2000, 5000, 10000, 30000];
 const DRIVER_ATTACHMENT_LIMIT = 5;
 const DRIVER_ATTACHMENT_MAX_BYTES = 1.5 * 1024 * 1024;
@@ -359,10 +354,12 @@ function readData() {
     const parsed = JSON.parse(localStorage.getItem(KEY) || "[]");
     const rows = Array.isArray(parsed) ? parsed.map(normalizeDriverRow) : [];
     const mergedRows = mergeLegacyEmails(ensureUuidDrivers(rows)).rows;
-    const filteredRows = filterExcludedDrivers(mergedRows);
-    if (filteredRows.length !== mergedRows.length) {
+    const withRequired = ensureRequiredDrivers(mergedRows);
+    const filteredRows = filterExcludedDrivers(withRequired.rows);
+    if (filteredRows.length !== withRequired.rows.length || withRequired.changed) {
       localStorage.setItem(KEY, JSON.stringify(filteredRows));
     }
+
     return filteredRows;
   } catch {
     return [];
@@ -378,6 +375,32 @@ function mergeLegacyEmails(rows) {
     return { ...row, email: legacyEmail };
   });
   return { rows: merged, changed };
+}
+
+function ensureRequiredDrivers(rows) {
+  const list = Array.isArray(rows) ? [...rows] : [];
+  const byName = new Set(list.map((row) => normalizeDriverNameKey(row.name)));
+  let changed = false;
+
+  REQUIRED_DRIVER_NAMES.forEach((name) => {
+    const key = normalizeDriverNameKey(name);
+    if (!key || byName.has(key)) return;
+    list.push({
+      id: newId(),
+      name,
+      phone: "",
+      email: "",
+      licenseNumber: "",
+      licenseExpiry: "",
+      hireDate: "",
+      status: "Active",
+      address: "",
+      emergencyContact: ""
+    });
+    changed = true;
+  });
+
+  return { rows: list, changed };
 }
 
 function cleanupLegacyContactsForRows(rows) {
@@ -601,12 +624,13 @@ async function hydrateDriversFromSupabase() {
   }
 
   const merged = mergeLegacyEmails(data.map(fromDbDriver));
-  const filteredRows = filterExcludedDrivers(merged.rows);
-  const removedExcluded = filteredRows.length !== merged.rows.length;
+  const withRequired = ensureRequiredDrivers(merged.rows);
+  const filteredRows = filterExcludedDrivers(withRequired.rows);
+  const removedExcluded = filteredRows.length !== withRequired.rows.length;
   state.drivers = filteredRows;
   localStorage.setItem(KEY, JSON.stringify(state.drivers));
   cleanupLegacyContactsForRows(state.drivers.filter((row) => row.email));
-  if (merged.changed || removedExcluded) {
+  if (merged.changed || withRequired.changed || removedExcluded) {
     await syncDriversToSupabase();
   }
   setDriversSyncStatus("Shared driver data loaded.", "live");
@@ -776,12 +800,32 @@ document.getElementById("driversForm").addEventListener("submit", (e) => {
     emergencyContact: document.getElementById("emergencyContact").value.trim()
   };
 
-  if (isExcludedDriverName(payload.name)) {
-    alert(`${payload.name} is removed from the drivers list and cannot be added here.`);
+  if (!payload.name) {
+    alert("Driver name is required.");
     return;
   }
+  if (!payload.status) {
+    payload.status = "Active";
+  }
 
-  state.drivers = id ? state.drivers.map((d) => d.id === id ? payload : d) : [...state.drivers, payload];
+  const duplicate = state.drivers.find(
+    (driver) =>
+      driver.id !== payload.id &&
+      normalizeDriverNameKey(driver.name) === normalizeDriverNameKey(payload.name)
+  );
+
+  if (duplicate) {
+    const shouldContinue = confirm(
+      `${payload.name} already exists. Do you want to save another driver with the same name?`
+    );
+
+    if (!shouldContinue) return;
+  }
+
+  state.drivers = id
+    ? state.drivers.map((driver) => (driver.id === id ? payload : driver))
+    : [...state.drivers, payload];
+
   saveData();
   e.target.reset();
   document.getElementById("driverDetailsId").value = "";

@@ -183,6 +183,13 @@
           <label>Add Driver To Roster
             <select id="rosterDriverQuickAdd">
               <option value="">Select driver to add</option>
+              <option value="Abdirizak Ahmed">Abdirizak Ahmed</option>
+              <option value="Imran Abdella">Imran Abdella</option>
+              <option value="Ramzi Mohamed">Ramzi Mohamed</option>
+              <option value="Samatar Yusuf">Samatar Yusuf</option>
+              <option value="Sharmake Hashi">Sharmake Hashi</option>
+              <option value="Soleh Sungkar">Soleh Sungkar</option>
+              <option value="Suhen Omar">Suhen Omar</option>
             </select>
           </label>
           <div class="actions full">
@@ -242,9 +249,172 @@
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="./supabase-config.js?v=20260413g"></script>
   <script src="./supabase-client.js?v=20260413g"></script>
-  <script src="./seed-data.js?v=20260413d"></script>
+  <script src="./seed-data.js?v=20260504a"></script>
   <script src="./auth.js?v=20260423a"></script>
-  <script src="./roster.js?v=20260503g"></script>
+  <script src="./roster.js?v=20260504b"></script>
+  <script>
+    (function rosterQuickAddRecovery() {
+      const DRIVERS_KEY = "transport_crm_drivers";
+      const DRIVER_POOL_KEY = "transport_crm_roster_driver_pool";
+      const DRIVER_UPDATED_KEY = "transport_crm_drivers_updated_at";
+
+      function normalizeName(value) {
+        return String(value || "").trim().replace(/\s+/g, " ");
+      }
+
+      function readRows(key) {
+        try {
+          const parsed = JSON.parse(localStorage.getItem(key) || "[]");
+          return Array.isArray(parsed) ? parsed : [];
+        } catch {
+          return [];
+        }
+      }
+
+      function readPool() {
+        return readRows(DRIVER_POOL_KEY).map(normalizeName).filter(Boolean);
+      }
+
+      function writePool(names) {
+        const seen = new Set();
+        const clean = (Array.isArray(names) ? names : [])
+          .map(normalizeName)
+          .filter((name) => {
+            const key = name.toLowerCase();
+            if (!name || seen.has(key)) return false;
+            seen.add(key);
+            return true;
+          });
+        localStorage.setItem(DRIVER_POOL_KEY, JSON.stringify(clean));
+      }
+
+      function unique(values) {
+        const seen = new Set();
+        return values.filter((value) => {
+          const key = value.toLowerCase();
+          if (!value || seen.has(key)) return false;
+          seen.add(key);
+          return true;
+        });
+      }
+
+      function escapeHtml(value) {
+        return String(value || "")
+          .replaceAll("&", "&amp;")
+          .replaceAll("<", "&lt;")
+          .replaceAll(">", "&gt;")
+          .replaceAll('"', "&quot;")
+          .replaceAll("'", "&#39;");
+      }
+
+      function availableDriverNames() {
+        const rows = readRows(DRIVERS_KEY);
+        const names = rows
+          .filter((row) => String(row?.status || "").toLowerCase() !== "inactive")
+          .map((row) => normalizeName(row?.name))
+          .filter(Boolean);
+        const fallback = rows.map((row) => normalizeName(row?.name)).filter(Boolean);
+        return unique(names.length ? names : fallback);
+      }
+
+      function includedDriverNames(available) {
+        const pool = readPool();
+        if (!pool.length) return available;
+        const availableSet = new Set(available.map((name) => name.toLowerCase()));
+        const filtered = pool.filter((name) => availableSet.has(name.toLowerCase()));
+        return filtered.length ? filtered : available;
+      }
+
+      function setOptions(select, values, placeholder, currentValue) {
+        if (!select) return;
+        const options = [`<option value="">${escapeHtml(placeholder)}</option>`]
+          .concat(values.map((value) => `<option value="${escapeHtml(value)}">${escapeHtml(value)}</option>`));
+        select.innerHTML = options.join("");
+        if (currentValue && values.includes(currentValue)) select.value = currentValue;
+      }
+
+      function renderFallbackManager() {
+        const quickAdd = document.getElementById("rosterDriverQuickAdd");
+        const driverName = document.getElementById("driverName");
+        const chipsWrap = document.getElementById("rosterDriverPoolChips");
+        const status = document.getElementById("rosterDriverPoolStatus");
+        const addBtn = document.getElementById("addRosterDriverBtn");
+        if (!quickAdd || !driverName || !chipsWrap || !status || !addBtn) return;
+
+        const available = availableDriverNames();
+        if (!available.length) {
+          setOptions(quickAdd, [], "No active drivers found", "");
+          setOptions(driverName, [], "Select driver", "");
+          chipsWrap.innerHTML = "";
+          status.textContent = "No active drivers found. Add drivers on the Drivers page first.";
+          addBtn.disabled = true;
+          return;
+        }
+
+        const included = includedDriverNames(available);
+        const includedSet = new Set(included.map((name) => name.toLowerCase()));
+        const addable = available.filter((name) => !includedSet.has(name.toLowerCase()));
+
+        setOptions(quickAdd, addable, addable.length ? "Select driver to add" : "All active drivers already included", quickAdd.value || "");
+        setOptions(driverName, included, "Select driver", driverName.value || "");
+
+        chipsWrap.innerHTML = included.map((name) => (
+          `<button type="button" class="contact-link contact-link-neutral" data-fallback-remove-driver="${escapeHtml(name)}" title="Remove ${escapeHtml(name)} from this roster">${escapeHtml(name)} &times;</button>`
+        )).join("");
+        status.textContent = `${included.length} driver${included.length === 1 ? "" : "s"} included in this roster.`;
+        addBtn.disabled = !addable.length;
+      }
+
+      function installFallbackHandlers() {
+        const addBtn = document.getElementById("addRosterDriverBtn");
+        const resetBtn = document.getElementById("resetRosterDriversBtn");
+        const quickAdd = document.getElementById("rosterDriverQuickAdd");
+        const chipsWrap = document.getElementById("rosterDriverPoolChips");
+        if (!addBtn || !resetBtn || !quickAdd || !chipsWrap) return;
+
+        addBtn.addEventListener("click", () => {
+          const name = normalizeName(quickAdd.value);
+          if (!name) return;
+          const available = availableDriverNames();
+          const base = includedDriverNames(available);
+          if (!base.some((item) => item.toLowerCase() === name.toLowerCase())) {
+            writePool([...base, name]);
+            renderFallbackManager();
+          }
+        });
+
+        resetBtn.addEventListener("click", () => {
+          localStorage.removeItem(DRIVER_POOL_KEY);
+          renderFallbackManager();
+        });
+
+        chipsWrap.addEventListener("click", (event) => {
+          const button = event.target.closest("[data-fallback-remove-driver]");
+          if (!button) return;
+          const name = normalizeName(button.getAttribute("data-fallback-remove-driver") || "");
+          if (!name) return;
+          const available = availableDriverNames();
+          const current = includedDriverNames(available);
+          if (current.length <= 1) return;
+          const next = current.filter((item) => item.toLowerCase() !== name.toLowerCase());
+          writePool(next);
+          renderFallbackManager();
+        });
+      }
+
+      window.addEventListener("DOMContentLoaded", () => {
+        renderFallbackManager();
+        installFallbackHandlers();
+        window.setTimeout(renderFallbackManager, 700);
+      });
+
+      window.addEventListener("storage", (event) => {
+        if (event.key === DRIVERS_KEY || event.key === DRIVER_UPDATED_KEY || event.key === DRIVER_POOL_KEY) {
+          renderFallbackManager();
+        }
+      });
+    })();
+  </script>
   <script>
     (function rosterWeekFallback() {
       if (window.__OPX_ROSTER_MAIN_LOADED) return;
@@ -277,13 +447,7 @@
         { name: "Suhen Omar", truck: "620" }
       ];
       const REQUIRED_DRIVER_NAMES = ["Soleh Sungkar"];
-      const EXCLUDED_DRIVER_NAMES = new Set([
-        normalizeDriverNameKey("Mohamed Siyad"),
-        normalizeDriverNameKey("Mohammed Siyad"),
-        normalizeDriverNameKey("Muhamed Siyad"),
-        normalizeDriverNameKey("Muhammed A H Siyad"),
-        normalizeDriverNameKey("Faaid Warsame")
-      ]);
+      const EXCLUDED_DRIVER_NAMES = new Set();
       const AUTO_TEMPLATE_BLOCKED_DRIVERS = new Set([
         normalizeDriverNameKey("Muhammed A H Siyad"),
         normalizeDriverNameKey("Faaid Warsame")
