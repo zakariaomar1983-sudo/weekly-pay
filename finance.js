@@ -1193,6 +1193,16 @@ function weekKey(dateString) {
   return formatDateKey(start);
 }
 
+function payWeekKeyFromPayPeriod(payPeriod) {
+  // payPeriod like "01 Apr - 07 Apr 2026"
+  const match = String(payPeriod || "").match(/^(\d{1,2} \w{3}) - (\d{1,2} \w{3}) (\d{4})$/);
+  if (!match) return "";
+  const startStr = `${match[1]} ${match[3]}`;
+  const startDate = new Date(startStr);
+  if (isNaN(startDate.getTime())) return "";
+  return formatDateKey(startDate);
+}
+
 function incomeBatchDate(dateString) {
   return weekKey(dateString);
 }
@@ -1576,7 +1586,7 @@ function buildWeeklySummary() {
   });
 
   state.pay.forEach((item) => {
-    const wk = weekKey(item.paymentDate);
+    const wk = payWeekKeyFromPayPeriod(item.payPeriod) || weekKey(item.paymentDate);
     if (!wk) return;
     ensure(wk).driverPay += netPay(item);
   });

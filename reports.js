@@ -849,6 +849,7 @@ async function refreshReportEmailConfigured() {
   if (!canEmailReports) {
     reportState.emailConfigured = false;
     setReportEmailStatus("Only leadership roles can email prepared reports.", "muted");
+    updateSchedulerUi();
     return;
   }
   try {
@@ -865,6 +866,7 @@ async function refreshReportEmailConfigured() {
     reportState.emailConfigured = false;
     setReportEmailStatus("Could not check the weekly report email sender right now.", "error");
   }
+  updateSchedulerUi();
 }
 
 async function refreshServerSchedulerStatus() {
@@ -899,12 +901,15 @@ async function refreshServerSchedulerStatus() {
     }
     if (!payload?.supabaseConfigured) {
       setServerSchedulerStatus("Server-side Thursday delivery needs Supabase configured for the server.", "error");
+      updateSchedulerUi();
       return;
     }
     setServerSchedulerStatus("Server-side Thursday delivery is not active yet.", "muted");
+    updateSchedulerUi();
   } catch {
     reportState.serverDeliveryActive = false;
     setServerSchedulerStatus("Could not check the server-side Thursday delivery right now.", "error");
+    updateSchedulerUi();
   }
 }
 
@@ -1182,15 +1187,26 @@ document.getElementById("exportTruckReportBtn").addEventListener("click", () => 
 
 document.getElementById("saveReportSchedulerBtn").addEventListener("click", () => {
   const currentScheduler = readScheduler();
-  saveScheduler({
+  const recipientsInput = document.getElementById("reportSchedulerRecipients").value;
+  const recipients = canEmailReports && recipientsInput ? validateRecipientList(recipientsInput) : normalizeRecipientList(recipientsInput);
+  if (canEmailReports && recipientsInput && !recipients) return;
+
+  const nextScheduler = {
     ...currentScheduler,
     active: document.getElementById("reportSchedulerActive").checked,
     time: document.getElementById("reportSchedulerTime").value || "08:00",
-    recipients: canEmailReports ? document.getElementById("reportSchedulerRecipients").value.trim() : currentScheduler.recipients,
+    recipients: canEmailReports ? String(recipientsInput || currentScheduler.recipients).trim() : currentScheduler.recipients,
     autoEmail: canEmailReports && !reportState.serverDeliveryActive
       ? document.getElementById("reportSchedulerAutoEmail").checked
       : false
-  });
+  };
+
+  if (nextScheduler.autoEmail && canEmailReports && !normalizeRecipientList(nextScheduler.recipients).length) {
+    setReportEmailStatus("Enable auto email only after adding valid recipient addresses.", "error");
+    return;
+  }
+
+  saveScheduler(nextScheduler);
   updateSchedulerUi();
   setSchedulerStatus(
     reportState.serverDeliveryActive
@@ -1206,8 +1222,17 @@ document.getElementById("runReportSchedulerNowBtn").addEventListener("click", as
 });
 
 document.getElementById("emailPreparedReportBtn").addEventListener("click", async () => {
+  const scheduler = readScheduler();
+  const recipients = validateRecipientList(scheduler.recipients);
+  if (!recipients) return;
+
   const financeWeekKeyValue = document.getElementById("reportFinanceWeek").value;
   const rosterWeekKeyValue = document.getElementById("reportRosterWeek").value;
+  if (!financeWeekKeyValue || !rosterWeekKeyValue) {
+    setReportEmailStatus("Select both a finance week and roster week before sending a report.", "error");
+    return;
+  }
+
   const snapshot = buildSnapshot(currentData(), financeWeekKeyValue, rosterWeekKeyValue, "manual", new Date());
   try {
     await sendPreparedReportEmail(snapshot, "manual");

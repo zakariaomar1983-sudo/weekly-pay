@@ -1303,7 +1303,7 @@ function addDriverToRosterPool(driverName) {
   const available = getAvailableDriverRecords();
   const availableKeys = new Set(available.map((item) => normalizeDriverNameKey(item.name)));
   const nameKey = normalizeDriverNameKey(name);
-  if (!availableKeys.has(nameKey)) return false;
+  // Allow adding even if not in available, to support adding new drivers
 
   const current = readRosterDriverPoolNames();
   const base = current.length ? current : available.map((item) => item.name);
@@ -1372,11 +1372,22 @@ function drawRosterDriverPoolManager() {
   const includedKeys = new Set(includedNames.map((name) => normalizeDriverNameKey(name)));
   const addableNames = availableNames.filter((name) => !includedKeys.has(normalizeDriverNameKey(name)));
 
-  const quickAddPlaceholder = !availableNames.length
-    ? "No active drivers found"
-    : (addableNames.length ? "Select driver to add" : "All active drivers already included");
-  setSelectOptions("rosterDriverQuickAdd", addableNames, quickAddPlaceholder, addableNames[0] || "");
-  addBtn.disabled = !addableNames.length;
+  const quickAddPlaceholder = addableNames.length
+    ? "Type or select driver to add"
+    : "Type a driver name to add";
+  const datalist = document.getElementById("rosterDriverList");
+  if (datalist) {
+    datalist.innerHTML = addableNames.map((name) => `<option value="${escapeHtml(name)}">`).join("");
+  }
+  const input = document.getElementById("rosterDriverQuickAdd");
+  const currentValue = input?.value || "";
+  if (input) {
+    input.placeholder = quickAddPlaceholder;
+    input.value = currentValue;
+  }
+  const typedName = canonicalDriverName(currentValue);
+  const canAddTyped = Boolean(typedName) && !includedNames.some((name) => normalizeDriverNameKey(name) === normalizeDriverNameKey(typedName));
+  addBtn.disabled = !canAddTyped;
 
   chipsWrap.innerHTML = includedNames.map((name) => `
     <button type="button" class="contact-link contact-link-neutral" data-action="remove-roster-driver" data-driver-name="${escapeHtml(name)}" title="Remove ${escapeHtml(name)} from this roster">
@@ -2877,6 +2888,7 @@ document.getElementById("addRosterDriverBtn")?.addEventListener("click", () => {
   setDispatchStatus(`${name} added to this roster.`, "success-text");
   refresh();
 });
+document.getElementById("rosterDriverQuickAdd")?.addEventListener("input", refresh);
 document.getElementById("resetRosterDriversBtn")?.addEventListener("click", () => {
   if (!auth.can("editRoster")) return;
   localStorage.removeItem(ROSTER_DRIVER_POOL_KEY);
