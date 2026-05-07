@@ -17,7 +17,16 @@ const supabase = window.OPXSupabase?.client || null;
 const useSupabase = Boolean(window.OPXSupabase?.isReady && supabase);
 const REGO_NOTIFY_KEY = "transport_crm_rego_notify_state";
 const REGO_ALERT_WINDOW_DAYS = 30;
-const state = { trucks: readData() };
+const TRUCK_DEFAULTS_BY_NUMBER = new Map([
+  ["840", { registration: "XW46EK", model: "ISUZU FVL  1400", capacity: 8, serviceDueDate: "2026-04-10", regoExpiryDate: "2026-04-29", status: "Available", notes: "" }],
+  ["881", { registration: "XW91GW", model: "MITSO FUSO FIGHTER 10.0", capacity: 12, serviceDueDate: "2026-04-11", regoExpiryDate: "2027-04-11", status: "Available", notes: "" }],
+  ["855", { registration: "XW64YE", model: "Hino GD184R-Q3", capacity: 12, serviceDueDate: "2026-04-24", regoExpiryDate: "2026-04-26", status: "Available", notes: "" }],
+  ["853", { registration: "XW40BN", model: "ISUZU FVL 1400", capacity: 12, serviceDueDate: "2026-05-14", regoExpiryDate: "2026-07-02", status: "Available", notes: "" }],
+  ["672", { registration: "1DK3DE", model: "MITSUBISHI FIGHTER", capacity: 6, serviceDueDate: "2026-04-30", regoExpiryDate: "2026-07-24", status: "Available", notes: "" }],
+  ["620", { registration: "1KF3MA", model: "MITSUBISHI FUSO FIGHTER 6.0", capacity: 6, serviceDueDate: "2026-04-30", regoExpiryDate: "2026-09-18", status: "Available", notes: "" }],
+  ["841", { registration: "XV90EH", model: "HINO", capacity: 8, serviceDueDate: "2026-07-01", regoExpiryDate: "2026-08-11", status: "Available", notes: "" }]
+]);
+const state = { trucks: repairSparseTruckRows(readData()) };
 let truckAttachmentStore = readTruckAttachmentStore();
 let truckSyncTimerId = 0;
 let truckSearchTimerId = 0;
@@ -133,6 +142,20 @@ function normalizeTruckRecord(row) {
   };
 }
 
+function firstNonEmpty(...values) {
+  for (const value of values) {
+    if (value == null) continue;
+    const text = String(value);
+    if (text.trim() !== "") return value;
+  }
+  return "";
+}
+
+function coerceNumber(value, fallback = 0) {
+  const number = Number(value);
+  return Number.isFinite(number) ? number : Number(fallback || 0);
+}
+
 function formatSearchDate(value) {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(String(value || ""))) return "";
   const [year, month, day] = String(value).split("-");
@@ -207,6 +230,35 @@ function readData() {
   } catch {
     return [];
   }
+}
+
+function isSparseTruck(item) {
+  if (!item) return true;
+  return !String(item.registration || "").trim()
+    && !String(item.model || "").trim()
+    && !String(item.serviceDueDate || "").trim()
+    && !String(item.regoExpiryDate || "").trim()
+    && !String(item.status || "").trim()
+    && Number(item.capacity || 0) === 0;
+}
+
+function repairSparseTruckRows(rows) {
+  let changed = false;
+  const repaired = (Array.isArray(rows) ? rows : []).map((row) => {
+    const normalized = normalizeTruckRecord(row);
+    if (!isSparseTruck(normalized)) return normalized;
+    const defaults = TRUCK_DEFAULTS_BY_NUMBER.get(String(normalized.truckNumber || "").trim());
+    if (!defaults) return normalized;
+    changed = true;
+    return normalizeTruckRecord({
+      ...normalized,
+      ...defaults
+    });
+  });
+  if (changed) {
+    localStorage.setItem(KEY, JSON.stringify(repaired));
+  }
+  return repaired;
 }
 
 function readTruckAttachmentStore() {
@@ -422,14 +474,29 @@ function toDbTruck(item) {
 function fromDbTruck(row) {
   return normalizeTruckRecord({
     id: row.id,
-    truckNumber: row.truck_number || "",
-    registration: row.registration || "",
-    model: row.model || "",
-    capacity: Number(row.capacity || 0),
-    serviceDueDate: row.service_due_date || "",
-    regoExpiryDate: row.rego_expiry_date || "",
-    status: row.status || "",
-    notes: row.notes || ""
+    truckNumber: firstNonEmpty(row.truck_number, row.truckNumber),
+    registration: firstNonEmpty(row.registration, row.registration_number, row.rego, row.plate),
+    model: firstNonEmpty(row.model, row.truck_model, row.make_model),
+    capacity: coerceNumber(firstNonEmpty(row.capacity, row.capacity_tonnes, row.tonnage), 0),
+    serviceDueDate: firstNonEmpty(row.service_due_date, row.serviceDueDate, row.next_service_date),
+    regoExpiryDate: firstNonEmpty(row.rego_expiry_date, row.regoExpiryDate, row.registration_expiry_date, row.rego_expiry),
+    status: firstNonEmpty(row.status, row.truck_status),
+    notes: firstNonEmpty(row.notes, row.truck_notes)
+  });
+}
+
+function mergeTruckRecords(preferred, fallback) {
+  if (!fallback) return preferred;
+  return normalizeTruckRecord({
+    id: preferred.id || fallback.id,
+    truckNumber: firstNonEmpty(preferred.truckNumber, fallback.truckNumber),
+    registration: firstNonEmpty(preferred.registration, fallback.registration),
+    model: firstNonEmpty(preferred.model, fallback.model),
+    capacity: coerceNumber(preferred.capacity || fallback.capacity, 0),
+    serviceDueDate: firstNonEmpty(preferred.serviceDueDate, fallback.serviceDueDate),
+    regoExpiryDate: firstNonEmpty(preferred.regoExpiryDate, fallback.regoExpiryDate),
+    status: firstNonEmpty(preferred.status, fallback.status),
+    notes: firstNonEmpty(preferred.notes, fallback.notes)
   });
 }
 
@@ -494,7 +561,12 @@ async function hydrateTrucksFromSupabase() {
     refresh();
     return;
   }
-  state.trucks = data.map(fromDbTruck);
+  const localById = new Map(state.trucks.map((item) => [item.id, item]));
+  state.trucks = data.map((row) => {
+    const remote = fromDbTruck(row);
+    return mergeTruckRecords(remote, localById.get(remote.id));
+  });
+  state.trucks = repairSparseTruckRows(state.trucks);
   localStorage.setItem(KEY, JSON.stringify(state.trucks));
   setTrucksSyncStatus("Shared truck data loaded.", "live");
   refresh();
