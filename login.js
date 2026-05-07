@@ -50,6 +50,8 @@ async function startLogin() {
   const loginForm = document.getElementById("loginForm");
   const loginError = document.getElementById("loginError");
   const loginStatus = document.getElementById("loginStatus");
+  const sessionContinueWrap = document.getElementById("sessionContinueWrap");
+  const continueSessionBtn = document.getElementById("continueSessionBtn");
   const firstRunPanel = document.getElementById("firstRunPanel");
   const firstRunForm = document.getElementById("firstRunForm");
 
@@ -61,6 +63,16 @@ async function startLogin() {
   if (sessionUser) {
     if (loginStatus) {
       loginStatus.textContent = `Signed in on this device as ${sessionUser.username}. Enter a username and password below to continue or switch accounts.`;
+    }
+    if (sessionContinueWrap) sessionContinueWrap.style.display = "";
+    if (continueSessionBtn) {
+      continueSessionBtn.textContent = `Continue as ${sessionUser.username}`;
+      continueSessionBtn.addEventListener("click", () => {
+        if (!routeUser(sessionUser)) {
+          loginError.textContent = "This account has no page access assigned.";
+          window.OPXAuth.logout();
+        }
+      });
     }
   }
 
