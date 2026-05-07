@@ -16,6 +16,9 @@
       <h1>Secure Login</h1>
       <p class="muted">Use your username and password to access CRM tools.</p>
       <p id="loginStatus" class="muted"></p>
+      <div id="sessionContinueWrap" class="actions" style="display:none; margin-bottom: 0.8rem;">
+        <button id="continueSessionBtn" class="btn btn-outline" type="button">Continue</button>
+      </div>
 
       <form id="loginForm" class="form-grid" autocomplete="off">
         <label>Username<input id="username" type="text" required /></label>
@@ -48,8 +51,8 @@
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="./supabase-config.js?v=20260413s"></script>
   <script src="./supabase-client.js?v=20260413s"></script>
-  <script src="./auth.js?v=20260420j"></script>
-  <script src="./login.js?v=20260422g"></script>
+  <script src="./auth.js?v=20260423a"></script>
+  <script src="./login.js?v=20260507a"></script>
 </body>
 </html>
 
