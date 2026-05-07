@@ -1250,18 +1250,23 @@ function weekLabel(key) {
 function parseDateKey(value) {
   const raw = String(value || "").trim();
   if (!raw) return null;
-  const normalizedRaw = raw.includes(" - ") ? raw.split(" - ")[0].trim() : raw;
+  const normalizedRaw = raw
+    .replace(/\u2013|\u2014/g, "-")
+    .replace(/\s+to\s+/gi, " - ");
+  const baseDate = normalizedRaw.includes(" - ")
+    ? normalizedRaw.split(" - ")[0].trim()
+    : normalizedRaw;
 
   let year;
   let month;
   let day;
 
-  if (/^\d{4}-\d{2}-\d{2}$/.test(normalizedRaw)) {
-    [year, month, day] = normalizedRaw.split("-").map(Number);
-  } else if (/^\d{2}\/\d{2}\/\d{4}$/.test(normalizedRaw)) {
-    [day, month, year] = normalizedRaw.split("/").map(Number);
+  if (/^\d{4}-\d{2}-\d{2}$/.test(baseDate)) {
+    [year, month, day] = baseDate.split("-").map(Number);
+  } else if (/^\d{2}\/\d{2}\/\d{4}$/.test(baseDate)) {
+    [day, month, year] = baseDate.split("/").map(Number);
   } else {
-    const native = new Date(normalizedRaw);
+    const native = new Date(baseDate);
     if (Number.isNaN(native.getTime())) return null;
     native.setHours(0, 0, 0, 0);
     return native;
