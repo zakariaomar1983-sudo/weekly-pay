@@ -51,6 +51,7 @@ const financeRetryTimers = new Map();
 const financeRetryAttempts = new Map();
 const financeSyncInFlight = new Set();
 const financeSyncQueued = new Map();
+const financeLocalEditAt = new Map();
 let financeSearchTimerId = 0;
 
 function formatFinanceSyncTime(value = Date.now()) {
@@ -231,6 +232,7 @@ function readDriversData() {
 }
 
 function saveData(key, data) {
+  financeLocalEditAt.set(key, Date.now());
   localStorage.setItem(key, JSON.stringify(data));
   const source = financeSourceForKey(key);
   if (isSupabaseReady()) {
@@ -447,6 +449,7 @@ async function syncRowsToSupabase(key, rows) {
 
 async function hydrateFinanceFromSupabase() {
   if (!isSupabaseReady()) return;
+  const hydrateStartedAt = Date.now();
   setFinanceSyncStatus("Checking shared finance data...", "syncing");
   const supabase = getSupabaseClient();
   if (!supabase) return;
@@ -462,6 +465,8 @@ async function hydrateFinanceFromSupabase() {
     if (!incomeRes.data.length && state.income.length) {
       console.warn("Supabase truck_income table is empty; keeping local income and seeding Supabase.");
       await syncRowsToSupabase(KEYS.income, state.income);
+    } else if ((financeLocalEditAt.get(KEYS.income) || 0) > hydrateStartedAt) {
+      console.info("Skipping stale shared truck_income hydrate because local edits were saved after hydrate started.");
     } else {
       state.income = incomeRes.data.map(fromDbIncome);
       localStorage.setItem(KEYS.income, JSON.stringify(state.income));
@@ -476,6 +481,8 @@ async function hydrateFinanceFromSupabase() {
     if (!expenseRes.data.length && state.expense.length) {
       console.warn("Supabase truck_expense table is empty; keeping local expense and seeding Supabase.");
       await syncRowsToSupabase(KEYS.expense, state.expense);
+    } else if ((financeLocalEditAt.get(KEYS.expense) || 0) > hydrateStartedAt) {
+      console.info("Skipping stale shared truck_expense hydrate because local edits were saved after hydrate started.");
     } else {
       state.expense = expenseRes.data.map(fromDbExpense);
       localStorage.setItem(KEYS.expense, JSON.stringify(state.expense));
@@ -490,6 +497,8 @@ async function hydrateFinanceFromSupabase() {
     if (!payRes.data.length && state.pay.length) {
       console.warn("Supabase payslips table is empty; keeping local payslips and seeding Supabase.");
       await syncRowsToSupabase(KEYS.pay, state.pay);
+    } else if ((financeLocalEditAt.get(KEYS.pay) || 0) > hydrateStartedAt) {
+      console.info("Skipping stale shared payslips hydrate because local edits were saved after hydrate started.");
     } else {
       state.pay = payRes.data.map(fromDbPay);
       localStorage.setItem(KEYS.pay, JSON.stringify(state.pay));
