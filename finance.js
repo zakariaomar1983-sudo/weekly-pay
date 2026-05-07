@@ -158,7 +158,18 @@ function queueFinanceSyncRetry(key, errorMessage = "") {
   financeRetryTimers.set(key, timerId);
 }
 
-const money = (value) => `$${Number(value || 0).toFixed(2)}`;
+function toNumber(value) {
+  if (typeof value === "number") return Number.isFinite(value) ? value : 0;
+  const cleaned = String(value ?? "")
+    .trim()
+    .replaceAll(",", "")
+    .replace(/\$/g, "");
+  if (!cleaned) return 0;
+  const parsed = Number(cleaned);
+  return Number.isFinite(parsed) ? parsed : 0;
+}
+
+const money = (value) => `$${toNumber(value).toFixed(2)}`;
 const NIGHT_DROP_DEFAULT_RATE = 90;
 const PAYROLL_LAG_WEEKS = 1;
 const DAILY_RATE_BY_TRUCK_NUMBER = {
@@ -173,7 +184,38 @@ const DAILY_RATE_BY_TRUCK_NUMBER = {
 
 function readData(key) {
   try {
-    return ensureUuidRows(JSON.parse(localStorage.getItem(key) || "[]"), key);
+    const parsed = JSON.parse(localStorage.getItem(key) || "[]");
+    const rows = ensureUuidRows(Array.isArray(parsed) ? parsed : [], key);
+    if (key !== KEYS.expense) return rows;
+
+    let changed = false;
+    const normalized = rows.map((row) => {
+      const next = {
+        ...row,
+        date: String(row.date || row.expenseDate || row.expense_date || "").trim(),
+        truckNumber: String(row.truckNumber || row.truck_number || "").trim(),
+        category: String(row.category || row.expenseCategory || "").trim(),
+        amount: toNumber(row.amount ?? row.expenseAmount ?? row.expense_amount ?? 0),
+        vendor: String(row.vendor || row.paidTo || row.supplier || "").trim(),
+        notes: String(row.notes || "").trim()
+      };
+      if (
+        next.date !== String(row.date || "") ||
+        next.truckNumber !== String(row.truckNumber || "") ||
+        next.category !== String(row.category || "") ||
+        next.amount !== toNumber(row.amount ?? 0) ||
+        next.vendor !== String(row.vendor || "") ||
+        next.notes !== String(row.notes || "")
+      ) {
+        changed = true;
+      }
+      return next;
+    });
+
+    if (changed) {
+      localStorage.setItem(key, JSON.stringify(normalized));
+    }
+    return normalized;
   } catch {
     return [];
   }
@@ -257,7 +299,7 @@ function toDbIncome(item) {
     truck_number: item.truckNumber || "",
     job_ref: item.jobRef || "",
     client: item.client || "",
-    amount: Number(item.amount || 0),
+    amount: toNumber(item.amount),
     status: item.status || "",
     notes: item.notes || ""
   };
@@ -270,7 +312,7 @@ function fromDbIncome(row) {
     truckNumber: row.truck_number || "",
     jobRef: row.job_ref || "",
     client: row.client || "",
-    amount: Number(row.amount || 0),
+    amount: toNumber(row.amount),
     status: row.status || "",
     notes: row.notes || ""
   };
@@ -282,7 +324,7 @@ function toDbExpense(item) {
     expense_date: item.date || null,
     truck_number: item.truckNumber || "",
     category: item.category || "",
-    amount: Number(item.amount || 0),
+    amount: toNumber(item.amount),
     vendor: item.vendor || "",
     notes: item.notes || ""
   };
@@ -294,7 +336,7 @@ function fromDbExpense(row) {
     date: row.expense_date || "",
     truckNumber: row.truck_number || "",
     category: row.category || "",
-    amount: Number(row.amount || 0),
+    amount: toNumber(row.amount),
     vendor: row.vendor || "",
     notes: row.notes || ""
   };
@@ -306,13 +348,13 @@ function toDbPay(item) {
     driver: item.driver || "",
     truck_number: item.truckNumber || "",
     pay_period: item.payPeriod || "",
-    days_worked: Number(item.daysWorked ?? item.hoursWorked ?? 0),
-    daily_rate: Number(item.dailyRate ?? item.hourlyRate ?? 0),
-    night_run_drops: Number(item.nightRunDrops ?? 0),
-    drop_rate: Number(item.dropRate ?? NIGHT_DROP_DEFAULT_RATE),
-    night_run_pay: Number(item.nightRunPay ?? ((Number(item.nightRunDrops ?? 0)) * NIGHT_DROP_DEFAULT_RATE)),
-    driver_bonus: Number(item.driverBonus ?? 0),
-    deductions: Number(item.deductions ?? 0),
+    days_worked: toNumber(item.daysWorked ?? item.hoursWorked ?? 0),
+    daily_rate: toNumber(item.dailyRate ?? item.hourlyRate ?? 0),
+    night_run_drops: toNumber(item.nightRunDrops ?? 0),
+    drop_rate: toNumber(item.dropRate ?? NIGHT_DROP_DEFAULT_RATE),
+    night_run_pay: toNumber(item.nightRunPay ?? (toNumber(item.nightRunDrops ?? 0) * NIGHT_DROP_DEFAULT_RATE)),
+    driver_bonus: toNumber(item.driverBonus ?? 0),
+    deductions: toNumber(item.deductions ?? 0),
     payment_date: item.paymentDate || null,
     auto_pay: item.autoPay || "No",
     auto_pay_ref: item.autoPayRef || ""
@@ -325,13 +367,13 @@ function fromDbPay(row) {
     driver: row.driver || "",
     truckNumber: row.truck_number || "",
     payPeriod: row.pay_period || "",
-    daysWorked: Number(row.days_worked ?? 0),
-    dailyRate: Number(row.daily_rate ?? 0),
-    nightRunDrops: Number(row.night_run_drops ?? 0),
-    dropRate: Number(row.drop_rate ?? NIGHT_DROP_DEFAULT_RATE),
-    nightRunPay: Number(row.night_run_pay ?? 0),
-    driverBonus: Number(row.driver_bonus ?? 0),
-    deductions: Number(row.deductions ?? 0),
+    daysWorked: toNumber(row.days_worked ?? 0),
+    dailyRate: toNumber(row.daily_rate ?? 0),
+    nightRunDrops: toNumber(row.night_run_drops ?? 0),
+    dropRate: toNumber(row.drop_rate ?? NIGHT_DROP_DEFAULT_RATE),
+    nightRunPay: toNumber(row.night_run_pay ?? 0),
+    driverBonus: toNumber(row.driver_bonus ?? 0),
+    deductions: toNumber(row.deductions ?? 0),
     paymentDate: row.payment_date || "",
     autoPay: row.auto_pay || "No",
     autoPayRef: row.auto_pay_ref || ""
@@ -489,13 +531,13 @@ function downloadCsv(filename, rows) {
 }
 
 function netPay(item) {
-  const daysWorked = Number(item.daysWorked ?? item.hoursWorked ?? 0);
-  const dailyRate = Number(item.dailyRate ?? item.hourlyRate ?? 0);
-  const nightRunDrops = Number(item.nightRunDrops ?? 0);
+  const daysWorked = toNumber(item.daysWorked ?? item.hoursWorked ?? 0);
+  const dailyRate = toNumber(item.dailyRate ?? item.hourlyRate ?? 0);
+  const nightRunDrops = toNumber(item.nightRunDrops ?? 0);
   const dropRate = NIGHT_DROP_DEFAULT_RATE;
   const nightRunPay = nightRunDrops * dropRate;
-  const driverBonus = Number(item.driverBonus ?? 0);
-  return daysWorked * dailyRate + nightRunPay + driverBonus - Number(item.deductions || 0);
+  const driverBonus = toNumber(item.driverBonus ?? 0);
+  return daysWorked * dailyRate + nightRunPay + driverBonus - toNumber(item.deductions || 0);
 }
 
 function normalizeDriverName(value) {
@@ -1193,16 +1235,6 @@ function weekKey(dateString) {
   return formatDateKey(start);
 }
 
-function payWeekKeyFromPayPeriod(payPeriod) {
-  // payPeriod like "01 Apr - 07 Apr 2026"
-  const match = String(payPeriod || "").match(/^(\d{1,2} \w{3}) - (\d{1,2} \w{3}) (\d{4})$/);
-  if (!match) return "";
-  const startStr = `${match[1]} ${match[3]}`;
-  const startDate = new Date(startStr);
-  if (isNaN(startDate.getTime())) return "";
-  return formatDateKey(startDate);
-}
-
 function incomeBatchDate(dateString) {
   return weekKey(dateString);
 }
@@ -1216,8 +1248,25 @@ function weekLabel(key) {
 }
 
 function parseDateKey(value) {
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(String(value || ""))) return null;
-  const [year, month, day] = String(value).split("-").map(Number);
+  const raw = String(value || "").trim();
+  if (!raw) return null;
+  const normalizedRaw = raw.includes(" - ") ? raw.split(" - ")[0].trim() : raw;
+
+  let year;
+  let month;
+  let day;
+
+  if (/^\d{4}-\d{2}-\d{2}$/.test(normalizedRaw)) {
+    [year, month, day] = normalizedRaw.split("-").map(Number);
+  } else if (/^\d{2}\/\d{2}\/\d{4}$/.test(normalizedRaw)) {
+    [day, month, year] = normalizedRaw.split("/").map(Number);
+  } else {
+    const native = new Date(normalizedRaw);
+    if (Number.isNaN(native.getTime())) return null;
+    native.setHours(0, 0, 0, 0);
+    return native;
+  }
+
   const date = new Date(year, month - 1, day);
   if (Number.isNaN(date.getTime())) return null;
   date.setHours(0, 0, 0, 0);
@@ -1479,7 +1528,7 @@ function periodBoundsForDashboard() {
 
 function sumForRange(rows, dateField, amountGetter, start, end) {
   return rows.reduce((sum, row) => (
-    dateInRange(row[dateField], start, end) ? sum + Number(amountGetter(row) || 0) : sum
+    dateInRange(row[dateField], start, end) ? sum + toNumber(amountGetter(row)) : sum
   ), 0);
 }
 
@@ -1576,17 +1625,17 @@ function buildWeeklySummary() {
   state.income.forEach((item) => {
     const wk = weekKey(item.incomeDate);
     if (!wk) return;
-    ensure(wk).income += Number(item.amount || 0);
+    ensure(wk).income += toNumber(item.amount);
   });
 
   state.expense.forEach((item) => {
     const wk = weekKey(item.date);
     if (!wk) return;
-    ensure(wk).expense += Number(item.amount || 0);
+    ensure(wk).expense += toNumber(item.amount);
   });
 
   state.pay.forEach((item) => {
-    const wk = payWeekKeyFromPayPeriod(item.payPeriod) || weekKey(item.paymentDate);
+    const wk = weekKey(item.paymentDate);
     if (!wk) return;
     ensure(wk).driverPay += netPay(item);
   });
@@ -1605,8 +1654,8 @@ function drawStats() {
     return;
   }
 
-  const incomeTotal = state.income.reduce((sum, x) => sum + Number(x.amount || 0), 0);
-  const expenseTotal = state.expense.reduce((sum, x) => sum + Number(x.amount || 0), 0);
+  const incomeTotal = state.income.reduce((sum, x) => sum + toNumber(x.amount), 0);
+  const expenseTotal = state.expense.reduce((sum, x) => sum + toNumber(x.amount), 0);
   const driverPayTotal = state.pay.reduce((sum, x) => sum + netPay(x), 0);
   const profit = incomeTotal - expenseTotal - driverPayTotal;
 
