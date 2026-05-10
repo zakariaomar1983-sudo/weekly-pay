@@ -1,4 +1,21 @@
 (function loadSupabaseConfig() {
+  function safeGet(key) {
+    try {
+      return localStorage.getItem(key) || "";
+    } catch {
+      return "";
+    }
+  }
+
+  function safeSet(key, value) {
+    try {
+      localStorage.setItem(key, value);
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
   // Option 1: hardcode values here for single-build deployment.
   const hardcoded = {
     url: "https://cphshcvrbdtsaftuwaya.supabase.co",
@@ -6,8 +23,8 @@
   };
 
   // Option 2: persist per-device values (set once, then reused).
-  const storedUrl = localStorage.getItem("OPX_SUPABASE_URL") || "";
-  const storedAnon = localStorage.getItem("OPX_SUPABASE_ANON_KEY") || "";
+  const storedUrl = safeGet("OPX_SUPABASE_URL");
+  const storedAnon = safeGet("OPX_SUPABASE_ANON_KEY");
 
   // Option 3: one-time bootstrap via URL query params.
   // Example: ?sbUrl=https://xyz.supabase.co&sbAnon=eyJ...
@@ -16,8 +33,8 @@
   const paramAnon = params.get("sbAnon") || "";
 
   if (paramUrl && paramAnon) {
-    localStorage.setItem("OPX_SUPABASE_URL", paramUrl);
-    localStorage.setItem("OPX_SUPABASE_ANON_KEY", paramAnon);
+    safeSet("OPX_SUPABASE_URL", paramUrl);
+    safeSet("OPX_SUPABASE_ANON_KEY", paramAnon);
   }
 
   const url = (hardcoded.url || paramUrl || storedUrl).trim();

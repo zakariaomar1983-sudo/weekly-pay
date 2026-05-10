@@ -20,7 +20,23 @@ const links = [
 ];
 
 const state = {
-  logCount: readCount("transport_crm_logs")
+  logCount: readCount("transport_crm_logs"),
+  sharedCounts: {
+    drivers: null,
+    trucks: null,
+    roster: null,
+    income: null,
+    payslips: null,
+    logs: null
+  },
+  sharedRows: {
+    drivers: null,
+    trucks: null,
+    roster: null,
+    truck_income: null,
+    payslips: null,
+    app_logs: null
+  }
 };
 const currentRole = window.OPXAuth.getRoleById?.(auth.user.roleId) || null;
 
@@ -154,15 +170,22 @@ function readCount(key) {
   }
 }
 
+function statCount(localKey, sharedKey) {
+  const local = readCount(localKey);
+  if (local > 0) return local;
+  const shared = Number(state.sharedCounts?.[sharedKey]);
+  return Number.isFinite(shared) && shared > 0 ? shared : local;
+}
+
 function drawStats() {
   const userCount = Array.isArray(window.OPXAuth.getUsers?.()) ? window.OPXAuth.getUsers().length : 0;
   const stats = [
-    { label: "Drivers", value: String(readCount("transport_crm_drivers")), show: auth.can("viewDrivers") },
-    { label: "Trucks", value: String(readCount("transport_crm_trucks")), show: auth.can("viewTrucks") },
-    { label: "Roster Shifts", value: String(readCount("transport_crm_roster")), show: auth.can("viewRoster") },
-    { label: "Income Rows", value: String(readCount("transport_crm_truck_income")), show: auth.can("viewTruckIncome") },
+    { label: "Drivers", value: String(statCount("transport_crm_drivers", "drivers")), show: auth.can("viewDrivers") },
+    { label: "Trucks", value: String(statCount("transport_crm_trucks", "trucks")), show: auth.can("viewTrucks") },
+    { label: "Roster Shifts", value: String(statCount("transport_crm_roster", "roster")), show: auth.can("viewRoster") },
+    { label: "Income Rows", value: String(statCount("transport_crm_truck_income", "income")), show: auth.can("viewTruckIncome") },
     { label: "Receipts", value: String(readCount(RECEIPTS_KEY)), show: auth.can("accessCRM") && (auth.can("viewSpending") || auth.can("editSpending") || auth.can("accessControlPanel")) },
-    { label: "Payslips", value: String(readCount("transport_crm_payslips")), show: auth.can("viewPayslips") },
+    { label: "Payslips", value: String(statCount("transport_crm_payslips", "payslips")), show: auth.can("viewPayslips") },
     { label: "Logs", value: String(state.logCount), show: auth.can("accessLogs") },
     { label: "Users", value: String(userCount), show: auth.can("accessControlPanel") }
   ].filter((item) => item.show);
@@ -197,10 +220,70 @@ function formatActivityTime(value) {
 function readRows(key) {
   try {
     const parsed = JSON.parse(localStorage.getItem(key) || "[]");
-    return Array.isArray(parsed) ? parsed : [];
+    if (Array.isArray(parsed) && parsed.length) return parsed;
   } catch {
-    return [];
+    // fall through to shared fallback
   }
+
+  const tableByKey = {
+    transport_crm_drivers: "drivers",
+    transport_crm_trucks: "trucks",
+    transport_crm_roster: "roster",
+    transport_crm_truck_income: "truck_income",
+    transport_crm_payslips: "payslips",
+    transport_crm_logs: "app_logs"
+  };
+  const table = tableByKey[key];
+  if (!table) return [];
+  const shared = state.sharedRows?.[table];
+  return Array.isArray(shared) ? shared : [];
+}
+
+function redrawDashboard() {
+  applyRoleDashboardProfile();
+  drawStats();
+  drawManagerSummary();
+  drawAttentionStrip();
+  drawReminderCenter();
+  drawWeekSnapshot();
+  drawTodayFocus();
+  drawPerformanceCharts();
+  drawQuickActions();
+  drawGlobalSearch();
+  drawRecentActivity();
+  drawReadinessChecks();
+  drawPayrollReadiness();
+  drawLinks();
+}
+
+async function hydrateDashboardRowsFromSupabase() {
+  if (!isSupabaseReady()) return;
+  const supabase = getSupabaseClient();
+  if (!supabase) return;
+
+  const tasks = [
+    { table: "drivers", enabled: auth.can("viewDrivers") },
+    { table: "trucks", enabled: auth.can("viewTrucks") },
+    { table: "roster", enabled: auth.can("viewRoster") },
+    { table: "truck_income", enabled: auth.can("viewTruckIncome") },
+    { table: "payslips", enabled: auth.can("viewPayslips") },
+    { table: "app_logs", enabled: auth.can("accessLogs") }
+  ].filter((task) => task.enabled);
+
+  await Promise.all(tasks.map(async (task) => {
+    const { data, error } = await supabase.from(task.table).select("*");
+    if (error) {
+      console.warn(`Supabase rows load failed for ${task.table}:`, error.message);
+      return;
+    }
+    state.sharedRows[task.table] = Array.isArray(data) ? data : [];
+  }));
+
+  redrawDashboard();
+}
+
+function refreshDashboardViews() {
+  redrawDashboard();
 }
 
 function readObject(key) {
@@ -1340,94 +1423,63 @@ async function hydrateLogCountFromSupabase() {
   }
 
   state.logCount = Number(count || 0);
+  state.sharedCounts.logs = state.logCount;
   drawStats();
 }
 
-applyRoleDashboardProfile();
-drawStats();
-drawManagerSummary();
-drawAttentionStrip();
-drawReminderCenter();
-drawWeekSnapshot();
-drawTodayFocus();
-drawPerformanceCharts();
-drawQuickActions();
-drawGlobalSearch();
-drawRecentActivity();
-drawReadinessChecks();
-drawPayrollReadiness();
-drawLinks();
+async function hydrateDashboardCountsFromSupabase() {
+  if (!isSupabaseReady()) return;
+  const supabase = getSupabaseClient();
+  if (!supabase) return;
+
+  const tasks = [
+    { table: "drivers", stateKey: "drivers", enabled: auth.can("viewDrivers") },
+    { table: "trucks", stateKey: "trucks", enabled: auth.can("viewTrucks") },
+    { table: "roster", stateKey: "roster", enabled: auth.can("viewRoster") },
+    { table: "truck_income", stateKey: "income", enabled: auth.can("viewTruckIncome") },
+    { table: "payslips", stateKey: "payslips", enabled: auth.can("viewPayslips") }
+  ].filter((task) => task.enabled);
+
+  await Promise.all(tasks.map(async (task) => {
+    const { count, error } = await supabase.from(task.table).select("*", { count: "exact", head: true });
+    if (error) {
+      console.warn(`Supabase count failed for ${task.table}:`, error.message);
+      return;
+    }
+    state.sharedCounts[task.stateKey] = Number(count || 0);
+  }));
+
+  drawStats();
+}
+
+redrawDashboard();
 
 if (isSupabaseReady()) {
   void hydrateLogCountFromSupabase();
+  void hydrateDashboardCountsFromSupabase();
+  void hydrateDashboardRowsFromSupabase();
 }
 
 window.addEventListener("opx:supabase-ready", () => {
   void hydrateLogCountFromSupabase();
+  void hydrateDashboardCountsFromSupabase();
+  void hydrateDashboardRowsFromSupabase();
 });
 
 window.addEventListener("storage", (event) => {
   if (!event.key) return;
   if (event.key.startsWith("transport_crm_")) {
-    applyRoleDashboardProfile();
-    drawStats();
-    drawManagerSummary();
-    drawAttentionStrip();
-    drawReminderCenter();
-    drawWeekSnapshot();
-    drawTodayFocus();
-    drawPerformanceCharts();
-    drawQuickActions();
-    drawGlobalSearch();
-    drawRecentActivity();
-    drawReadinessChecks();
-    drawPayrollReadiness();
-    drawLinks();
+    refreshDashboardViews();
   }
 });
 
 window.addEventListener("online", () => {
-  applyRoleDashboardProfile();
-  drawManagerSummary();
-  drawAttentionStrip();
-  drawReminderCenter();
-  drawWeekSnapshot();
-  drawTodayFocus();
-  drawPerformanceCharts();
-  drawQuickActions();
-  drawGlobalSearch();
-  drawRecentActivity();
-  drawReadinessChecks();
-  drawPayrollReadiness();
-  drawLinks();
+  refreshDashboardViews();
+  void hydrateDashboardRowsFromSupabase();
 });
 window.addEventListener("offline", () => {
-  applyRoleDashboardProfile();
-  drawManagerSummary();
-  drawAttentionStrip();
-  drawReminderCenter();
-  drawWeekSnapshot();
-  drawTodayFocus();
-  drawPerformanceCharts();
-  drawQuickActions();
-  drawGlobalSearch();
-  drawRecentActivity();
-  drawReadinessChecks();
-  drawPayrollReadiness();
-  drawLinks();
+  refreshDashboardViews();
 });
 window.addEventListener("opx:sync-health-change", () => {
-  applyRoleDashboardProfile();
-  drawManagerSummary();
-  drawAttentionStrip();
-  drawReminderCenter();
-  drawWeekSnapshot();
-  drawTodayFocus();
-  drawPerformanceCharts();
-  drawQuickActions();
-  drawGlobalSearch();
-  drawRecentActivity();
-  drawReadinessChecks();
-  drawPayrollReadiness();
-  drawLinks();
+  refreshDashboardViews();
 });

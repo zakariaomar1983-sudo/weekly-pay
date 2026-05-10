@@ -13,6 +13,17 @@
     "transport_crm_logs_sync_status"
   ];
   const SYNC_HISTORY_KEY = "transport_crm_sync_history";
+  const SYNC_HISTORY_MAX_ENTRIES = 30;
+  const SYNC_HISTORY_MAX_MESSAGE_CHARS = 280;
+  const SYNC_HISTORY_MAX_SOURCE_CHARS = 40;
+  const AUTH_STORAGE_EVICT_KEYS = [
+    SYNC_HISTORY_KEY,
+    "transport_crm_drivers_sync_status",
+    "transport_crm_trucks_sync_status",
+    "transport_crm_roster_sync_status",
+    "transport_crm_finance_sync_status",
+    "transport_crm_logs_sync_status"
+  ];
   const IDLE_TIMEOUT_MS = 5 * 60 * 1000;
   const ACTIVITY_TOUCH_MS = 15 * 1000;
   const AUTH_TABLES = {
@@ -25,6 +36,8 @@
   let lastActivityTouch = 0;
   let authSyncTimerId = null;
   let syncToastTimerId = null;
+  const volatileStore = new Map();
+  const TAB_STORE_PREFIX = "__opx_tab_store__:";
 
   const PERMISSIONS = [
     { key: "accessCRM", label: "Access CRM page" },
@@ -72,26 +85,178 @@
     dataEntry: "role_data_entry"
   };
 
+  function readTabStore() {
+    if (typeof window === "undefined") return {};
+    const raw = String(window.name || "");
+    if (!raw.startsWith(TAB_STORE_PREFIX)) return {};
+    try {
+      const parsed = JSON.parse(raw.slice(TAB_STORE_PREFIX.length));
+      return parsed && typeof parsed === "object" ? parsed : {};
+    } catch {
+      return {};
+    }
+  }
+
+  function writeTabStore(store) {
+    if (typeof window === "undefined") return false;
+    try {
+      window.name = `${TAB_STORE_PREFIX}${JSON.stringify(store || {})}`;
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
+  function readTabStoreValue(key) {
+    const store = readTabStore();
+    return typeof store[key] === "string" ? store[key] : null;
+  }
+
+  function writeTabStoreValue(key, serialized) {
+    const store = readTabStore();
+    store[key] = serialized;
+    return writeTabStore(store);
+  }
+
+  function removeTabStoreValue(key) {
+    const store = readTabStore();
+    if (!(key in store)) return true;
+    delete store[key];
+    return writeTabStore(store);
+  }
+
   function read(key, fallback) {
     try {
       const parsed = JSON.parse(localStorage.getItem(key) || "null");
-      return parsed == null ? fallback : parsed;
+      if (parsed != null) return parsed;
     } catch {
-      return fallback;
+      // fall through to sessionStorage fallback
     }
+    try {
+      const parsed = JSON.parse(sessionStorage.getItem(key) || "null");
+      if (parsed != null) return parsed;
+    } catch {
+      // fall through to fallback stores
+    }
+    const tabRaw = readTabStoreValue(key);
+    if (typeof tabRaw === "string") {
+      try {
+        const parsed = JSON.parse(tabRaw);
+        if (parsed != null) return parsed;
+      } catch {
+        // ignore
+      }
+    }
+    const raw = volatileStore.get(key);
+    if (typeof raw === "string") {
+      try {
+        const parsed = JSON.parse(raw);
+        return parsed == null ? fallback : parsed;
+      } catch {
+        return fallback;
+      }
+    }
+    return fallback;
+  }
+
+  function removeFallbackValue(key) {
+    removeTabStoreValue(key);
+    volatileStore.delete(key);
   }
 
   function write(key, value) {
-    localStorage.setItem(key, JSON.stringify(value));
+    const serialized = JSON.stringify(value);
+    try {
+      localStorage.setItem(key, serialized);
+      try {
+        sessionStorage.removeItem(key);
+      } catch {
+        // ignore
+      }
+      removeFallbackValue(key);
+      return true;
+    }
+    catch (localError) {
+      reclaimStorageForAuthWrites();
+      try {
+        localStorage.setItem(key, serialized);
+        removeFallbackValue(key);
+        return true;
+      } catch {
+        // fall through to sessionStorage fallback
+      }
+      try {
+        sessionStorage.setItem(key, serialized);
+        removeFallbackValue(key);
+        return true;
+      } catch (sessionError) {
+        // Final fallback keeps app usable across page navigation in this tab.
+        writeTabStoreValue(key, serialized);
+        volatileStore.set(key, serialized);
+        console.warn(`Storage write fell back to tab memory for ${key}.`, localError, sessionError);
+        return true;
+      }
+    }
+  }
+
+  function removeStorageKey(storage, key) {
+    try {
+      storage.removeItem(key);
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
+  function clearKeyEverywhere(key) {
+    try {
+      localStorage.removeItem(key);
+    } catch {}
+    try {
+      sessionStorage.removeItem(key);
+    } catch {}
+    removeFallbackValue(key);
+  }
+
+  function trimAuditHistory(maxRows) {
+    const rows = read(STORAGE.audit, []);
+    if (!Array.isArray(rows) || rows.length <= maxRows) return false;
+    const trimmed = rows.slice(0, maxRows);
+    return write(STORAGE.audit, trimmed);
+  }
+
+  function reclaimStorageForAuthWrites() {
+    let changed = false;
+    AUTH_STORAGE_EVICT_KEYS.forEach((key) => {
+      try {
+        if (localStorage.getItem(key) != null) {
+          removeStorageKey(localStorage, key);
+          changed = true;
+        }
+      } catch {
+        // ignore
+      }
+      try {
+        if (sessionStorage.getItem(key) != null) {
+          removeStorageKey(sessionStorage, key);
+          changed = true;
+        }
+      } catch {
+        // ignore
+      }
+      changed = removeTabStoreValue(key) || changed;
+      volatileStore.delete(key);
+    });
+
+    // Keep audit history but shrink it if needed.
+    changed = trimAuditHistory(120) || changed;
+    changed = trimAuditHistory(40) || changed;
+    return changed;
   }
 
   function readSyncHealthStatus(key) {
-    try {
-      const parsed = JSON.parse(localStorage.getItem(key) || "null");
-      return parsed && typeof parsed === "object" ? parsed : null;
-    } catch {
-      return null;
-    }
+    const parsed = read(key, null);
+    return parsed && typeof parsed === "object" ? parsed : null;
   }
 
   function readSyncHistory() {
@@ -99,8 +264,37 @@
     return Array.isArray(history) ? history : [];
   }
 
+  function normalizeSyncHistoryEntries(entries) {
+    if (!Array.isArray(entries)) return [];
+    return entries
+      .filter((entry) => entry && typeof entry === "object")
+      .map((entry) => {
+        const source = String(entry.source || "CRM").trim().slice(0, SYNC_HISTORY_MAX_SOURCE_CHARS);
+        const message = String(entry.message || "")
+          .replace(/\s+/g, " ")
+          .trim()
+          .slice(0, SYNC_HISTORY_MAX_MESSAGE_CHARS);
+        const tone = String(entry.tone || "neutral").trim().slice(0, 20) || "neutral";
+        const atNum = Number(entry.at);
+        const at = Number.isFinite(atNum) ? atNum : Date.now();
+        return { source, message, tone, at };
+      })
+      .filter((entry) => entry.message);
+  }
+
   function writeSyncHistory(entries) {
-    write(SYNC_HISTORY_KEY, entries.slice(0, 30));
+    const normalized = normalizeSyncHistoryEntries(entries).slice(0, SYNC_HISTORY_MAX_ENTRIES);
+    if (write(SYNC_HISTORY_KEY, normalized)) return;
+
+    // If storage is tight, keep retrying with a smaller history payload.
+    let compact = normalized.slice();
+    while (compact.length > 1) {
+      compact = compact.slice(0, Math.max(1, Math.floor(compact.length / 2)));
+      if (write(SYNC_HISTORY_KEY, compact)) return;
+    }
+
+    // Final fallback: avoid repeated crashes by dropping this key when quota is exhausted.
+    clearKeyEverywhere(SYNC_HISTORY_KEY);
   }
 
   function appendSyncHistoryEvent(detail) {
@@ -814,7 +1008,7 @@
   }
 
   function setRoles(roles) {
-    write(STORAGE.roles, normalizeRoles(roles));
+    return write(STORAGE.roles, normalizeRoles(roles));
   }
 
   function getUsers() {
@@ -828,7 +1022,7 @@
   }
 
   function setUsers(users) {
-    write(STORAGE.users, normalizeUsers(users, getRoles()));
+    return write(STORAGE.users, normalizeUsers(users, getRoles()));
   }
 
   async function deleteMissingRemoteRows(client, table, ids) {
@@ -947,7 +1141,17 @@
   }
 
   function getSession() {
-    return read(STORAGE.session, null);
+    const local = read(STORAGE.session, null);
+    if (local?.userId) return local;
+
+    // Fallback when localStorage is full/blocked: keep auth session in sessionStorage.
+    try {
+      const raw = sessionStorage.getItem(STORAGE.session);
+      const parsed = raw ? JSON.parse(raw) : null;
+      return parsed && typeof parsed === "object" ? parsed : null;
+    } catch {
+      return null;
+    }
   }
 
   function getSessionActivityAt(session) {
@@ -970,11 +1174,17 @@
   }
 
   function setSession(session) {
-    write(STORAGE.session, session);
+    return write(STORAGE.session, session);
   }
 
   function clearSession() {
-    localStorage.removeItem(STORAGE.session);
+    try {
+      localStorage.removeItem(STORAGE.session);
+    } catch {}
+    try {
+      sessionStorage.removeItem(STORAGE.session);
+    } catch {}
+    removeFallbackValue(STORAGE.session);
   }
 
   function getIdleRedirectPath() {
@@ -1067,7 +1277,13 @@
     const user = users.find((u) => normalizeUsername(u.username) === name && u.password === pass && u.active);
     if (!user) return { ok: false, message: "Invalid username or password." };
     const now = new Date().toISOString();
-    setSession({ userId: user.id, loginAt: now, lastActivityAt: now });
+    const sessionSaved = setSession({ userId: user.id, loginAt: now, lastActivityAt: now });
+    if (!sessionSaved) {
+      return {
+        ok: false,
+        message: "Could not start session because browser storage is full. Please clear old site data and try again."
+      };
+    }
     lastActivityTouch = Date.now();
     scheduleIdleLock();
     recordAuditEvent({
@@ -1283,7 +1499,7 @@
 
   function createRole(input) {
     const name = String(input?.name || "").trim();
-    if (!name) return null;
+    if (!name) return { ok: false, message: "Role name is required." };
 
     const roles = getRoles();
     const payload = {
@@ -1293,7 +1509,9 @@
       permissions: { ...allPermissions(false), ...(input?.permissions || {}) }
     };
     roles.push(payload);
-    setRoles(roles);
+    if (!setRoles(roles)) {
+      return { ok: false, message: "Could not save role because browser storage is full. Please clear old site data and try again." };
+    }
     recordAuditEvent({
       action: "create",
       area: "roles",
@@ -1304,13 +1522,13 @@
       details: { permissions: payload.permissions }
     });
     scheduleAuthSync();
-    return payload;
+    return { ok: true, role: payload };
   }
 
   function updateRole(roleId, input) {
     const roles = getRoles();
     const role = roles.find((r) => r.id === roleId);
-    if (!role || IMMUTABLE_ROLE_IDS.has(role.id) || role.system) return null;
+    if (!role || IMMUTABLE_ROLE_IDS.has(role.id) || role.system) return { ok: false, message: "System roles cannot be edited." };
 
     const before = {
       name: role.name,
@@ -1319,7 +1537,9 @@
 
     role.name = String(input?.name || "").trim() || role.name;
     role.permissions = { ...allPermissions(false), ...(input?.permissions || {}) };
-    setRoles(roles);
+    if (!setRoles(roles)) {
+      return { ok: false, message: "Could not update role because browser storage is full. Please clear old site data and try again." };
+    }
     recordAuditEvent({
       action: "update",
       area: "roles",
@@ -1336,7 +1556,7 @@
       }
     });
     scheduleAuthSync();
-    return role;
+    return { ok: true, role };
   }
 
   function deleteRole(roleId) {
@@ -1348,7 +1568,9 @@
     const inUse = users.some((u) => u.roleId === roleId);
     if (inUse) return { ok: false, message: "Role is assigned to users. Reassign users first." };
 
-    setRoles(roles.filter((r) => r.id !== roleId));
+    if (!setRoles(roles.filter((r) => r.id !== roleId))) {
+      return { ok: false, message: "Could not delete role because browser storage is full. Please clear old site data and try again." };
+    }
     recordAuditEvent({
       action: "delete",
       area: "roles",
@@ -1384,7 +1606,9 @@
     }
 
     users.push(payload);
-    setUsers(users);
+    if (!setUsers(users)) {
+      return { ok: false, message: "Could not save user because browser storage is full. Please clear old site data and try again." };
+    }
     recordAuditEvent({
       action: "create",
       area: "users",
@@ -1418,7 +1642,9 @@
       active: true
     };
 
-    setUsers([payload]);
+    if (!setUsers([payload])) {
+      return { ok: false, message: "Could not create first admin because browser storage is full. Please clear old site data and try again." };
+    }
     recordAuditEvent({
       actor: { actorUserId: payload.id, actorUsername: payload.username, actorRoleId: payload.roleId },
       action: "bootstrap",
@@ -1486,7 +1712,9 @@
       return { ok: false, message: "Usernames must be unique." };
     }
 
-    setUsers(payload);
+    if (!setUsers(payload)) {
+      return { ok: false, message: "Could not create starter users because browser storage is full. Please clear old site data and try again." };
+    }
     payload.forEach((entry) => {
       recordAuditEvent({
         actor: { actorUserId: entry.id, actorUsername: entry.username, actorRoleId: entry.roleId },
@@ -1527,7 +1755,9 @@
     user.roleId = protectedOwner ? SYSTEM_ROLE_IDS.admin : String(input?.roleId || user.roleId);
     user.active = protectedOwner ? true : Boolean(input?.active);
 
-    setUsers(users);
+    if (!setUsers(users)) {
+      return { ok: false, message: "Could not update user because browser storage is full. Please clear old site data and try again." };
+    }
     recordAuditEvent({
       action: "update",
       area: "users",
@@ -1564,7 +1794,9 @@
       return { ok: false, message: "At least one active admin user is required." };
     }
 
-    setUsers(users.filter((u) => u.id !== userId));
+    if (!setUsers(users.filter((u) => u.id !== userId))) {
+      return { ok: false, message: "Could not delete user because browser storage is full. Please clear old site data and try again." };
+    }
     recordAuditEvent({
       action: "delete",
       area: "users",

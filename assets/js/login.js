@@ -88,9 +88,23 @@ async function startLogin() {
     firstRunPanel.style.display = "none";
   }
 
-  loginForm.addEventListener("submit", () => {
-    // Allow normal HTML form POST submission to /login.
+  loginForm.addEventListener("submit", (e) => {
+    e.preventDefault();
     loginError.textContent = "";
+
+    const username = document.getElementById("username").value.trim();
+    const password = document.getElementById("password").value;
+
+    const result = window.OPXAuth.login(username, password);
+    if (!result.ok) {
+      loginError.textContent = result.message;
+      return;
+    }
+
+    if (!routeUser(result.user)) {
+      loginError.textContent = "This account has no page access assigned.";
+      window.OPXAuth.logout();
+    }
   });
 
   firstRunForm?.addEventListener("submit", async (e) => {

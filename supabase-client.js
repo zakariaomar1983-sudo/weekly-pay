@@ -25,6 +25,8 @@
     if (window.supabase?.createClient) return true;
 
     const fallbacks = [
+      "./node_modules/@supabase/supabase-js/dist/umd/supabase.js",
+      "/node_modules/@supabase/supabase-js/dist/umd/supabase.js",
       "https://unpkg.com/@supabase/supabase-js@2",
       "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"
     ];

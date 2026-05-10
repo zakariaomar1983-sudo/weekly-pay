@@ -455,7 +455,11 @@ function getEffectiveRoles() {
     { id: ids.viewer, name: "GM", system: false, permissions: viewerPerms }
   ];
 
-  localStorage.setItem(window.OPXAuth.STORAGE.roles, JSON.stringify(fallbackRoles));
+  try {
+    localStorage.setItem(window.OPXAuth.STORAGE.roles, JSON.stringify(fallbackRoles));
+  } catch (error) {
+    console.warn("Could not cache fallback roles in localStorage.", error);
+  }
   return fallbackRoles;
 }
 
@@ -1150,12 +1154,16 @@ function bindControlPanelEvents() {
 
   if (roleId) {
     const updated = window.OPXAuth.updateRole(roleId, payload);
-    if (!updated) {
-      alert("System roles cannot be edited.");
+    if (!updated?.ok) {
+      alert(updated?.message || "Could not update role.");
       return;
     }
   } else {
-    window.OPXAuth.createRole(payload);
+    const created = window.OPXAuth.createRole(payload);
+    if (!created?.ok) {
+      alert(created?.message || "Could not create role.");
+      return;
+    }
   }
 
   resetRoleForm();
