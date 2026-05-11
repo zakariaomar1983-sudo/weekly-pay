@@ -7,7 +7,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=Manrope:wght@400;500;700&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="/assets/css/style.css" onerror="this.onerror=null;this.href='./assets/css/style.css';" />
+  <link rel="stylesheet" href="./style.css?v=20260511k" />
 </head>
 <body>
   <main class="app-shell app-auth">
@@ -52,18 +52,12 @@
   <script src="./supabase-config.js?v=20260511h"></script>
   <script src="./supabase-client.js?v=20260511h"></script>
   <script src="./auth.js?v=20260511e"></script>
-  <script>
-    (function loadLoginScript() {
-      const src = window.location.protocol === "file:"
-        ? "./assets/js/login.js"
-        : "/assets/js/login.js";
-      const script = document.createElement("script");
-      script.src = src;
-      document.body.appendChild(script);
-    })();
-  </script>
+  <script src="./login.js?v=20260511c"></script>
 </body>
 </html>
+
+
+
 
 
 
