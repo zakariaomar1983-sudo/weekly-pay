@@ -20,7 +20,7 @@
         <button id="continueSessionBtn" class="btn btn-outline" type="button">Continue</button>
       </div>
 
-      <form id="loginForm" class="form-grid" autocomplete="off" action="/login" method="POST">
+      <form id="loginForm" class="form-grid" autocomplete="off">
         <label>Username<input id="username" type="text" required /></label>
         <label>Password<input id="password" type="password" required /></label>
         <div class="actions full">
@@ -45,14 +45,17 @@
       </section>
 
       <p id="loginError" class="error-text"></p>
+      <div class="actions" style="margin-top:0.6rem;">
+        <button id="repairLoginBtn" class="btn btn-outline" type="button">Repair Login</button>
+      </div>
     </section>
   </main>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="./supabase-config.js?v=20260511h"></script>
   <script src="./supabase-client.js?v=20260511h"></script>
-  <script src="./auth.js?v=20260511e"></script>
-  <script src="./login.js?v=20260511c"></script>
+  <script src="./auth.js?v=20260511f"></script>
+  <script src="./login.js?v=20260511e"></script>
 </body>
 </html>
 

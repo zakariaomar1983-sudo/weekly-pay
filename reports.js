@@ -47,6 +47,8 @@ const reportState = {
   sharedData: null
 };
 const canEmailReports = auth.can("emailReports");
+const isFileMode = typeof window !== "undefined" && window.location.protocol === "file:";
+const canUseServerApis = !isFileMode;
 
 function readRows(key) {
   try {
@@ -303,6 +305,15 @@ function normalizeRecipientList(value) {
     .split(/[,\n;]/)
     .map((item) => item.trim())
     .filter(Boolean);
+}
+
+function validateRecipientList(value) {
+  const recipients = normalizeRecipientList(value);
+  if (!recipients.length) return [];
+  const invalid = recipients.filter((email) => !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email));
+  if (!invalid.length) return recipients;
+  setReportEmailStatus(`Invalid email address: ${invalid[0]}.`, "error");
+  return null;
 }
 
 function withTime(date, timeValue) {
@@ -852,6 +863,12 @@ async function refreshReportEmailConfigured() {
     updateSchedulerUi();
     return;
   }
+  if (!canUseServerApis) {
+    reportState.emailConfigured = false;
+    setReportEmailStatus("Email sender check is unavailable in file mode. Open through the local server to enable report email delivery.", "muted");
+    updateSchedulerUi();
+    return;
+  }
   try {
     const response = await fetch("/api/send-weekly-report-email", { method: "GET" });
     const payload = await response.json().catch(() => ({}));
@@ -870,6 +887,12 @@ async function refreshReportEmailConfigured() {
 }
 
 async function refreshServerSchedulerStatus() {
+  if (!canUseServerApis) {
+    reportState.serverDeliveryActive = false;
+    setServerSchedulerStatus("Server-side Thursday delivery check is unavailable in file mode.", "muted");
+    updateSchedulerUi();
+    return;
+  }
   try {
     const response = await fetch("/api/weekly-report-cron", { method: "GET" });
     const payload = await response.json().catch(() => ({}));
@@ -959,6 +982,10 @@ async function hydrateReportsFromSupabase({ preserveInputs = true } = {}) {
 async function sendPreparedReportEmail(snapshot, mode = "manual") {
   if (!canEmailReports) {
     setReportEmailStatus("Only leadership roles can email prepared reports.", "error");
+    return false;
+  }
+  if (!canUseServerApis) {
+    setReportEmailStatus("Report email is unavailable in file mode. Open through the local server to send emails.", "error");
     return false;
   }
   const scheduler = readScheduler();

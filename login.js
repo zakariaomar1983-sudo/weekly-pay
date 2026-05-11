@@ -42,14 +42,10 @@ function routeUser(user, options = {}) {
 }
 
 async function startLogin() {
-  window.OPXAuth.init();
-
-  const params = new URLSearchParams(window.location.search);
-  if (params.get("logout") === "1") {
-    window.OPXAuth.logout();
+  if (!window.OPXAuth) {
+    throw new Error("Authentication module failed to load.");
   }
-
-  await waitForSharedAuth();
+  window.OPXAuth.init();
 
   const loginForm = document.getElementById("loginForm");
   const loginError = document.getElementById("loginError");
@@ -58,10 +54,38 @@ async function startLogin() {
   const continueSessionBtn = document.getElementById("continueSessionBtn");
   const firstRunPanel = document.getElementById("firstRunPanel");
   const firstRunForm = document.getElementById("firstRunForm");
+  const repairLoginBtn = document.getElementById("repairLoginBtn");
+  const params = new URLSearchParams(window.location.search);
+
+  // Attach submit handler immediately so fast clicks can't trigger native form navigation.
+  loginForm?.addEventListener("submit", (e) => {
+    e.preventDefault();
+    loginError.textContent = "";
+
+    const username = document.getElementById("username").value.trim();
+    const password = document.getElementById("password").value;
+
+    const result = window.OPXAuth.login(username, password);
+    if (!result.ok) {
+      loginError.textContent = result.message;
+      return;
+    }
+
+    if (!routeUser(result.user)) {
+      loginError.textContent = "This account has no page access assigned.";
+      window.OPXAuth.logout();
+    }
+  });
 
   if (params.get("locked") === "1") {
     loginError.textContent = "Session locked after 5 minutes of inactivity. Please log in again.";
   }
+
+  if (params.get("logout") === "1") {
+    window.OPXAuth.logout();
+  }
+
+  await waitForSharedAuth();
 
   const sessionUser = window.OPXAuth.getSessionUser();
   if (sessionUser) {
@@ -87,25 +111,6 @@ async function startLogin() {
     loginForm.style.display = "";
     firstRunPanel.style.display = "none";
   }
-
-  loginForm.addEventListener("submit", (e) => {
-    e.preventDefault();
-    loginError.textContent = "";
-
-    const username = document.getElementById("username").value.trim();
-    const password = document.getElementById("password").value;
-
-    const result = window.OPXAuth.login(username, password);
-    if (!result.ok) {
-      loginError.textContent = result.message;
-      return;
-    }
-
-    if (!routeUser(result.user)) {
-      loginError.textContent = "This account has no page access assigned.";
-      window.OPXAuth.logout();
-    }
-  });
 
   firstRunForm?.addEventListener("submit", async (e) => {
     e.preventDefault();
@@ -155,6 +160,59 @@ async function startLogin() {
       if (submitBtn) submitBtn.disabled = false;
     }
   });
+
+  repairLoginBtn?.addEventListener("click", async () => {
+    loginError.textContent = "";
+    const adminUsername = (
+      document.getElementById("firstRunUsername")?.value
+      || document.getElementById("username")?.value
+      || ""
+    ).trim();
+    const adminPassword = (
+      document.getElementById("firstRunPassword")?.value
+      || document.getElementById("password")?.value
+      || ""
+    );
+
+    if (!adminUsername || !adminPassword) {
+      loginError.textContent = "Enter username and password, then click Repair Login.";
+      return;
+    }
+
+    try {
+      window.OPXAuth.resetLocalAuthData?.();
+
+      const created = window.OPXAuth.createInitialUsers({
+        adminUsername,
+        adminPassword,
+        opsManagerUsername: "",
+        opsManagerPassword: "",
+        gmUsername: "",
+        gmPassword: ""
+      });
+
+      if (!created.ok) {
+        loginError.textContent = created.message || "Could not repair login.";
+        return;
+      }
+
+      await window.OPXAuth.syncAuthToSupabase?.();
+      const result = window.OPXAuth.login(adminUsername, adminPassword);
+      if (!result.ok) {
+        loginError.textContent = result.message || "Repair finished, but sign-in failed.";
+        return;
+      }
+      routeUser(result.user, { recoverRolesFallback: true });
+    } catch (error) {
+      loginError.textContent = `Repair failed: ${error?.message || error}`;
+    }
+  });
 }
 
-void startLogin();
+void startLogin().catch((error) => {
+  const loginError = document.getElementById("loginError");
+  if (loginError) {
+    loginError.textContent = `Login startup failed: ${error?.message || error}`;
+  }
+  console.error("Login startup failed:", error);
+});

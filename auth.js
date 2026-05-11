@@ -1813,6 +1813,16 @@
     return { ok: true };
   }
 
+  function resetLocalAuthData() {
+    clearSession();
+    clearKeyEverywhere(STORAGE.roles);
+    clearKeyEverywhere(STORAGE.users);
+    clearKeyEverywhere(STORAGE.audit);
+    clearKeyEverywhere(SYNC_HISTORY_KEY);
+    init();
+    return true;
+  }
+
   window.OPXAuth = {
     init,
     login,
@@ -1845,6 +1855,7 @@
     createUser,
     updateUser,
     deleteUser,
+    resetLocalAuthData,
     PERMISSIONS,
     STORAGE,
     SYSTEM_ROLE_IDS
