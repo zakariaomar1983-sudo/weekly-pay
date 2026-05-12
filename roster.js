@@ -583,6 +583,51 @@ function normalizeDriverRecords(rows) {
   return Array.from(mergedByName.values());
 }
 
+function normalizeTruckNumberKey(value) {
+  return String(value || "").trim().toLowerCase().replace(/\s+/g, " ");
+}
+
+function normalizeTruckRecords(rows) {
+  const mergedByTruckNumber = new Map();
+  rows
+    .filter((item) => item && typeof item === "object")
+    .forEach((item, index) => {
+      const truckNumber = String(item.truckNumber ?? item.truck_number ?? "").trim();
+      if (!truckNumber) return;
+      const key = normalizeTruckNumberKey(truckNumber);
+      const normalized = {
+        id: item.id || `legacy-truck-${index}`,
+        truckNumber,
+        registration: String(item.registration ?? "").trim(),
+        model: String(item.model ?? "").trim(),
+        capacity: Number(item.capacity || 0),
+        serviceDueDate: String(item.serviceDueDate ?? item.service_due_date ?? "").trim(),
+        regoExpiryDate: String(item.regoExpiryDate ?? item.rego_expiry_date ?? "").trim(),
+        status: String(item.status ?? "").trim(),
+        notes: String(item.notes ?? "").trim()
+      };
+      const existing = mergedByTruckNumber.get(key);
+      if (!existing) {
+        mergedByTruckNumber.set(key, normalized);
+        return;
+      }
+      mergedByTruckNumber.set(key, {
+        ...existing,
+        ...normalized,
+        id: existing.id || normalized.id,
+        truckNumber,
+        registration: firstFilledValue(existing.registration, normalized.registration),
+        model: firstFilledValue(existing.model, normalized.model),
+        capacity: Number(existing.capacity || normalized.capacity || 0),
+        serviceDueDate: firstFilledValue(existing.serviceDueDate, normalized.serviceDueDate),
+        regoExpiryDate: firstFilledValue(existing.regoExpiryDate, normalized.regoExpiryDate),
+        status: firstFilledValue(existing.status, normalized.status),
+        notes: firstFilledValue(existing.notes, normalized.notes)
+      });
+    });
+  return Array.from(mergedByTruckNumber.values());
+}
+
 function fallbackDriverRecordsFromRoster() {
   const byName = new Map();
   const add = (name) => {
@@ -965,7 +1010,7 @@ async function hydrateRosterReferencesFromSupabase() {
   if (!useSupabase) return;
 
   const localDrivers = normalizeDriverRecords(readArray(DRIVERS_KEY));
-  const localTrucks = readArray(TRUCKS_KEY);
+  const localTrucks = normalizeTruckRecords(readArray(TRUCKS_KEY));
 
   const [driversRes, trucksRes] = await Promise.all([
     supabase.from(DRIVERS_TABLE).select("*"),
@@ -1006,7 +1051,17 @@ async function hydrateRosterReferencesFromSupabase() {
         localStorage.setItem(TRUCKS_KEY, JSON.stringify(localTrucks));
       }
     } else {
-      localStorage.setItem(TRUCKS_KEY, JSON.stringify(trucksRes.data.map(fromDbTruck)));
+      const remoteTrucks = normalizeTruckRecords(trucksRes.data.map(fromDbTruck));
+      const mergedTrucks = normalizeTruckRecords([...localTrucks, ...remoteTrucks]);
+      localStorage.setItem(TRUCKS_KEY, JSON.stringify(mergedTrucks));
+
+      // Keep freshly-added local trucks visible immediately, then backfill shared store.
+      if (JSON.stringify(mergedTrucks) !== JSON.stringify(remoteTrucks)) {
+        const { error } = await supabase.from(TRUCKS_TABLE).upsert(mergedTrucks.map(toDbTruck), { onConflict: "id" });
+        if (error) {
+          console.error("Supabase merge sync failed for roster trucks:", error.message);
+        }
+      }
     }
   } else if (trucksRes.error) {
     console.error("Supabase load failed for roster trucks:", trucksRes.error.message);
