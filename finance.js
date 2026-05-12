@@ -51,6 +51,7 @@ const financeRetryTimers = new Map();
 const financeRetryAttempts = new Map();
 const financeSyncInFlight = new Set();
 const financeSyncQueued = new Map();
+const financeLocalEditAt = new Map();
 let financeSearchTimerId = 0;
 
 function formatFinanceSyncTime(value = Date.now()) {
@@ -231,6 +232,7 @@ function readDriversData() {
 }
 
 function saveData(key, data) {
+  financeLocalEditAt.set(key, Date.now());
   localStorage.setItem(key, JSON.stringify(data));
   const source = financeSourceForKey(key);
   if (isSupabaseReady()) {
@@ -447,6 +449,7 @@ async function syncRowsToSupabase(key, rows) {
 
 async function hydrateFinanceFromSupabase() {
   if (!isSupabaseReady()) return;
+  const hydrateStartedAt = Date.now();
   setFinanceSyncStatus("Checking shared finance data...", "syncing");
   const supabase = getSupabaseClient();
   if (!supabase) return;
@@ -462,6 +465,8 @@ async function hydrateFinanceFromSupabase() {
     if (!incomeRes.data.length && state.income.length) {
       console.warn("Supabase truck_income table is empty; keeping local income and seeding Supabase.");
       await syncRowsToSupabase(KEYS.income, state.income);
+    } else if ((financeLocalEditAt.get(KEYS.income) || 0) > hydrateStartedAt) {
+      console.info("Skipping stale shared truck_income hydrate because local edits were saved after hydrate started.");
     } else {
       state.income = incomeRes.data.map(fromDbIncome);
       localStorage.setItem(KEYS.income, JSON.stringify(state.income));
@@ -476,6 +481,8 @@ async function hydrateFinanceFromSupabase() {
     if (!expenseRes.data.length && state.expense.length) {
       console.warn("Supabase truck_expense table is empty; keeping local expense and seeding Supabase.");
       await syncRowsToSupabase(KEYS.expense, state.expense);
+    } else if ((financeLocalEditAt.get(KEYS.expense) || 0) > hydrateStartedAt) {
+      console.info("Skipping stale shared truck_expense hydrate because local edits were saved after hydrate started.");
     } else {
       state.expense = expenseRes.data.map(fromDbExpense);
       localStorage.setItem(KEYS.expense, JSON.stringify(state.expense));
@@ -490,6 +497,8 @@ async function hydrateFinanceFromSupabase() {
     if (!payRes.data.length && state.pay.length) {
       console.warn("Supabase payslips table is empty; keeping local payslips and seeding Supabase.");
       await syncRowsToSupabase(KEYS.pay, state.pay);
+    } else if ((financeLocalEditAt.get(KEYS.pay) || 0) > hydrateStartedAt) {
+      console.info("Skipping stale shared payslips hydrate because local edits were saved after hydrate started.");
     } else {
       state.pay = payRes.data.map(fromDbPay);
       localStorage.setItem(KEYS.pay, JSON.stringify(state.pay));
@@ -1324,11 +1333,14 @@ async function getRosterRowsForPay() {
   return localRows;
 }
 
-function payPeriodFromWeekKey(weekStartKey) {
-  const start = parseDateKey(weekStartKey);
-  if (!start) return "";
-  const end = new Date(start);
-  end.setDate(start.getDate() + 6);
+function payPeriodFromPayWeekKey(payWeekKey) {
+  const weekStart = parseDateKey(payWeekKey);
+  if (!weekStart) return "";
+  // Driver pay period is Thursday-to-Thursday, ending on the payment Thursday.
+  const end = new Date(weekStart);
+  end.setDate(weekStart.getDate() + 3);
+  const start = new Date(end);
+  start.setDate(end.getDate() - 7);
   const fmt = { day: "2-digit", month: "short", year: "numeric" };
   return `${start.toLocaleDateString("en-AU", fmt)} - ${end.toLocaleDateString("en-AU", fmt)}`;
 }
@@ -1375,7 +1387,7 @@ function dedupePayRows(rows) {
 
 function buildPayRowsFromRoster(rows, payWeekKey) {
   const sourceWeekKey = sourceRosterWeekKeyFromPayWeek(payWeekKey) || payWeekKey;
-  const payPeriod = payPeriodFromWeekKey(sourceWeekKey);
+  const payPeriod = payPeriodFromPayWeekKey(payWeekKey);
   const paymentDate = paymentDateFromWeekKey(payWeekKey);
   const existingByDriverPeriod = new Map(
     state.pay.map((item) => [`${String(item.driver || "").trim()}__${String(item.payPeriod || "").trim()}`, item])
@@ -1797,8 +1809,7 @@ function drawPay() {
   const tbody = document.getElementById("payTableBody");
   const query = (document.getElementById("paySearch")?.value || "").trim().toLowerCase();
   const selectedPayWeekKey = mondayKeyFrom(document.getElementById("payRosterWeekStart")?.value || formatDateKey(new Date()));
-  const selectedSourceWeekKey = sourceRosterWeekKeyFromPayWeek(selectedPayWeekKey) || selectedPayWeekKey;
-  const selectedPayPeriod = payPeriodFromWeekKey(selectedSourceWeekKey);
+  const selectedPayPeriod = payPeriodFromPayWeekKey(selectedPayWeekKey);
   const filtered = state.pay.filter((item) => {
     if (!query) return !selectedPayPeriod || item.payPeriod === selectedPayPeriod;
     const hay = `${item.driver} ${item.truckNumber || ""} ${item.payPeriod} ${item.paymentDate} ${item.autoPay || ""} ${item.autoPayRef || ""}`.toLowerCase();
