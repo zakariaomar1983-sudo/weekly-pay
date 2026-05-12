@@ -458,7 +458,9 @@
         { name: "Suhen Omar", truck: "620" }
       ];
       const REQUIRED_DRIVER_NAMES = ["Soleh Sungkar"];
-      const EXCLUDED_DRIVER_NAMES = new Set();
+      const EXCLUDED_DRIVER_NAMES = new Set([
+        normalizeDriverNameKey("Muhammed A H Siyad")
+      ]);
       const AUTO_TEMPLATE_BLOCKED_DRIVERS = new Set([
         normalizeDriverNameKey("Muhammed A H Siyad"),
         normalizeDriverNameKey("Faaid Warsame")
