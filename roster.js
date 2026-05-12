@@ -2279,6 +2279,7 @@ function drawBoardLegend() {
 
   const items = [
     { tone: "live", label: "Scheduled" },
+    { tone: "live", label: "Training" },
     { tone: "done", label: "Completed" },
     { tone: "leave", label: "Leave" },
     { tone: "absent", label: "Absent" },
