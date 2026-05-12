@@ -64,13 +64,14 @@ const FALLBACK_DRIVERS = [
   { id: "fallback-driver-7", name: "Samatar Yusuf", status: "Active" }
 ];
 const FALLBACK_TRUCKS = [
-  { id: "fallback-truck-1", truckNumber: "840", status: "Available" },
-  { id: "fallback-truck-2", truckNumber: "881", status: "Available" },
-  { id: "fallback-truck-3", truckNumber: "855", status: "Available" },
-  { id: "fallback-truck-4", truckNumber: "853", status: "Available" },
-  { id: "fallback-truck-5", truckNumber: "672", status: "Available" },
-  { id: "fallback-truck-6", truckNumber: "620", status: "Available" },
-  { id: "fallback-truck-7", truckNumber: "841", status: "Available" }
+  { id: "fallback-truck-1", truckNumber: "330", status: "Available" },
+  { id: "fallback-truck-2", truckNumber: "840", status: "Available" },
+  { id: "fallback-truck-3", truckNumber: "881", status: "Available" },
+  { id: "fallback-truck-4", truckNumber: "855", status: "Available" },
+  { id: "fallback-truck-5", truckNumber: "853", status: "Available" },
+  { id: "fallback-truck-6", truckNumber: "672", status: "Available" },
+  { id: "fallback-truck-7", truckNumber: "620", status: "Available" },
+  { id: "fallback-truck-8", truckNumber: "841", status: "Available" }
 ];
 const PRIMARY_TRUCK_BY_DRIVER = new Map([
   ["Abdirizak Ahmed", "853"],
