@@ -181,16 +181,8 @@
         <p id="rosterDriverPoolStatus" class="muted">Choose which drivers are included in this roster.</p>
         <div class="form-grid">
           <label>Add Driver To Roster
-            <select id="rosterDriverQuickAdd">
-              <option value="">Select driver to add</option>
-              <option value="Abdirizak Ahmed">Abdirizak Ahmed</option>
-              <option value="Imran Abdella">Imran Abdella</option>
-              <option value="Ramzi Mohamed">Ramzi Mohamed</option>
-              <option value="Samatar Yusuf">Samatar Yusuf</option>
-              <option value="Sharmake Hashi">Sharmake Hashi</option>
-              <option value="Soleh Sungkar">Soleh Sungkar</option>
-              <option value="Suhen Omar">Suhen Omar</option>
-            </select>
+            <input id="rosterDriverQuickAdd" type="text" list="rosterDriverList" placeholder="Type or select driver to add" />
+            <datalist id="rosterDriverList"></datalist>
           </label>
           <div class="actions full">
             <button id="addRosterDriverBtn" class="btn btn-outline" type="button">Add Driver</button>
@@ -327,6 +319,16 @@
 
       function setOptions(select, values, placeholder, currentValue) {
         if (!select) return;
+        if (select.tagName === "INPUT") {
+          const listId = select.getAttribute("list");
+          const dataList = listId ? document.getElementById(listId) : null;
+          if (dataList) {
+            dataList.innerHTML = values.map((value) => `<option value="${escapeHtml(value)}"></option>`).join("");
+          }
+          select.placeholder = placeholder;
+          if (typeof currentValue === "string") select.value = currentValue;
+          return;
+        }
         const options = [`<option value="">${escapeHtml(placeholder)}</option>`]
           .concat(values.map((value) => `<option value="${escapeHtml(value)}">${escapeHtml(value)}</option>`));
         select.innerHTML = options.join("");
@@ -355,14 +357,15 @@
         const includedSet = new Set(included.map((name) => name.toLowerCase()));
         const addable = available.filter((name) => !includedSet.has(name.toLowerCase()));
 
-        setOptions(quickAdd, addable, addable.length ? "Select driver to add" : "All active drivers already included", quickAdd.value || "");
+        setOptions(quickAdd, addable, addable.length ? "Type or select driver to add" : "Type a driver name to add", quickAdd.value || "");
         setOptions(driverName, included, "Select driver", driverName.value || "");
 
         chipsWrap.innerHTML = included.map((name) => (
           `<button type="button" class="contact-link contact-link-neutral" data-fallback-remove-driver="${escapeHtml(name)}" title="Remove ${escapeHtml(name)} from this roster">${escapeHtml(name)} &times;</button>`
         )).join("");
         status.textContent = `${included.length} driver${included.length === 1 ? "" : "s"} included in this roster.`;
-        addBtn.disabled = !addable.length;
+        const typedName = normalizeName(quickAdd.value || "");
+        addBtn.disabled = !typedName || includedSet.has(typedName.toLowerCase());
       }
 
       function installFallbackHandlers() {
@@ -379,8 +382,13 @@
           const base = includedDriverNames(available);
           if (!base.some((item) => item.toLowerCase() === name.toLowerCase())) {
             writePool([...base, name]);
+            quickAdd.value = "";
             renderFallbackManager();
           }
+        });
+
+        quickAdd.addEventListener("input", () => {
+          renderFallbackManager();
         });
 
         resetBtn.addEventListener("click", () => {

@@ -1423,7 +1423,7 @@ function purgeExcludedDriversFromDriverStore() {
   }
 }
 
-function takeDriverOffSelectedWeek(driverName) {
+function takeDriverOffSelectedWeek(driverName, { removeFromRosterList = false } = {}) {
   const canonicalName = canonicalDriverName(driverName);
   if (!canonicalName) return;
   const weekKey = selectedWeekStartKey();
@@ -1439,7 +1439,9 @@ function takeDriverOffSelectedWeek(driverName) {
   if (state.roster.length !== before) {
     saveData();
   }
-  removeDriverFromRosterPool(canonicalName);
+  if (removeFromRosterList) {
+    removeDriverFromRosterPool(canonicalName);
+  }
 }
 
 function getActiveTrucks() {
@@ -2342,6 +2344,16 @@ function drawRosterModel() {
 function buildBoardRowMarkup(plan, weekKeys) {
   const weekKey = weekKeys[0] || "";
   const acknowledgementBadge = plan.isPlaceholder ? "" : renderAcknowledgementBadge(plan.driverName, weekKey, true);
+  const rowActions = auth.can("editRoster")
+    ? (plan.isPlaceholder
+      ? `<div class='board-driver-actions'>
+          <button type='button' class='contact-link contact-link-whatsapp' data-action='focus-add-driver'>Add Driver</button>
+        </div>`
+      : `<div class='board-driver-actions'>
+          <button type='button' class='contact-link contact-link-neutral' data-action='remove-week-driver' data-driver-name='${escapeHtml(plan.driverName)}'>Remove Driver</button>
+          <button type='button' class='contact-link contact-link-danger' data-action='delete-roster-driver' data-driver-name='${escapeHtml(plan.driverName)}'>Delete Driver</button>
+        </div>`)
+    : "";
   const cells = weekKeys.map((dayKey, index) => {
     const items = plan.assignments[dayKey] || [];
     if (!items.length) {
@@ -2407,6 +2419,7 @@ function buildBoardRowMarkup(plan, weekKeys) {
         <div class='board-driver-name'>
           <strong>${plan.driverName}</strong>
           ${plan.isPlaceholder ? "<span class='board-slot-badge'>Open slot</span>" : `<span class='board-driver-meta'>Primary truck ${plan.truckNumber || "-"} | ${nightRuns} night run${nightRuns === 1 ? "" : "s"} | ${awayDays} away day${awayDays === 1 ? "" : "s"} | ${acknowledgementBadge}</span>`}
+          ${rowActions}
         </div>
       </td>
       ${cells}
@@ -2886,6 +2899,7 @@ document.getElementById("addRosterDriverBtn")?.addEventListener("click", () => {
     return;
   }
   setDispatchStatus(`${name} added to this roster.`, "success-text");
+  if (select) select.value = "";
   refresh();
 });
 document.getElementById("rosterDriverQuickAdd")?.addEventListener("input", refresh);
@@ -3015,6 +3029,52 @@ document.body.addEventListener("click", (e) => {
     }
     setDispatchStatus(removeShifts ? `${driverName} removed from roster and saved shifts deleted.` : `${driverName} removed from this roster list.`, "warning-text");
     refresh();
+    return;
+  }
+
+  if (action === "remove-week-driver") {
+    if (!auth.can("editRoster")) return;
+    const driverName = button.dataset.driverName || "";
+    const weekKey = selectedWeekStartKey();
+    if (!driverName || !weekKey) return;
+    if (!confirm(`Remove ${driverName} from week ${weekKey}?`)) return;
+    takeDriverOffSelectedWeek(driverName, { removeFromRosterList: false });
+    setDispatchStatus(`${driverName} removed from week ${weekKey}.`, "warning-text");
+    refresh();
+    return;
+  }
+
+  if (action === "delete-roster-driver") {
+    if (!auth.can("editRoster")) return;
+    const driverName = button.dataset.driverName || "";
+    if (!driverName) return;
+    if (!confirm(`Delete ${driverName} from the roster driver list?`)) return;
+    const removeShifts = confirm(`Also delete all saved shifts for ${driverName} in every week?`);
+    const result = removeDriverFromRosterPool(driverName, { removeShifts });
+    if (!result.removed) {
+      if (result.reason === "last-driver") {
+        alert("At least one driver must stay in the roster list.");
+      }
+      return;
+    }
+    setDispatchStatus(
+      removeShifts
+        ? `${driverName} deleted from roster list and all saved shifts were removed.`
+        : `${driverName} deleted from roster list.`,
+      "warning-text"
+    );
+    refresh();
+    return;
+  }
+
+  if (action === "focus-add-driver") {
+    if (!auth.can("editRoster")) return;
+    const input = document.getElementById("rosterDriverQuickAdd");
+    if (input) {
+      input.scrollIntoView({ behavior: "smooth", block: "center" });
+      input.focus();
+    }
+    setDispatchStatus("Type a driver name, then click Add Driver.", "muted");
     return;
   }
 
