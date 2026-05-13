@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
@@ -79,6 +79,7 @@
         <label>Truck Number
           <select id="truckNumber" class="roster-pick-select" required>
             <option value="">Select truck</option>
+            <option value="330">330</option>
             <option value="620">620</option>
             <option value="672">672</option>
             <option value="840">840</option>
@@ -107,6 +108,7 @@
         <label>Status
           <select id="rosterStatus" required>
             <option value="Scheduled">Scheduled</option>
+            <option value="Training">Training</option>
             <option value="Completed">Completed</option>
             <option value="Absent">Absent</option>
             <option value="Leave">Leave</option>
@@ -156,6 +158,7 @@
           <select id="rosterFilterStatus">
             <option value="">All</option>
             <option value="Scheduled">Scheduled</option>
+            <option value="Training">Training</option>
             <option value="Completed">Completed</option>
             <option value="Absent">Absent</option>
             <option value="Leave">Leave</option>
@@ -181,16 +184,8 @@
         <p id="rosterDriverPoolStatus" class="muted">Choose which drivers are included in this roster.</p>
         <div class="form-grid">
           <label>Add Driver To Roster
-            <select id="rosterDriverQuickAdd">
-              <option value="">Select driver to add</option>
-              <option value="Abdirizak Ahmed">Abdirizak Ahmed</option>
-              <option value="Imran Abdella">Imran Abdella</option>
-              <option value="Ramzi Mohamed">Ramzi Mohamed</option>
-              <option value="Samatar Yusuf">Samatar Yusuf</option>
-              <option value="Sharmake Hashi">Sharmake Hashi</option>
-              <option value="Soleh Sungkar">Soleh Sungkar</option>
-              <option value="Suhen Omar">Suhen Omar</option>
-            </select>
+            <input id="rosterDriverQuickAdd" type="text" list="rosterDriverList" placeholder="Type or select driver to add" />
+            <datalist id="rosterDriverList"></datalist>
           </label>
           <div class="actions full">
             <button id="addRosterDriverBtn" class="btn btn-outline" type="button">Add Driver</button>
@@ -250,7 +245,7 @@
   <script src="./supabase-config.js?v=20260413g"></script>
   <script src="./supabase-client.js?v=20260413g"></script>
   <script src="./seed-data.js?v=20260507b"></script>
-  <script src="./auth.js?v=20260423a"></script>
+  <script src="./auth.js?v=20260513a"></script>
   <script src="./roster.js?v=20260504b"></script>
   <script>
     (function rosterQuickAddRecovery() {
@@ -327,6 +322,16 @@
 
       function setOptions(select, values, placeholder, currentValue) {
         if (!select) return;
+        if (select.tagName === "INPUT") {
+          const listId = select.getAttribute("list");
+          const dataList = listId ? document.getElementById(listId) : null;
+          if (dataList) {
+            dataList.innerHTML = values.map((value) => `<option value="${escapeHtml(value)}"></option>`).join("");
+          }
+          select.placeholder = placeholder;
+          if (typeof currentValue === "string") select.value = currentValue;
+          return;
+        }
         const options = [`<option value="">${escapeHtml(placeholder)}</option>`]
           .concat(values.map((value) => `<option value="${escapeHtml(value)}">${escapeHtml(value)}</option>`));
         select.innerHTML = options.join("");
@@ -355,14 +360,15 @@
         const includedSet = new Set(included.map((name) => name.toLowerCase()));
         const addable = available.filter((name) => !includedSet.has(name.toLowerCase()));
 
-        setOptions(quickAdd, addable, addable.length ? "Select driver to add" : "All active drivers already included", quickAdd.value || "");
+        setOptions(quickAdd, addable, addable.length ? "Type or select driver to add" : "Type a driver name to add", quickAdd.value || "");
         setOptions(driverName, included, "Select driver", driverName.value || "");
 
         chipsWrap.innerHTML = included.map((name) => (
           `<button type="button" class="contact-link contact-link-neutral" data-fallback-remove-driver="${escapeHtml(name)}" title="Remove ${escapeHtml(name)} from this roster">${escapeHtml(name)} &times;</button>`
         )).join("");
         status.textContent = `${included.length} driver${included.length === 1 ? "" : "s"} included in this roster.`;
-        addBtn.disabled = !addable.length;
+        const typedName = normalizeName(quickAdd.value || "");
+        addBtn.disabled = !typedName || includedSet.has(typedName.toLowerCase());
       }
 
       function installFallbackHandlers() {
@@ -379,8 +385,13 @@
           const base = includedDriverNames(available);
           if (!base.some((item) => item.toLowerCase() === name.toLowerCase())) {
             writePool([...base, name]);
+            quickAdd.value = "";
             renderFallbackManager();
           }
+        });
+
+        quickAdd.addEventListener("input", () => {
+          renderFallbackManager();
         });
 
         resetBtn.addEventListener("click", () => {
@@ -447,7 +458,9 @@
         { name: "Suhen Omar", truck: "620" }
       ];
       const REQUIRED_DRIVER_NAMES = ["Soleh Sungkar"];
-      const EXCLUDED_DRIVER_NAMES = new Set();
+      const EXCLUDED_DRIVER_NAMES = new Set([
+        normalizeDriverNameKey("Muhammed A H Siyad")
+      ]);
       const AUTO_TEMPLATE_BLOCKED_DRIVERS = new Set([
         normalizeDriverNameKey("Muhammed A H Siyad"),
         normalizeDriverNameKey("Faaid Warsame")
@@ -1461,7 +1474,7 @@
                 data-template="${row.isTemplate ? "true" : "false"}"
                 draggable="${row.isTemplate ? "false" : "true"}"
                 title="${row.isTemplate ? "Click to load this template into the form." : "Click to edit or drag to move/swap this shift."}">
-                ${!row.isTemplate ? `<button type="button" class="board-chip-delete" data-board-delete="${row.id}" aria-label="Delete shift for ${row.driverName} on ${row.shiftDate}" title="Delete shift">×</button>` : ""}
+                ${!row.isTemplate ? `<button type="button" class="board-chip-delete" data-board-delete="${row.id}" aria-label="Delete shift for ${row.driverName} on ${row.shiftDate}" title="Delete shift">Ã—</button>` : ""}
                 <strong>${isAwayStatus(row.status) ? (isLeaveStatus(row.status) ? "On Leave" : "Absent") : displayTruck(row)}</strong>
                 ${row.isTemplate ? "<span>Template</span>" : ""}
                 ${row.nightRun ? "<span>Night Run +</span>" : ""}
@@ -1789,6 +1802,7 @@
   </script>
 </body>
 </html>
+
 
 
 

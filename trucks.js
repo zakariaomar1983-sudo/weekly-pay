@@ -26,7 +26,8 @@ const TRUCK_DEFAULTS_BY_NUMBER = new Map([
   ["620", { registration: "1KF3MA", model: "MITSUBISHI FUSO FIGHTER 6.0", capacity: 6, serviceDueDate: "2026-04-30", regoExpiryDate: "2026-09-18", status: "Available", notes: "" }],
   ["841", { registration: "XV90EH", model: "HINO", capacity: 8, serviceDueDate: "2026-07-01", regoExpiryDate: "2026-08-11", status: "Available", notes: "" }]
 ]);
-const state = { trucks: repairSparseTruckRows(readData()) };
+const REQUIRED_TRUCK_NUMBERS = ["853"];
+const state = { trucks: readData() };
 let truckAttachmentStore = readTruckAttachmentStore();
 let truckSyncTimerId = 0;
 let truckSearchTimerId = 0;
@@ -226,7 +227,15 @@ function ensureUuidTrucks(rows) {
 
 function readData() {
   try {
-    return ensureUuidTrucks(JSON.parse(localStorage.getItem(KEY) || "[]"));
+    const parsed = JSON.parse(localStorage.getItem(KEY) || "[]");
+    const rows = Array.isArray(parsed) ? parsed : [];
+    const withUuid = ensureUuidTrucks(rows);
+    const repaired = repairSparseTruckRows(withUuid);
+    const withRequired = ensureRequiredTrucks(repaired);
+    if (withRequired.changed) {
+      localStorage.setItem(KEY, JSON.stringify(withRequired.rows));
+    }
+    return withRequired.rows;
   } catch {
     return [];
   }
@@ -259,6 +268,49 @@ function repairSparseTruckRows(rows) {
     localStorage.setItem(KEY, JSON.stringify(repaired));
   }
   return repaired;
+}
+
+function ensureRequiredTrucks(rows) {
+  const list = Array.isArray(rows) ? [...rows] : [];
+  const byTruckNumber = new Set(
+    list
+      .map((row) => String(row?.truckNumber || "").trim())
+      .filter(Boolean)
+  );
+  let changed = false;
+
+  REQUIRED_TRUCK_NUMBERS.forEach((truckNumber) => {
+    const number = String(truckNumber || "").trim();
+    if (!number || byTruckNumber.has(number)) return;
+    const defaults = TRUCK_DEFAULTS_BY_NUMBER.get(number) || {};
+    list.push(normalizeTruckRecord({
+      id: newId(),
+      truckNumber: number,
+      registration: defaults.registration || "",
+      model: defaults.model || "",
+      capacity: Number(defaults.capacity || 0),
+      serviceDueDate: defaults.serviceDueDate || "",
+      regoExpiryDate: defaults.regoExpiryDate || "",
+      status: defaults.status || "Available",
+      notes: defaults.notes || ""
+    }));
+    changed = true;
+  });
+
+  return { rows: list, changed };
+}
+
+function ensureRequiredTrucksInState({ persist = true, syncWhenOnline = false } = {}) {
+  const repaired = ensureRequiredTrucks(repairSparseTruckRows(state.trucks));
+  if (!repaired.changed) return false;
+  state.trucks = repaired.rows;
+  if (persist) {
+    localStorage.setItem(KEY, JSON.stringify(state.trucks));
+  }
+  if (syncWhenOnline && useSupabase) {
+    scheduleTrucksSync(0);
+  }
+  return true;
 }
 
 function readTruckAttachmentStore() {
@@ -566,7 +618,7 @@ async function hydrateTrucksFromSupabase() {
     const remote = fromDbTruck(row);
     return mergeTruckRecords(remote, localById.get(remote.id));
   });
-  state.trucks = repairSparseTruckRows(state.trucks);
+  state.trucks = ensureRequiredTrucks(repairSparseTruckRows(state.trucks)).rows;
   localStorage.setItem(KEY, JSON.stringify(state.trucks));
   setTrucksSyncStatus("Shared truck data loaded.", "live");
   refresh();
@@ -757,6 +809,7 @@ function drawTable() {
 }
 
 function refresh() {
+  ensureRequiredTrucksInState({ persist: true, syncWhenOnline: true });
   truckAttachmentStore = readTruckAttachmentStore();
   drawStats();
   drawRegoAlerts();

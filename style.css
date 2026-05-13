@@ -1416,6 +1416,13 @@ tr.row-rego-soon td {
   line-height: 1.35;
 }
 
+.board-driver-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  margin-top: 0.2rem;
+}
+
 .board-slot-badge {
   display: inline-flex;
   width: fit-content;

@@ -12,8 +12,10 @@ const DRIVER_ATTACHMENTS_KEY = "transport_crm_driver_attachments";
 const DRIVERS_SYNC_STATUS_KEY = "transport_crm_drivers_sync_status";
 const DRIVERS_UPDATED_KEY = "transport_crm_drivers_updated_at";
 const DRIVERS_TABLE = "drivers";
-const EXCLUDED_DRIVER_NAMES = new Set();
-const REQUIRED_DRIVER_NAMES = ["Muhammed A H Siyad", "Faaid Warsame"];
+const EXCLUDED_DRIVER_NAMES = new Set([
+  normalizeDriverNameKey("Muhammed A H Siyad")
+]);
+const REQUIRED_DRIVER_NAMES = ["Faaid Warsame"];
 const DRIVER_SYNC_RETRY_DELAYS_MS = [2000, 5000, 10000, 30000];
 const DRIVER_ATTACHMENT_LIMIT = 5;
 const DRIVER_ATTACHMENT_MAX_BYTES = 1.5 * 1024 * 1024;
