@@ -5,6 +5,19 @@
     session: "opx_auth_session",
     audit: "transport_crm_staff_audit"
   };
+  const TRUCKS_STORAGE_KEY = "transport_crm_trucks";
+  const REQUIRED_TRUCK_DEFAULTS = [
+    {
+      truckNumber: "853",
+      registration: "XW40BN",
+      model: "ISUZU FVL 1400",
+      capacity: 12,
+      serviceDueDate: "2026-05-14",
+      regoExpiryDate: "2026-07-02",
+      status: "Available",
+      notes: ""
+    }
+  ];
   const SYNC_HEALTH_STORAGE_KEYS = [
     "transport_crm_drivers_sync_status",
     "transport_crm_trucks_sync_status",
@@ -775,6 +788,49 @@
     return users;
   }
 
+  function newCoreTruckId() {
+    if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
+      return crypto.randomUUID();
+    }
+    return `${Date.now()}_${Math.random().toString(16).slice(2, 10)}`;
+  }
+
+  function normalizeTruckNumberFromRow(row) {
+    return String(row?.truckNumber ?? row?.truck_number ?? "").trim();
+  }
+
+  function ensureCoreTruckRows() {
+    const current = read(TRUCKS_STORAGE_KEY, []);
+    if (!Array.isArray(current)) return;
+
+    const rows = current.filter((row) => row && typeof row === "object");
+    const existingTruckNumbers = new Set(
+      rows.map((row) => normalizeTruckNumberFromRow(row)).filter(Boolean)
+    );
+    let changed = false;
+
+    REQUIRED_TRUCK_DEFAULTS.forEach((defaults) => {
+      const truckNumber = String(defaults.truckNumber || "").trim();
+      if (!truckNumber || existingTruckNumbers.has(truckNumber)) return;
+      rows.push({
+        id: newCoreTruckId(),
+        truckNumber,
+        registration: defaults.registration || "",
+        model: defaults.model || "",
+        capacity: Number(defaults.capacity || 0),
+        serviceDueDate: defaults.serviceDueDate || "",
+        regoExpiryDate: defaults.regoExpiryDate || "",
+        status: defaults.status || "Available",
+        notes: defaults.notes || ""
+      });
+      changed = true;
+    });
+
+    if (changed) {
+      write(TRUCKS_STORAGE_KEY, rows);
+    }
+  }
+
   function init() {
     const currentRoles = read(STORAGE.roles, []);
     const nextRoles = normalizeRoles(currentRoles);
@@ -787,6 +843,7 @@
     if (JSON.stringify(nextUsers) !== JSON.stringify(currentUsers)) {
       write(STORAGE.users, nextUsers);
     }
+    ensureCoreTruckRows();
   }
 
   function healCoreAccess() {
