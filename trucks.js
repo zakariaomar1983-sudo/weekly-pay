@@ -10,6 +10,12 @@ const KEY = "transport_crm_trucks";
 const TRUCK_ATTACHMENTS_KEY = "transport_crm_truck_attachments";
 const TRUCKS_SYNC_STATUS_KEY = "transport_crm_trucks_sync_status";
 const TRUCKS_TABLE = "trucks";
+const TRUCK_SOURCE_STORAGE_KEYS = [
+  "transport_crm_roster",
+  "transport_crm_truck_income",
+  "transport_crm_spending",
+  "transport_crm_payslips"
+];
 const TRUCK_SYNC_RETRY_DELAYS_MS = [2000, 5000, 10000, 30000];
 const TRUCK_ATTACHMENT_LIMIT = 5;
 const TRUCK_ATTACHMENT_MAX_BYTES = 1.5 * 1024 * 1024;
@@ -232,10 +238,11 @@ function readData() {
     const withUuid = ensureUuidTrucks(rows);
     const repaired = repairSparseTruckRows(withUuid);
     const withRequired = ensureRequiredTrucks(repaired);
-    if (withRequired.changed) {
-      localStorage.setItem(KEY, JSON.stringify(withRequired.rows));
+    const withReferenced = ensureReferencedTrucks(withRequired.rows);
+    if (withRequired.changed || withReferenced.changed) {
+      localStorage.setItem(KEY, JSON.stringify(withReferenced.rows));
     }
-    return withRequired.rows;
+    return withReferenced.rows;
   } catch {
     return [];
   }
@@ -300,10 +307,69 @@ function ensureRequiredTrucks(rows) {
   return { rows: list, changed };
 }
 
+function readStorageArray(key) {
+  try {
+    const parsed = JSON.parse(localStorage.getItem(key) || "[]");
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+}
+
+function normalizeTruckNumberKey(value) {
+  return String(value || "").trim().toUpperCase();
+}
+
+function collectReferencedTruckNumbers() {
+  const numbers = new Set();
+  TRUCK_SOURCE_STORAGE_KEYS.forEach((key) => {
+    const rows = readStorageArray(key);
+    rows.forEach((row) => {
+      const number = normalizeTruckNumberKey(row?.truckNumber ?? row?.truck_number);
+      if (!number) return;
+      if (!/[A-Z0-9]/.test(number)) return;
+      if (number === "-" || number === "N/A") return;
+      numbers.add(number);
+    });
+  });
+  return numbers;
+}
+
+function ensureReferencedTrucks(rows) {
+  const list = Array.isArray(rows) ? [...rows] : [];
+  const byTruckNumber = new Set(
+    list
+      .map((row) => normalizeTruckNumberKey(row?.truckNumber))
+      .filter(Boolean)
+  );
+  let changed = false;
+  const referenced = collectReferencedTruckNumbers();
+
+  referenced.forEach((number) => {
+    if (!number || byTruckNumber.has(number)) return;
+    const defaults = TRUCK_DEFAULTS_BY_NUMBER.get(number) || {};
+    list.push(normalizeTruckRecord({
+      id: newId(),
+      truckNumber: number,
+      registration: defaults.registration || "",
+      model: defaults.model || "",
+      capacity: Number(defaults.capacity || 0),
+      serviceDueDate: defaults.serviceDueDate || "",
+      regoExpiryDate: defaults.regoExpiryDate || "",
+      status: defaults.status || "Available",
+      notes: defaults.notes || "Auto-added from roster/finance records"
+    }));
+    changed = true;
+  });
+
+  return { rows: list, changed };
+}
+
 function ensureRequiredTrucksInState({ persist = true, syncWhenOnline = false } = {}) {
-  const repaired = ensureRequiredTrucks(repairSparseTruckRows(state.trucks));
-  if (!repaired.changed) return false;
-  state.trucks = repaired.rows;
+  const required = ensureRequiredTrucks(repairSparseTruckRows(state.trucks));
+  const referenced = ensureReferencedTrucks(required.rows);
+  if (!required.changed && !referenced.changed) return false;
+  state.trucks = referenced.rows;
   if (persist) {
     localStorage.setItem(KEY, JSON.stringify(state.trucks));
   }
@@ -618,7 +684,9 @@ async function hydrateTrucksFromSupabase() {
     const remote = fromDbTruck(row);
     return mergeTruckRecords(remote, localById.get(remote.id));
   });
-  state.trucks = ensureRequiredTrucks(repairSparseTruckRows(state.trucks)).rows;
+  state.trucks = ensureReferencedTrucks(
+    ensureRequiredTrucks(repairSparseTruckRows(state.trucks)).rows
+  ).rows;
   localStorage.setItem(KEY, JSON.stringify(state.trucks));
   setTrucksSyncStatus("Shared truck data loaded.", "live");
   refresh();
