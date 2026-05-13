@@ -21,6 +21,10 @@ async function waitForSharedAuth() {
   });
 }
 
+function normalizeName(value) {
+  return String(value || "").trim().toLowerCase().replace(/\s+/g, " ");
+}
+
 function routeUser(user) {
   if (window.OPXAuth.canUser(user, "accessCRM")) {
     window.location.href = "./index.html";
@@ -50,6 +54,7 @@ async function startLogin() {
   const loginForm = document.getElementById("loginForm");
   const loginError = document.getElementById("loginError");
   const loginStatus = document.getElementById("loginStatus");
+  const repairLoginBtn = document.getElementById("repairLoginBtn");
   const sessionContinueWrap = document.getElementById("sessionContinueWrap");
   const continueSessionBtn = document.getElementById("continueSessionBtn");
   const firstRunPanel = document.getElementById("firstRunPanel");
@@ -83,6 +88,64 @@ async function startLogin() {
     loginForm.style.display = "";
     firstRunPanel.style.display = "none";
   }
+
+  repairLoginBtn?.addEventListener("click", async () => {
+    loginError.textContent = "";
+    if (loginStatus) loginStatus.textContent = "Repairing login data on this device...";
+
+    try {
+      window.OPXAuth.logout();
+      window.OPXAuth.healCoreAccess();
+      await waitForSharedAuth();
+
+      const usernameInput = document.getElementById("username");
+      const passwordInput = document.getElementById("password");
+      const typedUsername = String(usernameInput?.value || "").trim();
+      const typedPassword = String(passwordInput?.value || "");
+
+      const users = window.OPXAuth.getUsers();
+      const existing = users.find((user) => normalizeName(user?.username) === normalizeName(typedUsername));
+
+      // If a username + password are entered, use them as a recovery credential.
+      if (typedUsername && typedPassword) {
+        if (existing) {
+          window.OPXAuth.updateUser(existing.id, {
+            username: existing.username,
+            password: typedPassword,
+            roleId: existing.roleId || window.OPXAuth.SYSTEM_ROLE_IDS.admin,
+            active: true
+          });
+        } else {
+          window.OPXAuth.createUser({
+            username: typedUsername,
+            password: typedPassword,
+            roleId: window.OPXAuth.SYSTEM_ROLE_IDS.admin,
+            active: true
+          });
+        }
+      }
+
+      if (!window.OPXAuth.hasUsers()) {
+        loginForm.style.display = "none";
+        firstRunPanel.style.display = "block";
+        if (loginStatus) {
+          loginStatus.textContent = "Repair complete. No users exist yet, so create an admin account below.";
+        }
+        return;
+      }
+
+      loginForm.style.display = "";
+      firstRunPanel.style.display = "none";
+      if (loginStatus) {
+        loginStatus.textContent = typedUsername && typedPassword
+          ? "Repair complete. Try logging in with the username and password you entered."
+          : "Repair complete. Try logging in again.";
+      }
+    } catch (error) {
+      loginError.textContent = `Repair failed: ${error?.message || error}`;
+      if (loginStatus) loginStatus.textContent = "";
+    }
+  });
 
   loginForm.addEventListener("submit", (e) => {
     e.preventDefault();
