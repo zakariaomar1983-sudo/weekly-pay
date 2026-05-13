@@ -300,6 +300,19 @@ function ensureRequiredTrucks(rows) {
   return { rows: list, changed };
 }
 
+function ensureRequiredTrucksInState({ persist = true, syncWhenOnline = false } = {}) {
+  const repaired = ensureRequiredTrucks(repairSparseTruckRows(state.trucks));
+  if (!repaired.changed) return false;
+  state.trucks = repaired.rows;
+  if (persist) {
+    localStorage.setItem(KEY, JSON.stringify(state.trucks));
+  }
+  if (syncWhenOnline && useSupabase) {
+    scheduleTrucksSync(0);
+  }
+  return true;
+}
+
 function readTruckAttachmentStore() {
   try {
     const parsed = JSON.parse(localStorage.getItem(TRUCK_ATTACHMENTS_KEY) || "{}");
@@ -796,6 +809,7 @@ function drawTable() {
 }
 
 function refresh() {
+  ensureRequiredTrucksInState({ persist: true, syncWhenOnline: true });
   truckAttachmentStore = readTruckAttachmentStore();
   drawStats();
   drawRegoAlerts();

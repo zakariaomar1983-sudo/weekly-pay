@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
@@ -245,7 +245,7 @@
   <script src="./supabase-config.js?v=20260413g"></script>
   <script src="./supabase-client.js?v=20260413g"></script>
   <script src="./seed-data.js?v=20260507b"></script>
-  <script src="./auth.js?v=20260423a"></script>
+  <script src="./auth.js?v=20260513a"></script>
   <script src="./roster.js?v=20260504b"></script>
   <script>
     (function rosterQuickAddRecovery() {
@@ -1474,7 +1474,7 @@
                 data-template="${row.isTemplate ? "true" : "false"}"
                 draggable="${row.isTemplate ? "false" : "true"}"
                 title="${row.isTemplate ? "Click to load this template into the form." : "Click to edit or drag to move/swap this shift."}">
-                ${!row.isTemplate ? `<button type="button" class="board-chip-delete" data-board-delete="${row.id}" aria-label="Delete shift for ${row.driverName} on ${row.shiftDate}" title="Delete shift">×</button>` : ""}
+                ${!row.isTemplate ? `<button type="button" class="board-chip-delete" data-board-delete="${row.id}" aria-label="Delete shift for ${row.driverName} on ${row.shiftDate}" title="Delete shift">Ã—</button>` : ""}
                 <strong>${isAwayStatus(row.status) ? (isLeaveStatus(row.status) ? "On Leave" : "Absent") : displayTruck(row)}</strong>
                 ${row.isTemplate ? "<span>Template</span>" : ""}
                 ${row.nightRun ? "<span>Night Run +</span>" : ""}
@@ -1802,6 +1802,7 @@
   </script>
 </body>
 </html>
+
 
 
 
