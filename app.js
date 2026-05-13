@@ -17,6 +17,17 @@ const storageKeys = {
   roster: "transport_crm_roster",
   payslips: "transport_crm_payslips"
 };
+const REQUIRED_TRUCKS = [
+  {
+    truckNumber: "853",
+    registration: "XW40BN",
+    model: "ISUZU FVL 1400",
+    capacity: 12,
+    serviceDueDate: "2026-05-14",
+    status: "Available",
+    notes: ""
+  }
+];
 
 const state = {
   drivers: readData(storageKeys.drivers),
@@ -40,9 +51,79 @@ const moduleAccess = [
 
 const money = (value) => `$${Number(value || 0).toFixed(2)}`;
 
+function normalizeTruckNumber(value) {
+  return String(value || "").trim().toUpperCase();
+}
+
+function readArrayFromStorage(key) {
+  try {
+    const parsed = JSON.parse(localStorage.getItem(key) || "[]");
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+}
+
+function ensureTruckRows(rows) {
+  const list = Array.isArray(rows) ? [...rows] : [];
+  const existing = new Set(
+    list
+      .map((item) => normalizeTruckNumber(item?.truckNumber))
+      .filter(Boolean)
+  );
+  let changed = false;
+
+  REQUIRED_TRUCKS.forEach((defaults) => {
+    const truckNumber = normalizeTruckNumber(defaults.truckNumber);
+    if (!truckNumber || existing.has(truckNumber)) return;
+    list.push({
+      id: uid(),
+      truckNumber,
+      registration: defaults.registration || "",
+      model: defaults.model || "",
+      capacity: Number(defaults.capacity || 0),
+      serviceDueDate: defaults.serviceDueDate || "",
+      status: defaults.status || "Available",
+      notes: defaults.notes || ""
+    });
+    existing.add(truckNumber);
+    changed = true;
+  });
+
+  const referenceKeys = [storageKeys.roster, storageKeys.truckIncome, storageKeys.spending, storageKeys.payslips];
+  referenceKeys.forEach((key) => {
+    readArrayFromStorage(key).forEach((row) => {
+      const truckNumber = normalizeTruckNumber(row?.truckNumber || row?.truck_number);
+      if (!truckNumber || existing.has(truckNumber)) return;
+      if (truckNumber === "-" || truckNumber === "N/A") return;
+      list.push({
+        id: uid(),
+        truckNumber,
+        registration: "",
+        model: "",
+        capacity: 0,
+        serviceDueDate: "",
+        status: "Available",
+        notes: "Auto-added from saved records"
+      });
+      existing.add(truckNumber);
+      changed = true;
+    });
+  });
+
+  return { rows: list, changed };
+}
+
 function readData(key) {
   try {
-    return JSON.parse(localStorage.getItem(key) || "[]");
+    const parsed = JSON.parse(localStorage.getItem(key) || "[]");
+    const rows = Array.isArray(parsed) ? parsed : [];
+    if (key !== storageKeys.trucks) return rows;
+    const ensured = ensureTruckRows(rows);
+    if (ensured.changed) {
+      localStorage.setItem(key, JSON.stringify(ensured.rows));
+    }
+    return ensured.rows;
   } catch {
     return [];
   }
@@ -216,6 +297,11 @@ function drawPayslips() {
 }
 
 function refresh() {
+  const ensuredTrucks = ensureTruckRows(state.trucks);
+  if (ensuredTrucks.changed) {
+    state.trucks = ensuredTrucks.rows;
+    saveData(storageKeys.trucks, state.trucks);
+  }
   drawDrivers();
   drawTrucks();
   drawTruckIncome();

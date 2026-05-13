@@ -19,8 +19,8 @@ const TRUCK_SOURCE_STORAGE_KEYS = [
 const TRUCK_SYNC_RETRY_DELAYS_MS = [2000, 5000, 10000, 30000];
 const TRUCK_ATTACHMENT_LIMIT = 5;
 const TRUCK_ATTACHMENT_MAX_BYTES = 1.5 * 1024 * 1024;
-const supabase = window.OPXSupabase?.client || null;
-const useSupabase = Boolean(window.OPXSupabase?.isReady && supabase);
+const trucksSupabaseClient = window.OPXSupabase?.client || null;
+const useSupabase = Boolean(window.OPXSupabase?.isReady && trucksSupabaseClient);
 const REGO_NOTIFY_KEY = "transport_crm_rego_notify_state";
 const REGO_ALERT_WINDOW_DAYS = 30;
 const TRUCK_DEFAULTS_BY_NUMBER = new Map([
@@ -624,7 +624,7 @@ async function syncTrucksToSupabase() {
   const rows = state.trucks.map(toDbTruck);
   try {
     if (!rows.length) {
-      const wipe = await supabase.from(TRUCKS_TABLE).delete().not("id", "is", null);
+      const wipe = await trucksSupabaseClient.from(TRUCKS_TABLE).delete().not("id", "is", null);
       if (wipe.error) {
         console.error("Supabase delete sync failed for trucks:", wipe.error.message);
         queueTruckSyncRetry(wipe.error.message);
@@ -635,7 +635,7 @@ async function syncTrucksToSupabase() {
       return true;
     }
 
-    const { error } = await supabase.from(TRUCKS_TABLE).upsert(rows, { onConflict: "id" });
+    const { error } = await trucksSupabaseClient.from(TRUCKS_TABLE).upsert(rows, { onConflict: "id" });
     if (error) {
       console.error("Supabase sync failed for trucks:", error.message);
       queueTruckSyncRetry(error.message);
@@ -644,7 +644,7 @@ async function syncTrucksToSupabase() {
 
     const ids = rows.map((r) => r.id);
     const inList = `(${ids.map((id) => `"${String(id).replaceAll('"', "")}"`).join(",")})`;
-    const cleanup = await supabase.from(TRUCKS_TABLE).delete().not("id", "in", inList);
+    const cleanup = await trucksSupabaseClient.from(TRUCKS_TABLE).delete().not("id", "in", inList);
     if (cleanup.error) {
       console.error("Supabase cleanup failed for trucks:", cleanup.error.message);
       queueTruckSyncRetry(cleanup.error.message);
@@ -665,7 +665,7 @@ async function syncTrucksToSupabase() {
 async function hydrateTrucksFromSupabase() {
   if (!useSupabase) return;
   setTrucksSyncStatus("Checking shared truck data...", "syncing");
-  const { data, error } = await supabase.from(TRUCKS_TABLE).select("*");
+  const { data, error } = await trucksSupabaseClient.from(TRUCKS_TABLE).select("*");
   if (error) {
     console.error("Supabase load failed for trucks:", error.message);
     setTrucksSyncStatus("Shared truck sync unavailable. Using this device's saved data.", "local");
