@@ -1,4 +1,7 @@
 {
+  "engines": {
+    "node": "22.x"
+  },
   "scripts": {
     "dev": "node local-server.js",
     "start": "node local-server.js",
