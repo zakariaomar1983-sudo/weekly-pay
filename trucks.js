@@ -24,6 +24,7 @@ const useSupabase = Boolean(window.OPXSupabase?.isReady && trucksSupabaseClient)
 const REGO_NOTIFY_KEY = "transport_crm_rego_notify_state";
 const REGO_ALERT_WINDOW_DAYS = 30;
 const TRUCK_DEFAULTS_BY_NUMBER = new Map([
+  ["330", { registration: "N/A", model: "TRUCK 330", capacity: 0, serviceDueDate: "", regoExpiryDate: "", status: "Available", notes: "" }],
   ["840", { registration: "XW46EK", model: "ISUZU FVL  1400", capacity: 8, serviceDueDate: "2026-04-10", regoExpiryDate: "2026-04-29", status: "Available", notes: "" }],
   ["881", { registration: "XW91GW", model: "MITSO FUSO FIGHTER 10.0", capacity: 12, serviceDueDate: "2026-04-11", regoExpiryDate: "2027-04-11", status: "Available", notes: "" }],
   ["855", { registration: "XW64YE", model: "Hino GD184R-Q3", capacity: 12, serviceDueDate: "2026-04-24", regoExpiryDate: "2026-04-26", status: "Available", notes: "" }],
@@ -32,7 +33,9 @@ const TRUCK_DEFAULTS_BY_NUMBER = new Map([
   ["620", { registration: "1KF3MA", model: "MITSUBISHI FUSO FIGHTER 6.0", capacity: 6, serviceDueDate: "2026-04-30", regoExpiryDate: "2026-09-18", status: "Available", notes: "" }],
   ["841", { registration: "XV90EH", model: "HINO", capacity: 8, serviceDueDate: "2026-07-01", regoExpiryDate: "2026-08-11", status: "Available", notes: "" }]
 ]);
-const REQUIRED_TRUCK_NUMBERS = ["853"];
+const REQUIRED_TRUCK_NUMBERS = ["330", "853"];
+const DELETED_TRUCK_NUMBERS = new Set(["001", "002"]);
+const DELETE_SPARSE_ONLY_TRUCK_NUMBERS = new Set(["672"]);
 const state = { trucks: readData() };
 let truckAttachmentStore = readTruckAttachmentStore();
 let truckSyncTimerId = 0;
@@ -239,10 +242,11 @@ function readData() {
     const repaired = fillMissingTruckDefaults(repairSparseTruckRows(withUuid));
     const withRequired = ensureRequiredTrucks(repaired);
     const withReferenced = ensureReferencedTrucks(withRequired.rows);
-    if (withRequired.changed || withReferenced.changed) {
-      localStorage.setItem(KEY, JSON.stringify(withReferenced.rows));
+    const purged = purgeDeletedTrucks(withReferenced.rows);
+    if (withRequired.changed || withReferenced.changed || purged.changed) {
+      localStorage.setItem(KEY, JSON.stringify(purged.rows));
     }
-    return withReferenced.rows;
+    return purged.rows;
   } catch {
     return [];
   }
@@ -309,7 +313,7 @@ function fillMissingTruckDefaults(rows) {
 }
 
 function ensureRequiredTrucks(rows) {
-  const list = Array.isArray(rows) ? [...rows] : [];
+  const list = (Array.isArray(rows) ? rows : []).filter((row) => !shouldDeleteTruckRow(row));
   const byTruckNumber = new Set(
     list
       .map((row) => String(row?.truckNumber || "").trim())
@@ -319,6 +323,7 @@ function ensureRequiredTrucks(rows) {
 
   REQUIRED_TRUCK_NUMBERS.forEach((truckNumber) => {
     const number = String(truckNumber || "").trim();
+    if (isDeletedTruckNumber(number)) return;
     if (!number || byTruckNumber.has(number)) return;
     const defaults = TRUCK_DEFAULTS_BY_NUMBER.get(number) || {};
     list.push(normalizeTruckRecord({
@@ -351,6 +356,37 @@ function normalizeTruckNumberKey(value) {
   return String(value || "").trim().toUpperCase();
 }
 
+function isDeletedTruckNumber(value) {
+  return DELETED_TRUCK_NUMBERS.has(normalizeTruckNumberKey(value));
+}
+
+function shouldDeleteTruckRow(row) {
+  const number = normalizeTruckNumberKey(row?.truckNumber);
+  if (!number) return false;
+  if (isDeletedTruckNumber(number)) return true;
+  if (!DELETE_SPARSE_ONLY_TRUCK_NUMBERS.has(number)) return false;
+
+  const normalized = normalizeTruckRecord(row || {});
+  if (normalizeTruckNumberKey(normalized.registration) === "1DK3DE") return false;
+  return isSparseTruck(normalized) || !String(normalized.registration || "").trim();
+}
+
+function purgeDeletedTrucks(rows) {
+  const list = Array.isArray(rows) ? rows : [];
+  const nextRows = [];
+  let removedCount = 0;
+
+  list.forEach((row) => {
+    if (shouldDeleteTruckRow(row)) {
+      removedCount += 1;
+      return;
+    }
+    nextRows.push(row);
+  });
+
+  return { rows: nextRows, changed: removedCount > 0 };
+}
+
 function collectReferencedTruckNumbers() {
   const numbers = new Set();
   TRUCK_SOURCE_STORAGE_KEYS.forEach((key) => {
@@ -360,6 +396,7 @@ function collectReferencedTruckNumbers() {
       if (!number) return;
       if (!/[A-Z0-9]/.test(number)) return;
       if (number === "-" || number === "N/A") return;
+      if (isDeletedTruckNumber(number)) return;
       numbers.add(number);
     });
   });
@@ -367,7 +404,7 @@ function collectReferencedTruckNumbers() {
 }
 
 function ensureReferencedTrucks(rows) {
-  const list = Array.isArray(rows) ? [...rows] : [];
+  const list = (Array.isArray(rows) ? rows : []).filter((row) => !shouldDeleteTruckRow(row));
   const byTruckNumber = new Set(
     list
       .map((row) => normalizeTruckNumberKey(row?.truckNumber))
@@ -377,6 +414,7 @@ function ensureReferencedTrucks(rows) {
   const referenced = collectReferencedTruckNumbers();
 
   referenced.forEach((number) => {
+    if (isDeletedTruckNumber(number)) return;
     if (!number || byTruckNumber.has(number)) return;
     const defaults = TRUCK_DEFAULTS_BY_NUMBER.get(number) || {};
     list.push(normalizeTruckRecord({
@@ -399,8 +437,9 @@ function ensureReferencedTrucks(rows) {
 function ensureRequiredTrucksInState({ persist = true, syncWhenOnline = false } = {}) {
   const required = ensureRequiredTrucks(fillMissingTruckDefaults(repairSparseTruckRows(state.trucks)));
   const referenced = ensureReferencedTrucks(required.rows);
-  if (!required.changed && !referenced.changed) return false;
-  state.trucks = referenced.rows;
+  const purged = purgeDeletedTrucks(referenced.rows);
+  if (!required.changed && !referenced.changed && !purged.changed) return false;
+  state.trucks = purged.rows;
   if (persist) {
     localStorage.setItem(KEY, JSON.stringify(state.trucks));
   }
@@ -569,6 +608,7 @@ function openTruckAttachment(recordId, attachmentId) {
 }
 
 function saveData() {
+  state.trucks = purgeDeletedTrucks(state.trucks).rows;
   localStorage.setItem(KEY, JSON.stringify(state.trucks));
   if (useSupabase) {
     clearTruckSyncRetry(false);
@@ -718,6 +758,7 @@ async function hydrateTrucksFromSupabase() {
   state.trucks = ensureReferencedTrucks(
     ensureRequiredTrucks(fillMissingTruckDefaults(repairSparseTruckRows(state.trucks))).rows
   ).rows;
+  state.trucks = purgeDeletedTrucks(state.trucks).rows;
   localStorage.setItem(KEY, JSON.stringify(state.trucks));
   setTrucksSyncStatus("Shared truck data loaded.", "live");
   refresh();
@@ -1024,6 +1065,15 @@ document.getElementById("trucksForm").addEventListener("submit", (e) => {
     status: document.getElementById("truckStatus").value,
     notes: document.getElementById("truckNotes").value.trim()
   };
+
+  if (isDeletedTruckNumber(payload.truckNumber)) {
+    alert(`Truck ${payload.truckNumber} has been removed and cannot be added.`);
+    return;
+  }
+  if (shouldDeleteTruckRow(payload)) {
+    alert(`Truck ${payload.truckNumber} entry is incomplete and was blocked. Keep truck 672 with registration 1DK3DE.`);
+    return;
+  }
 
   state.trucks = id ? state.trucks.map((t) => t.id === id ? payload : t) : [...state.trucks, payload];
   saveData();
