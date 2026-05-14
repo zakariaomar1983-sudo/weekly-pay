@@ -75,6 +75,7 @@ const FALLBACK_TRUCKS = [
 ];
 const PRIMARY_TRUCK_BY_DRIVER = new Map([
   ["Abdirizak Ahmed", "853"],
+  ["Faaid Warsame", "620"],
   ["Imran Abdella", "881"],
   ["Muhammed A H Siyad", "620"],
   ["Ramzi Mohamed", "841"],
@@ -89,13 +90,12 @@ const LEGACY_DRIVER_NAME_ALIASES = new Map([
   [normalizeDriverNameKey("Mohammed Siyad"), "Muhammed A H Siyad"],
   [normalizeDriverNameKey("Muhamed Siyad"), "Muhammed A H Siyad"]
 ]);
-const REQUIRED_DRIVER_NAMES = ["Soleh Sungkar"];
+const REQUIRED_DRIVER_NAMES = ["Soleh Sungkar", "Faaid Warsame"];
 const ROSTER_EXCLUDED_DRIVER_NAMES = new Set([
   normalizeDriverNameKey("Muhammed A H Siyad")
 ]);
 const AUTO_TEMPLATE_BLOCKED_DRIVERS = new Set([
-  normalizeDriverNameKey("Muhammed A H Siyad"),
-  normalizeDriverNameKey("Faaid Warsame")
+  normalizeDriverNameKey("Muhammed A H Siyad")
 ]);
 const supabase = window.OPXSupabase?.client || null;
 const useSupabase = Boolean(window.OPXSupabase?.isReady && supabase);
@@ -3149,6 +3149,7 @@ ensureRosterReferenceFallbacks();
 purgeExcludedDriversFromDriverStore();
 purgeExcludedDriversFromRoster();
 ensureDriverInRosterPool("Soleh Sungkar");
+ensureDriverInRosterPool("Faaid Warsame");
 const todayMonday = mondayOf(todayKey());
 if (todayMonday) {
   document.getElementById("weekStart").value = dateToKey(todayMonday);

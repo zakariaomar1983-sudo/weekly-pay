@@ -1,0 +1,1783 @@
+0 verbose cli C:\Program Files\nodejs\node.exe C:\Program Files\nodejs\node_modules\npm\bin\npm-cli.js
+1 info using npm@11.9.0
+2 info using node@v24.14.0
+3 silly config load:file:C:\Program Files\nodejs\node_modules\npm\npmrc
+4 silly config load:file:C:\Users\zakar\OneDrive\WEEKLY PAY\.npmrc
+5 silly config load:file:C:\Users\zakar\.npmrc
+6 silly config load:file:C:\Users\zakar\AppData\Roaming\npm\etc\npmrc
+7 verbose title npm install
+8 verbose argv "install"
+9 verbose logfile logs-max:10 dir:C:\Users\zakar\OneDrive\WEEKLY PAY\Weekly CRM\.npm-cache\_logs\2026-05-13T18_32_41_679Z-
+10 verbose logfile C:\Users\zakar\OneDrive\WEEKLY PAY\Weekly CRM\.npm-cache\_logs\2026-05-13T18_32_41_679Z-debug-0.log
+11 silly logfile done cleaning log files
+12 silly packumentCache heap:4496293888 maxSize:1124073472 maxEntrySize:562036736
+13 silly idealTree buildDeps
+14 verbose shrinkwrap failed to load node_modules/.package-lock.json out of date, updated: node_modules
+15 http fetch GET https://registry.npmjs.org/npm attempt 1 failed with EACCES
+16 silly reify mark retired [ 'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\abbrev' ]
+17 silly reify mark retired [ 'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\agent-base' ]
+18 silly reify mark retired [
+18 silly reify   'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\acorn-import-attributes'
+18 silly reify ]
+19 silly reify mark retired [ 'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\ajv' ]
+20 silly reify mark retired [ 'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\argparse' ]
+21 silly reify mark retired [ 'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\any-promise' ]
+22 silly reify mark retired [ 'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\arg' ]
+23 silly reify mark retired [ 'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\acorn' ]
+24 silly reify mark retired [ 'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\ast-types' ]
+25 silly reify mark retired [
+25 silly reify   'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\async-listen'
+25 silly reify ]
+26 silly reify mark retired [ 'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\b4a' ]
+27 silly reify mark retired [ 'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\async-sema' ]
+28 silly reify mark retired [ 'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\asynckit' ]
+29 silly reify mark retired [ 'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\async-retry' ]
+30 silly reify mark retired [
+30 silly reify   'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\balanced-match'
+30 silly reify ]
+31 silly reify mark retired [ 'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\basic-ftp' ]
+32 silly reify mark retired [
+32 silly reify   'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\brace-expansion'
+32 silly reify ]
+33 silly reify mark retired [ 'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\bindings' ]
+34 silly reify mark retired [ 'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\braces' ]
+35 silly reify mark retired [
+35 silly reify   'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\buffer-crc32'
+35 silly reify ]
+36 silly reify mark retired [ 'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\bytes' ]
+37 silly reify mark retired [ 'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\bare-events' ]
+38 silly reify mark retired [
+38 silly reify   'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\call-bind-apply-helpers'
+38 silly reify ]
+39 silly reify mark retired [ 'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\chownr' ]
+40 silly reify mark retired [
+40 silly reify   'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\cjs-module-lexer'
+40 silly reify ]
+41 silly reify mark retired [
+41 silly reify   'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\combined-stream'
+41 silly reify ]
+42 silly reify mark retired [
+42 silly reify   'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\code-block-writer'
+42 silly reify ]
+43 silly reify mark retired [ 'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\concat-map' ]
+44 silly reify mark retired [
+44 silly reify   'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\content-type'
+44 silly reify ]
+45 silly reify mark retired [
+45 silly reify   'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\convert-hrtime'
+45 silly reify ]
+46 silly reify mark retired [ 'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\cookie-es' ]
+47 silly reify mark retired [ 'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\consola' ]
+48 silly reify mark retired [ 'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\cross-spawn' ]
+49 silly reify mark retired [ 'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\chokidar' ]
+50 silly reify mark retired [
+50 silly reify   'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\data-uri-to-buffer'
+50 silly reify ]
+51 silly reify mark retired [ 'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\debug' ]
+52 silly reify mark retired [
+52 silly reify   'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\delayed-stream'
+52 silly reify ]
+53 silly reify mark retired [ 'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\depd' ]
+54 silly reify mark retired [
+54 silly reify   'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\dunder-proto'
+54 silly reify ]
+55 silly reify mark retired [ 'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\detect-libc' ]
+56 silly reify mark retired [ 'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\degenerator' ]
+57 silly reify mark retired [
+57 silly reify   'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\edge-runtime'
+57 silly reify ]
+58 silly reify mark retired [
+58 silly reify   'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\end-of-stream'
+58 silly reify ]
+59 silly reify mark retired [
+59 silly reify   'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\es-module-lexer'
+59 silly reify ]
+60 silly reify mark retired [
+60 silly reify   'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\es-define-property'
+60 silly reify ]
+61 silly reify mark retired [ 'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\es-errors' ]
+62 silly reify mark retired [
+62 silly reify   'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\es-object-atoms'
+62 silly reify ]
+63 silly reify mark retired [
+63 silly reify   'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\es-set-tostringtag'
+63 silly reify ]
+64 silly reify mark retired [ 'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\escodegen' ]
+65 silly reify mark retired [ 'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\esprima' ]
+66 silly reify mark retired [ 'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\esbuild' ]
+67 silly reify mark retired [ 'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\estraverse' ]
+68 silly reify mark retired [
+68 silly reify   'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\estree-walker'
+68 silly reify ]
+69 silly reify mark retired [ 'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\esutils' ]
+70 silly reify mark retired [ 'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\etag' ]
+71 silly reify mark retired [
+71 silly reify   'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\events-intercept'
+71 silly reify ]
+72 silly reify mark retired [
+72 silly reify   'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\events-universal'
+72 silly reify ]
+73 silly reify mark retired [ 'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\execa' ]
+74 silly reify mark retired [
+74 silly reify   'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\fast-deep-equal'
+74 silly reify ]
+75 silly reify mark retired [ 'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\fast-fifo' ]
+76 silly reify mark retired [ 'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\fast-glob' ]
+77 silly reify mark retired [
+77 silly reify   'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\file-uri-to-path'
+77 silly reify ]
+78 silly reify mark retired [ 'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\fastq' ]
+79 silly reify mark retired [ 'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\form-data' ]
+80 silly reify mark retired [ 'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\fd-slicer' ]
+81 silly reify mark retired [ 'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\fill-range' ]
+82 silly reify mark retired [ 'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\fs-extra' ]
+83 silly reify mark retired [
+83 silly reify   'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\function-bind'
+83 silly reify ]
+84 silly reify mark retired [
+84 silly reify   'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\get-intrinsic'
+84 silly reify ]
+85 silly reify mark retired [
+85 silly reify   'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\generic-pool'
+85 silly reify ]
+86 silly reify mark retired [ 'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\get-proto' ]
+87 silly reify mark retired [ 'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\get-stream' ]
+88 silly reify mark retired [ 'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\get-uri' ]
+89 silly reify mark retired [ 'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\glob-parent' ]
+90 silly reify mark retired [ 'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\gopd' ]
+91 silly reify mark retired [ 'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\glob' ]
+92 silly reify mark retired [ 'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\graceful-fs' ]
+93 silly reify mark retired [ 'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\has-symbols' ]
+94 silly reify mark retired [
+94 silly reify   'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\has-tostringtag'
+94 silly reify ]
+95 silly reify mark retired [ 'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\hasown' ]
+96 silly reify mark retired [
+96 silly reify   'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\http-proxy-agent'
+96 silly reify ]
+97 silly reify mark retired [
+97 silly reify   'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\https-proxy-agent'
+97 silly reify ]
+98 silly reify mark retired [
+98 silly reify   'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\human-signals'
+98 silly reify ]
+99 silly reify mark retired [ 'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\iconv-lite' ]
+100 silly reify mark retired [ 'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\inherits' ]
+101 silly reify mark retired [ 'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\is-buffer' ]
+102 silly reify mark retired [ 'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\http-errors' ]
+103 silly reify mark retired [ 'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\ip-address' ]
+104 silly reify mark retired [ 'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\is-extglob' ]
+105 silly reify mark retired [ 'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\is-glob' ]
+106 silly reify mark retired [ 'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\is-number' ]
+107 silly reify mark retired [
+107 silly reify   'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\is-node-process'
+107 silly reify ]
+108 silly reify mark retired [ 'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\is-stream' ]
+109 silly reify mark retired [ 'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\isexe' ]
+110 silly reify mark retired [ 'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\js-yaml' ]
+111 silly reify mark retired [ 'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\jose' ]
+112 silly reify mark retired [
+112 silly reify   'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\json-schema-to-ts'
+112 silly reify ]
+113 silly reify mark retired [ 'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\jsonlines' ]
+114 silly reify mark retired [
+114 silly reify   'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\json-schema-traverse'
+114 silly reify ]
+115 silly reify mark retired [ 'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\lru-cache' ]
+116 silly reify mark retired [ 'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\luxon' ]
+117 silly reify mark retired [
+117 silly reify   'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\math-intrinsics'
+117 silly reify ]
+118 silly reify mark retired [
+118 silly reify   'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\merge-stream'
+118 silly reify ]
+119 silly reify mark retired [ 'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\micro' ]
+120 silly reify mark retired [ 'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\micromatch' ]
+121 silly reify mark retired [ 'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\mime-db' ]
+122 silly reify mark retired [ 'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\mime-types' ]
+123 silly reify mark retired [ 'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\merge2' ]
+124 silly reify mark retired [ 'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\mimic-fn' ]
+125 silly reify mark retired [ 'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\minimatch' ]
+126 silly reify mark retired [ 'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\minipass' ]
+127 silly reify mark retired [ 'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\minizlib' ]
+128 silly reify mark retired [ 'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\ms' ]
+129 silly reify mark retired [ 'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\mri' ]
+130 silly reify mark retired [ 'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\mkdirp' ]
+131 silly reify mark retired [ 'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\node-fetch' ]
+132 silly reify mark retired [ 'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\netmask' ]
+133 silly reify mark retired [
+133 silly reify   'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\node-gyp-build'
+133 silly reify ]
+134 silly reify mark retired [ 'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\nopt' ]
+135 silly reify mark retired [
+135 silly reify   'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\npm-run-path'
+135 silly reify ]
+136 silly reify mark retired [ 'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\once' ]
+137 silly reify mark retired [ 'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\onetime' ]
+138 silly reify mark retired [ 'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\os-paths' ]
+139 silly reify mark retired [ 'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\p-finally' ]
+140 silly reify mark retired [
+140 silly reify   'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\path-browserify'
+140 silly reify ]
+141 silly reify mark retired [ 'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\parse-ms' ]
+142 silly reify mark retired [
+142 silly reify   'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\pac-resolver'
+142 silly reify ]
+143 silly reify mark retired [ 'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\path-key' ]
+144 silly reify mark retired [
+144 silly reify   'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\oxc-transform'
+144 silly reify ]
+145 silly reify mark retired [ 'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\path-scurry' ]
+146 silly reify mark retired [
+146 silly reify   'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\path-to-regexp'
+146 silly reify ]
+147 silly reify mark retired [
+147 silly reify   'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\path-to-regexp-updated'
+147 silly reify ]
+148 silly reify mark retired [ 'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\pend' ]
+149 silly reify mark retired [
+149 silly reify   'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\pac-proxy-agent'
+149 silly reify ]
+150 silly reify mark retired [ 'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\picomatch' ]
+151 silly reify mark retired [ 'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\picocolors' ]
+152 silly reify mark retired [ 'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\pretty-ms' ]
+153 silly reify mark retired [ 'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\pump' ]
+154 silly reify mark retired [
+154 silly reify   'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\proxy-from-env'
+154 silly reify ]
+155 silly reify mark retired [ 'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\proxy-agent' ]
+156 silly reify mark retired [ 'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\punycode' ]
+157 silly reify mark retired [
+157 silly reify   'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\queue-microtask'
+157 silly reify ]
+158 silly reify mark retired [ 'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\promisepipe' ]
+159 silly reify mark retired [ 'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\raw-body' ]
+160 silly reify mark retired [
+160 silly reify   'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\require-from-string'
+160 silly reify ]
+161 silly reify mark retired [
+161 silly reify   'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\resolve-pkg-maps'
+161 silly reify ]
+162 silly reify mark retired [
+162 silly reify   'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\resolve.exports'
+162 silly reify ]
+163 silly reify mark retired [ 'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\readdirp' ]
+164 silly reify mark retired [ 'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\retry' ]
+165 silly reify mark retired [ 'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\rolldown' ]
+166 silly reify mark retired [ 'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\reusify' ]
+167 silly reify mark retired [
+167 silly reify   'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\resolve-from'
+167 silly reify ]
+168 silly reify mark retired [
+168 silly reify   'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\safer-buffer'
+168 silly reify ]
+169 silly reify mark retired [
+169 silly reify   'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\run-parallel'
+169 silly reify ]
+170 silly reify mark retired [ 'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\semver' ]
+171 silly reify mark retired [ 'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\sandbox' ]
+172 silly reify mark retired [
+172 silly reify   'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\shebang-command'
+172 silly reify ]
+173 silly reify mark retired [
+173 silly reify   'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\shebang-regex'
+173 silly reify ]
+174 silly reify mark retired [
+174 silly reify   'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\setprototypeof'
+174 silly reify ]
+175 silly reify mark retired [
+175 silly reify   'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\smart-buffer'
+175 silly reify ]
+176 silly reify mark retired [ 'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\signal-exit' ]
+177 silly reify mark retired [ 'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\smol-toml' ]
+178 silly reify mark retired [ 'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\socks' ]
+179 silly reify mark retired [
+179 silly reify   'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\socks-proxy-agent'
+179 silly reify ]
+180 silly reify mark retired [ 'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\stat-mode' ]
+181 silly reify mark retired [ 'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\srvx' ]
+182 silly reify mark retired [ 'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\sprintf-js' ]
+183 silly reify mark retired [
+183 silly reify   'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\stream-to-array'
+183 silly reify ]
+184 silly reify mark retired [ 'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\statuses' ]
+185 silly reify mark retired [
+185 silly reify   'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\stream-to-promise'
+185 silly reify ]
+186 silly reify mark retired [ 'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\streamx' ]
+187 silly reify mark retired [ 'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\source-map' ]
+188 silly reify mark retired [ 'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\tar' ]
+189 silly reify mark retired [ 'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\throttleit' ]
+190 silly reify mark retired [ 'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\tar-stream' ]
+191 silly reify mark retired [
+191 silly reify   'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\text-decoder'
+191 silly reify ]
+192 silly reify mark retired [ 'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\time-span' ]
+193 silly reify mark retired [ 'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\tinyexec' ]
+194 silly reify mark retired [
+194 silly reify   'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\strip-final-newline'
+194 silly reify ]
+195 silly reify mark retired [
+195 silly reify   'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\to-regex-range'
+195 silly reify ]
+196 silly reify mark retired [
+196 silly reify   'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\toidentifier'
+196 silly reify ]
+197 silly reify mark retired [ 'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\tr46' ]
+198 silly reify mark retired [ 'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\tree-kill' ]
+199 silly reify mark retired [ 'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\ts-toolbelt' ]
+200 silly reify mark retired [ 'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\tsx' ]
+201 silly reify mark retired [ 'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\undici' ]
+202 silly reify mark retired [ 'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\typescript' ]
+203 silly reify mark retired [ 'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\uid-promise' ]
+204 silly reify mark retired [ 'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\ts-morph' ]
+205 silly reify mark retired [ 'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\unpipe' ]
+206 silly reify mark retired [
+206 silly reify   'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\universalify'
+206 silly reify ]
+207 silly reify mark retired [ 'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\uri-js' ]
+208 silly reify mark retired [ 'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\web-vitals' ]
+209 silly reify mark retired [
+209 silly reify   'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\webidl-conversions'
+209 silly reify ]
+210 silly reify mark retired [ 'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\which' ]
+211 silly reify mark retired [ 'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\whatwg-url' ]
+212 silly reify mark retired [ 'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\wrappy' ]
+213 silly reify mark retired [ 'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\yallist' ]
+214 silly reify mark retired [
+214 silly reify   'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\xdg-app-paths'
+214 silly reify ]
+215 silly reify mark retired [ 'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\yauzl-clone' ]
+216 silly reify mark retired [ 'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\yauzl' ]
+217 silly reify mark retired [ 'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\zod' ]
+218 silly reify mark retired [
+218 silly reify   'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\yauzl-promise'
+218 silly reify ]
+219 silly reify mark retired [
+219 silly reify   'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\@bytecodealliance\\preview2-shim'
+219 silly reify ]
+220 silly reify mark retired [
+220 silly reify   'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\xdg-portable'
+220 silly reify ]
+221 silly reify mark retired [
+221 silly reify   'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\@esbuild\\win32-x64'
+221 silly reify ]
+222 silly reify mark retired [
+222 silly reify   'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\@fastify\\busboy'
+222 silly reify ]
+223 silly reify mark retired [
+223 silly reify   'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\@emnapi\\wasi-threads'
+223 silly reify ]
+224 silly reify mark retired [
+224 silly reify   'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\@isaacs\\balanced-match'
+224 silly reify ]
+225 silly reify mark retired [
+225 silly reify   'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\@isaacs\\fs-minipass'
+225 silly reify ]
+226 silly reify mark retired [
+226 silly reify   'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\@edge-runtime\\format'
+226 silly reify ]
+227 silly reify mark retired [
+227 silly reify   'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\@edge-runtime\\ponyfill'
+227 silly reify ]
+228 silly reify mark retired [
+228 silly reify   'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\@edge-runtime\\node-utils'
+228 silly reify ]
+229 silly reify mark retired [
+229 silly reify   'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\@edge-runtime\\primitives'
+229 silly reify ]
+230 silly reify mark retired [
+230 silly reify   'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\@edge-runtime\\vm'
+230 silly reify ]
+231 silly reify mark retired [
+231 silly reify   'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\@isaacs\\brace-expansion'
+231 silly reify ]
+232 silly reify mark retired [
+232 silly reify   'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\@mapbox\\node-pre-gyp'
+232 silly reify ]
+233 silly reify mark retired [
+233 silly reify   'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\@oxc-transform\\binding-win32-x64-msvc'
+233 silly reify ]
+234 silly reify mark retired [
+234 silly reify   'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\@nodelib\\fs.walk'
+234 silly reify ]
+235 silly reify mark retired [
+235 silly reify   'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\@oxc-project\\types'
+235 silly reify ]
+236 silly reify mark retired [
+236 silly reify   'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\@renovatebot\\pep440'
+236 silly reify ]
+237 silly reify mark retired [
+237 silly reify   'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\@nodelib\\fs.scandir'
+237 silly reify ]
+238 silly reify mark retired [
+238 silly reify   'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\@nodelib\\fs.stat'
+238 silly reify ]
+239 silly reify mark retired [
+239 silly reify   'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\@rolldown\\binding-win32-x64-msvc'
+239 silly reify ]
+240 silly reify mark retired [
+240 silly reify   'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\@sinclair\\typebox'
+240 silly reify ]
+241 silly reify mark retired [
+241 silly reify   'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\@rollup\\pluginutils'
+241 silly reify ]
+242 silly reify mark retired [
+242 silly reify   'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\@tootallnate\\quickjs-emscripten'
+242 silly reify ]
+243 silly reify mark retired [
+243 silly reify   'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\@tootallnate\\once'
+243 silly reify ]
+244 silly reify mark retired [
+244 silly reify   'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\@rolldown\\pluginutils'
+244 silly reify ]
+245 silly reify mark retired [
+245 silly reify   'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\@tybys\\wasm-util'
+245 silly reify ]
+246 silly reify mark retired [
+246 silly reify   'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\@ts-morph\\common'
+246 silly reify ]
+247 silly reify mark retired [
+247 silly reify   'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\@types\\estree'
+247 silly reify ]
+248 silly reify mark retired [
+248 silly reify   'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\@types\\json-schema'
+248 silly reify ]
+249 silly reify mark retired [
+249 silly reify   'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\@vercel\\blob'
+249 silly reify ]
+250 silly reify mark retired [
+250 silly reify   'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\@vercel\\fun'
+250 silly reify ]
+251 silly reify mark retired [
+251 silly reify   'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\@vercel\\error-utils'
+251 silly reify ]
+252 silly reify mark retired [
+252 silly reify   'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\@vercel\\gatsby-plugin-vercel-analytics'
+252 silly reify ]
+253 silly reify mark retired [ 'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\@vercel\\go' ]
+254 silly reify mark retired [
+254 silly reify   'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\@vercel\\node'
+254 silly reify ]
+255 silly reify mark retired [
+255 silly reify   'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\@vercel\\nft'
+255 silly reify ]
+256 silly reify mark retired [
+256 silly reify   'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\@vercel\\hydrogen'
+256 silly reify ]
+257 silly reify mark retired [
+257 silly reify   'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\@vercel\\oidc'
+257 silly reify ]
+258 silly reify mark retired [
+258 silly reify   'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\@vercel\\python-analysis'
+258 silly reify ]
+259 silly reify mark retired [
+259 silly reify   'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\@vercel\\prepare-flags-definitions'
+259 silly reify ]
+260 silly reify mark retired [
+260 silly reify   'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\@vercel\\redwood'
+260 silly reify ]
+261 silly reify mark retired [
+261 silly reify   'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\@vercel\\rust'
+261 silly reify ]
+262 silly reify mark retired [
+262 silly reify   'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\@vercel\\remix-builder'
+262 silly reify ]
+263 silly reify mark retired [
+263 silly reify   'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\@vercel\\ruby'
+263 silly reify ]
+264 silly reify mark retired [
+264 silly reify   'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\@vercel\\sandbox'
+264 silly reify ]
+265 silly reify mark retired [
+265 silly reify   'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\@vercel\\static-config'
+265 silly reify ]
+266 silly reify mark retired [
+266 silly reify   'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\@yarnpkg\\parsers'
+266 silly reify ]
+267 silly reify moves {
+267 silly reify   'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\abbrev': 'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\.abbrev-5G6slRwB',
+267 silly reify   'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\agent-base': 'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\.agent-base-yCKlruuD',
+267 silly reify   'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\acorn-import-attributes': 'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\.acorn-import-attributes-YnTEKf4G',
+267 silly reify   'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\ajv': 'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\.ajv-fedj08zT',
+267 silly reify   'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\argparse': 'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\.argparse-xhKTkWSc',
+267 silly reify   'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\any-promise': 'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\.any-promise-SvnkYvdZ',
+267 silly reify   'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\arg': 'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\.arg-xxYrwsnh',
+267 silly reify   'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\acorn': 'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\.acorn-iYLODIp7',
+267 silly reify   'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\ast-types': 'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\.ast-types-7M6Ow3NE',
+267 silly reify   'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\async-listen': 'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\.async-listen-QVZz43Ad',
+267 silly reify   'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\b4a': 'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\.b4a-ub2rLwjK',
+267 silly reify   'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\async-sema': 'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\.async-sema-wkmWU2jk',
+267 silly reify   'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\asynckit': 'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\.asynckit-3sEAyl7z',
+267 silly reify   'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\async-retry': 'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\.async-retry-fCT3ga95',
+267 silly reify   'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\balanced-match': 'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\.balanced-match-vcpuFs5j',
+267 silly reify   'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\basic-ftp': 'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\.basic-ftp-eX1Xc59h',
+267 silly reify   'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\brace-expansion': 'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\.brace-expansion-sY7X9lkw',
+267 silly reify   'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\bindings': 'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\.bindings-casSFCFG',
+267 silly reify   'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\braces': 'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\.braces-J9zu2u00',
+267 silly reify   'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\buffer-crc32': 'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\.buffer-crc32-7TZ6VzA4',
+267 silly reify   'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\bytes': 'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\.bytes-H1UugiZm',
+267 silly reify   'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\bare-events': 'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\.bare-events-lpfbslvd',
+267 silly reify   'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\call-bind-apply-helpers': 'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\.call-bind-apply-helpers-E9j0QRTI',
+267 silly reify   'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\chownr': 'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\.chownr-RK7vCfU8',
+267 silly reify   'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\cjs-module-lexer': 'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\.cjs-module-lexer-a92tIvaq',
+267 silly reify   'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\combined-stream': 'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\.combined-stream-Qk5V8gE3',
+267 silly reify   'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\code-block-writer': 'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\.code-block-writer-e8ZjX7RW',
+267 silly reify   'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\concat-map': 'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\.concat-map-B980kkWG',
+267 silly reify   'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\content-type': 'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\.content-type-HlcuqJza',
+267 silly reify   'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\convert-hrtime': 'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\.convert-hrtime-P9YWYU52',
+267 silly reify   'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\cookie-es': 'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\.cookie-es-CqXoswmX',
+267 silly reify   'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\consola': 'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\.consola-1gRh9wur',
+267 silly reify   'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\cross-spawn': 'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\.cross-spawn-d2oRPBVM',
+267 silly reify   'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\chokidar': 'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\.chokidar-BCGMPcbp',
+267 silly reify   'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\data-uri-to-buffer': 'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\.data-uri-to-buffer-YAEISa5n',
+267 silly reify   'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\debug': 'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\.debug-wq3P5OF5',
+267 silly reify   'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\delayed-stream': 'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\.delayed-stream-rfKAqV6l',
+267 silly reify   'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\depd': 'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\.depd-WO29LbVS',
+267 silly reify   'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\dunder-proto': 'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\.dunder-proto-EdWwKn8B',
+267 silly reify   'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\detect-libc': 'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\.detect-libc-nLFjFWBG',
+267 silly reify   'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\degenerator': 'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\.degenerator-C8JS95nk',
+267 silly reify   'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\edge-runtime': 'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\.edge-runtime-Q81Gdnp3',
+267 silly reify   'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\end-of-stream': 'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\.end-of-stream-eTSThETN',
+267 silly reify   'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\es-module-lexer': 'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\.es-module-lexer-LWAHQq7k',
+267 silly reify   'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\es-define-property': 'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\.es-define-property-jLRMCtHj',
+267 silly reify   'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\es-errors': 'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\.es-errors-zyVVQSXm',
+267 silly reify   'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\es-object-atoms': 'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\.es-object-atoms-mRmzUmhk',
+267 silly reify   'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\es-set-tostringtag': 'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\.es-set-tostringtag-CbHc2hj4',
+267 silly reify   'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\escodegen': 'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\.escodegen-wL5eTO5M',
+267 silly reify   'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\esprima': 'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\.esprima-HUInulT8',
+267 silly reify   'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\esbuild': 'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\.esbuild-gzcEFzt2',
+267 silly reify   'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\estraverse': 'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\.estraverse-5oCp6iUn',
+267 silly reify   'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\estree-walker': 'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\.estree-walker-fgLZwxUA',
+267 silly reify   'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\esutils': 'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\.esutils-zHkuS4xm',
+267 silly reify   'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\etag': 'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\.etag-LXVOa1Fl',
+267 silly reify   'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\events-intercept': 'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\.events-intercept-ejFa944y',
+267 silly reify   'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\events-universal': 'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\.events-universal-jtFVvaOG',
+267 silly reify   'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\execa': 'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\.execa-3ZO3RSwh',
+267 silly reify   'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\fast-deep-equal': 'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\.fast-deep-equal-PyRyz4IG',
+267 silly reify   'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\fast-fifo': 'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\.fast-fifo-7ksee5v3',
+267 silly reify   'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\fast-glob': 'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\.fast-glob-LdcWzwDH',
+267 silly reify   'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\file-uri-to-path': 'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\.file-uri-to-path-Jkg1AEdy',
+267 silly reify   'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\fastq': 'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\.fastq-rdtDCivE',
+267 silly reify   'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\form-data': 'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\.form-data-rp7VZSPe',
+267 silly reify   'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\fd-slicer': 'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\.fd-slicer-AkJpK8Pk',
+267 silly reify   'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\fill-range': 'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\.fill-range-UhSllyjs',
+267 silly reify   'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\fs-extra': 'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\.fs-extra-zx4KT8zV',
+267 silly reify   'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\function-bind': 'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\.function-bind-SnMT3TTt',
+267 silly reify   'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\get-intrinsic': 'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\.get-intrinsic-lMlDQo4w',
+267 silly reify   'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\generic-pool': 'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\.generic-pool-28qCHVBS',
+267 silly reify   'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\get-proto': 'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\.get-proto-uwwr3RuB',
+267 silly reify   'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\get-stream': 'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\.get-stream-tX7hy3CU',
+267 silly reify   'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\get-uri': 'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\.get-uri-mFeIV2rP',
+267 silly reify   'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\glob-parent': 'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\.glob-parent-zJ1xQCBI',
+267 silly reify   'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\gopd': 'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\.gopd-FucbSykx',
+267 silly reify   'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\glob': 'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\.glob-Nd4Iulpj',
+267 silly reify   'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\graceful-fs': 'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\.graceful-fs-K7i7Eyxc',
+267 silly reify   'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\has-symbols': 'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\.has-symbols-AWDivLcy',
+267 silly reify   'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\has-tostringtag': 'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\.has-tostringtag-1tC8syJI',
+267 silly reify   'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\hasown': 'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\.hasown-hZ6jNTqo',
+267 silly reify   'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\http-proxy-agent': 'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\.http-proxy-agent-tQQLS03I',
+267 silly reify   'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\https-proxy-agent': 'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\.https-proxy-agent-L94zAkVA',
+267 silly reify   'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\human-signals': 'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\.human-signals-jLHQT8Ml',
+267 silly reify   'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\iconv-lite': 'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\.iconv-lite-7qU1iKK8',
+267 silly reify   'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\inherits': 'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\.inherits-UBXj8blV',
+267 silly reify   'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\is-buffer': 'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\.is-buffer-UlFpso0a',
+267 silly reify   'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\http-errors': 'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\.http-errors-tW4tAdSs',
+267 silly reify   'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\ip-address': 'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\.ip-address-Bufj78I7',
+267 silly reify   'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\is-extglob': 'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\.is-extglob-KaHDVFh4',
+267 silly reify   'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\is-glob': 'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\.is-glob-czBwLasF',
+267 silly reify   'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\is-number': 'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\.is-number-9iCjcWyr',
+267 silly reify   'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\is-node-process': 'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\.is-node-process-KCI6RFmK',
+267 silly reify   'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\is-stream': 'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\.is-stream-KVzE8t2F',
+267 silly reify   'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\isexe': 'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\.isexe-qty1J7ya',
+267 silly reify   'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\js-yaml': 'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\.js-yaml-lg9N5XFE',
+267 silly reify   'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\jose': 'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\.jose-DgBpZuiF',
+267 silly reify   'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\json-schema-to-ts': 'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\.json-schema-to-ts-OmVD6nZe',
+267 silly reify   'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\jsonlines': 'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\.jsonlines-5JEd1YfC',
+267 silly reify   'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\json-schema-traverse': 'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\.json-schema-traverse-hB2iKjHG',
+267 silly reify   'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\lru-cache': 'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\.lru-cache-tS8E6E8Y',
+267 silly reify   'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\luxon': 'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\.luxon-C25QfKcv',
+267 silly reify   'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\math-intrinsics': 'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\.math-intrinsics-lZ1GhJIp',
+267 silly reify   'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\merge-stream': 'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\.merge-stream-KZqZATHl',
+267 silly reify   'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\micro': 'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\.micro-3V87kIIi',
+267 silly reify   'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\micromatch': 'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\.micromatch-UJSdEjUC',
+267 silly reify   'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\mime-db': 'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\.mime-db-gceDL675',
+267 silly reify   'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\mime-types': 'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\.mime-types-l4BERurm',
+267 silly reify   'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\merge2': 'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\.merge2-IGGx8eEE',
+267 silly reify   'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\mimic-fn': 'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\.mimic-fn-njGzQiKM',
+267 silly reify   'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\minimatch': 'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\.minimatch-HGR1uICj',
+267 silly reify   'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\minipass': 'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\.minipass-gEoiiFLq',
+267 silly reify   'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\minizlib': 'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\.minizlib-xnIWqqx1',
+267 silly reify   'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\ms': 'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\.ms-cgyCFx27',
+267 silly reify   'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\mri': 'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\.mri-kuqFHv1u',
+267 silly reify   'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\mkdirp': 'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\.mkdirp-6Vwbd7oN',
+267 silly reify   'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\node-fetch': 'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\.node-fetch-uZckxnmo',
+267 silly reify   'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\netmask': 'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\.netmask-v6erbCee',
+267 silly reify   'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\node-gyp-build': 'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\.node-gyp-build-aHL9DxTe',
+267 silly reify   'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\nopt': 'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\.nopt-h563Zxmw',
+267 silly reify   'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\npm-run-path': 'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\.npm-run-path-Aq6vkAPN',
+267 silly reify   'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\once': 'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\.once-8fVXuRPd',
+267 silly reify   'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\onetime': 'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\.onetime-WTORdSgF',
+267 silly reify   'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\os-paths': 'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\.os-paths-Wq8qKdOZ',
+267 silly reify   'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\p-finally': 'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\.p-finally-WT2UXMx9',
+267 silly reify   'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\path-browserify': 'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\.path-browserify-mbWaxj24',
+267 silly reify   'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\parse-ms': 'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\.parse-ms-6LivTVHE',
+267 silly reify   'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\pac-resolver': 'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\.pac-resolver-S4DOS8P1',
+267 silly reify   'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\path-key': 'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\.path-key-1gfel44H',
+267 silly reify   'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\oxc-transform': 'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\.oxc-transform-GDSEl4k4',
+267 silly reify   'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\path-scurry': 'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\.path-scurry-cF35nlUz',
+267 silly reify   'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\path-to-regexp': 'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\.path-to-regexp-L30Rwg2A',
+267 silly reify   'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\path-to-regexp-updated': 'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\.path-to-regexp-updated-jvgdvboj',
+267 silly reify   'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\pend': 'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\.pend-EvWUlfmC',
+267 silly reify   'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\pac-proxy-agent': 'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\.pac-proxy-agent-HZHIWdup',
+267 silly reify   'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\picomatch': 'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\.picomatch-cBfCOcIW',
+267 silly reify   'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\picocolors': 'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\.picocolors-MhbUcF79',
+267 silly reify   'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\pretty-ms': 'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\.pretty-ms-jTEGlKPQ',
+267 silly reify   'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\pump': 'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\.pump-uvLbQkIO',
+267 silly reify   'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\proxy-from-env': 'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\.proxy-from-env-swam8KfO',
+267 silly reify   'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\proxy-agent': 'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\.proxy-agent-yjhFmqGr',
+267 silly reify   'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\punycode': 'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\.punycode-TcHztwgE',
+267 silly reify   'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\queue-microtask': 'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\.queue-microtask-6lJ4EU8n',
+267 silly reify   'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\promisepipe': 'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\.promisepipe-NuaX7dbR',
+267 silly reify   'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\raw-body': 'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\.raw-body-VNokxZC7',
+267 silly reify   'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\require-from-string': 'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\.require-from-string-ruRaircI',
+267 silly reify   'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\resolve-pkg-maps': 'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\.resolve-pkg-maps-UkdZ9vzP',
+267 silly reify   'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\resolve.exports': 'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\.resolve.exports-0JYNRVK4',
+267 silly reify   'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\readdirp': 'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\.readdirp-dVNKUuCI',
+267 silly reify   'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\retry': 'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\.retry-dZWhfjvU',
+267 silly reify   'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\rolldown': 'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\.rolldown-DYdwUkS6',
+267 silly reify   'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\reusify': 'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\.reusify-15S7wLeV',
+267 silly reify   'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\resolve-from': 'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\.resolve-from-mLY5pk5Z',
+267 silly reify   'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\safer-buffer': 'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\.safer-buffer-Ipzm57Bm',
+267 silly reify   'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\run-parallel': 'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\.run-parallel-F3X1wbBg',
+267 silly reify   'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\semver': 'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\.semver-B495VhSc',
+267 silly reify   'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\sandbox': 'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\.sandbox-Z1suUJ3k',
+267 silly reify   'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\shebang-command': 'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\.shebang-command-WRvkQO9D',
+267 silly reify   'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\shebang-regex': 'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\.shebang-regex-yuCwRbJb',
+267 silly reify   'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\setprototypeof': 'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\.setprototypeof-8VdM6nmX',
+267 silly reify   'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\smart-buffer': 'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\.smart-buffer-rfgqC3nB',
+267 silly reify   'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\signal-exit': 'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\.signal-exit-W2LHZp1x',
+267 silly reify   'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\smol-toml': 'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\.smol-toml-F0gXmOL0',
+267 silly reify   'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\socks': 'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\.socks-SiGUPLdk',
+267 silly reify   'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\socks-proxy-agent': 'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\.socks-proxy-agent-KNh7s3v3',
+267 silly reify   'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\stat-mode': 'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\.stat-mode-NgGMVyLg',
+267 silly reify   'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\srvx': 'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\.srvx-bZsDmfjz',
+267 silly reify   'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\sprintf-js': 'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\.sprintf-js-WaguWa5K',
+267 silly reify   'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\stream-to-array': 'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\.stream-to-array-W8LD3Z0e',
+267 silly reify   'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\statuses': 'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\.statuses-8CIrLB12',
+267 silly reify   'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\stream-to-promise': 'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\.stream-to-promise-aHh8p0gv',
+267 silly reify   'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\streamx': 'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\.streamx-2o0FCvMs',
+267 silly reify   'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\source-map': 'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\.source-map-2Njsayb0',
+267 silly reify   'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\tar': 'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\.tar-nBRDg1bc',
+267 silly reify   'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\throttleit': 'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\.throttleit-laP4A5Nd',
+267 silly reify   'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\tar-stream': 'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\.tar-stream-qqUEjP1V',
+267 silly reify   'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\text-decoder': 'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\.text-decoder-vYyEeLo5',
+267 silly reify   'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\time-span': 'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\.time-span-NtOEX7V0',
+267 silly reify   'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\tinyexec': 'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\.tinyexec-4MMHCFkh',
+267 silly reify   'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\strip-final-newline': 'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\.strip-final-newline-EhUmSC17',
+267 silly reify   'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\to-regex-range': 'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\.to-regex-range-k0cGBJLQ',
+267 silly reify   'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\toidentifier': 'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\.toidentifier-buLkNF8Y',
+267 silly reify   'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\tr46': 'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\.tr46-M8tLhL1C',
+267 silly reify   'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\tree-kill': 'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\.tree-kill-n0s5ldXC',
+267 silly reify   'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\ts-toolbelt': 'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\.ts-toolbelt-11r89uP1',
+267 silly reify   'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\tsx': 'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\.tsx-0fwFqKAR',
+267 silly reify   'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\undici': 'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\.undici-CZW66efR',
+267 silly reify   'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\typescript': 'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\.typescript-v5WjcMXO',
+267 silly reify   'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\uid-promise': 'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\.uid-promise-ML8ZHgWp',
+267 silly reify   'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\ts-morph': 'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\.ts-morph-4B1PIvr1',
+267 silly reify   'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\unpipe': 'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\.unpipe-JyAv0MRe',
+267 silly reify   'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\universalify': 'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\.universalify-1MpeFgYP',
+267 silly reify   'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\uri-js': 'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\.uri-js-L233SUaU',
+267 silly reify   'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\web-vitals': 'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\.web-vitals-8XuN3218',
+267 silly reify   'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\webidl-conversions': 'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\.webidl-conversions-NN9N1tt2',
+267 silly reify   'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\which': 'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\.which-Z2PS1d1l',
+267 silly reify   'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\whatwg-url': 'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\.whatwg-url-ufSC7pm7',
+267 silly reify   'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\wrappy': 'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\.wrappy-lUX2IT8C',
+267 silly reify   'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\yallist': 'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\.yallist-9YoiCWvC',
+267 silly reify   'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\xdg-app-paths': 'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\.xdg-app-paths-McbTHIhR',
+267 silly reify   'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\yauzl-clone': 'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\.yauzl-clone-FdMlL2u0',
+267 silly reify   'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\yauzl': 'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\.yauzl-2hu5bBHR',
+267 silly reify   'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\zod': 'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\.zod-tizNKzlB',
+267 silly reify   'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\yauzl-promise': 'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\.yauzl-promise-pHEbwKAQ',
+267 silly reify   'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\@bytecodealliance\\preview2-shim': 'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\@bytecodealliance\\.preview2-shim-H4l1jNWU',
+267 silly reify   'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\xdg-portable': 'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\.xdg-portable-jIoWawRm',
+267 silly reify   'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\@esbuild\\win32-x64': 'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\@esbuild\\.win32-x64-goBz66ZF',
+267 silly reify   'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\@fastify\\busboy': 'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\@fastify\\.busboy-c3I5XlCP',
+267 silly reify   'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\@emnapi\\wasi-threads': 'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\@emnapi\\.wasi-threads-JAozXTSg',
+267 silly reify   'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\@isaacs\\balanced-match': 'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\@isaacs\\.balanced-match-JND3NRBL',
+267 silly reify   'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\@isaacs\\fs-minipass': 'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\@isaacs\\.fs-minipass-t6DrRR6w',
+267 silly reify   'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\@edge-runtime\\format': 'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\@edge-runtime\\.format-wsOTfNpH',
+267 silly reify   'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\@edge-runtime\\ponyfill': 'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\@edge-runtime\\.ponyfill-mGm7cnQp',
+267 silly reify   'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\@edge-runtime\\node-utils': 'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\@edge-runtime\\.node-utils-FGd0Lte0',
+267 silly reify   'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\@edge-runtime\\primitives': 'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\@edge-runtime\\.primitives-eH0MwIko',
+267 silly reify   'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\@edge-runtime\\vm': 'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\@edge-runtime\\.vm-PvwabeNw',
+267 silly reify   'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\@isaacs\\brace-expansion': 'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\@isaacs\\.brace-expansion-nQ3vkAjJ',
+267 silly reify   'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\@mapbox\\node-pre-gyp': 'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\@mapbox\\.node-pre-gyp-l9ke6sQ4',
+267 silly reify   'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\@oxc-transform\\binding-win32-x64-msvc': 'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\@oxc-transform\\.binding-win32-x64-msvc-gTu5E5Zz',
+267 silly reify   'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\@nodelib\\fs.walk': 'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\@nodelib\\.fs.walk-dyKNCa4E',
+267 silly reify   'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\@oxc-project\\types': 'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\@oxc-project\\.types-7GpL0zwd',
+267 silly reify   'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\@renovatebot\\pep440': 'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\@renovatebot\\.pep440-PCFBevZz',
+267 silly reify   'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\@nodelib\\fs.scandir': 'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\@nodelib\\.fs.scandir-MywWur6O',
+267 silly reify   'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\@nodelib\\fs.stat': 'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\@nodelib\\.fs.stat-kxnZYhMC',
+267 silly reify   'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\@rolldown\\binding-win32-x64-msvc': 'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\@rolldown\\.binding-win32-x64-msvc-bNdY3Bvd',
+267 silly reify   'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\@sinclair\\typebox': 'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\@sinclair\\.typebox-XZlYZl9g',
+267 silly reify   'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\@rollup\\pluginutils': 'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\@rollup\\.pluginutils-ituSQBYf',
+267 silly reify   'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\@tootallnate\\quickjs-emscripten': 'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\@tootallnate\\.quickjs-emscripten-8Fq0T0Mr',
+267 silly reify   'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\@tootallnate\\once': 'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\@tootallnate\\.once-GHZtIGCb',
+267 silly reify   'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\@rolldown\\pluginutils': 'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\@rolldown\\.pluginutils-plRHbzTw',
+267 silly reify   'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\@tybys\\wasm-util': 'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\@tybys\\.wasm-util-H0E5ehfx',
+267 silly reify   'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\@ts-morph\\common': 'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\@ts-morph\\.common-yHdlDfC4',
+267 silly reify   'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\@types\\estree': 'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\@types\\.estree-dKqeBuEz',
+267 silly reify   'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\@types\\json-schema': 'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\@types\\.json-schema-Fxi4N55c',
+267 silly reify   'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\@vercel\\blob': 'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\@vercel\\.blob-3a5PYCDk',
+267 silly reify   'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\@vercel\\fun': 'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\@vercel\\.fun-2L7Ze1gM',
+267 silly reify   'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\@vercel\\error-utils': 'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\@vercel\\.error-utils-5WY3tjxc',
+267 silly reify   'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\@vercel\\gatsby-plugin-vercel-analytics': 'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\@vercel\\.gatsby-plugin-vercel-analytics-xgkrN6M1',
+267 silly reify   'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\@vercel\\go': 'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\@vercel\\.go-ZtXGIJdJ',
+267 silly reify   'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\@vercel\\node': 'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\@vercel\\.node-V8csA9I6',
+267 silly reify   'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\@vercel\\nft': 'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\@vercel\\.nft-8oayTzNo',
+267 silly reify   'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\@vercel\\hydrogen': 'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\@vercel\\.hydrogen-cuQog2uL',
+267 silly reify   'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\@vercel\\oidc': 'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\@vercel\\.oidc-w7MSXrWJ',
+267 silly reify   'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\@vercel\\python-analysis': 'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\@vercel\\.python-analysis-DX1gTlZ7',
+267 silly reify   'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\@vercel\\prepare-flags-definitions': 'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\@vercel\\.prepare-flags-definitions-rmXPlZfv',
+267 silly reify   'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\@vercel\\redwood': 'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\@vercel\\.redwood-Uqo2gdfU',
+267 silly reify   'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\@vercel\\rust': 'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\@vercel\\.rust-MsVoBPOB',
+267 silly reify   'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\@vercel\\remix-builder': 'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\@vercel\\.remix-builder-pwZWZNgK',
+267 silly reify   'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\@vercel\\ruby': 'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\@vercel\\.ruby-MOHENS8U',
+267 silly reify   'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\@vercel\\sandbox': 'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\@vercel\\.sandbox-DaSDAcm8',
+267 silly reify   'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\@vercel\\static-config': 'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\@vercel\\.static-config-EQBdwHfn',
+267 silly reify   'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\@yarnpkg\\parsers': 'C:\\Users\\zakar\\OneDrive\\WEEKLY PAY\\node_modules\\@yarnpkg\\.parsers-jnDSfmFw'
+267 silly reify }
+268 silly audit bulk request {
+268 silly audit   '@bytecodealliance/preview2-shim': [ '0.17.6' ],
+268 silly audit   '@edge-runtime/format': [ '2.2.1' ],
+268 silly audit   '@edge-runtime/node-utils': [ '2.3.0' ],
+268 silly audit   '@edge-runtime/ponyfill': [ '2.4.2' ],
+268 silly audit   '@edge-runtime/primitives': [ '4.1.0' ],
+268 silly audit   '@edge-runtime/vm': [ '3.2.0' ],
+268 silly audit   '@emnapi/core': [ '1.10.0' ],
+268 silly audit   '@emnapi/runtime': [ '1.10.0' ],
+268 silly audit   '@emnapi/wasi-threads': [ '1.2.1' ],
+268 silly audit   '@esbuild/aix-ppc64': [ '0.27.0' ],
+268 silly audit   '@esbuild/android-arm': [ '0.27.0' ],
+268 silly audit   '@esbuild/android-arm64': [ '0.27.0' ],
+268 silly audit   '@esbuild/android-x64': [ '0.27.0' ],
+268 silly audit   '@esbuild/darwin-arm64': [ '0.27.0' ],
+268 silly audit   '@esbuild/darwin-x64': [ '0.27.0' ],
+268 silly audit   '@esbuild/freebsd-arm64': [ '0.27.0' ],
+268 silly audit   '@esbuild/freebsd-x64': [ '0.27.0' ],
+268 silly audit   '@esbuild/linux-arm': [ '0.27.0' ],
+268 silly audit   '@esbuild/linux-arm64': [ '0.27.0' ],
+268 silly audit   '@esbuild/linux-ia32': [ '0.27.0' ],
+268 silly audit   '@esbuild/linux-loong64': [ '0.27.0' ],
+268 silly audit   '@esbuild/linux-mips64el': [ '0.27.0' ],
+268 silly audit   '@esbuild/linux-ppc64': [ '0.27.0' ],
+268 silly audit   '@esbuild/linux-riscv64': [ '0.27.0' ],
+268 silly audit   '@esbuild/linux-s390x': [ '0.27.0' ],
+268 silly audit   '@esbuild/linux-x64': [ '0.27.0' ],
+268 silly audit   '@esbuild/netbsd-arm64': [ '0.27.0' ],
+268 silly audit   '@esbuild/netbsd-x64': [ '0.27.0' ],
+268 silly audit   '@esbuild/openbsd-arm64': [ '0.27.0' ],
+268 silly audit   '@esbuild/openbsd-x64': [ '0.27.0' ],
+268 silly audit   '@esbuild/openharmony-arm64': [ '0.27.0' ],
+268 silly audit   '@esbuild/sunos-x64': [ '0.27.0' ],
+268 silly audit   '@esbuild/win32-arm64': [ '0.27.0' ],
+268 silly audit   '@esbuild/win32-ia32': [ '0.27.0' ],
+268 silly audit   '@esbuild/win32-x64': [ '0.27.0' ],
+268 silly audit   '@fastify/busboy': [ '2.1.1' ],
+268 silly audit   '@isaacs/balanced-match': [ '4.0.1' ],
+268 silly audit   '@isaacs/brace-expansion': [ '5.0.1' ],
+268 silly audit   '@isaacs/fs-minipass': [ '4.0.1' ],
+268 silly audit   '@mapbox/node-pre-gyp': [ '2.0.3' ],
+268 silly audit   '@napi-rs/wasm-runtime': [ '1.1.4' ],
+268 silly audit   '@nodelib/fs.scandir': [ '2.1.5' ],
+268 silly audit   '@nodelib/fs.stat': [ '2.0.5' ],
+268 silly audit   '@nodelib/fs.walk': [ '1.2.8' ],
+268 silly audit   '@oxc-project/types': [ '0.110.0' ],
+268 silly audit   '@oxc-transform/binding-android-arm-eabi': [ '0.111.0' ],
+268 silly audit   '@oxc-transform/binding-android-arm64': [ '0.111.0' ],
+268 silly audit   '@oxc-transform/binding-darwin-arm64': [ '0.111.0' ],
+268 silly audit   '@oxc-transform/binding-darwin-x64': [ '0.111.0' ],
+268 silly audit   '@oxc-transform/binding-freebsd-x64': [ '0.111.0' ],
+268 silly audit   '@oxc-transform/binding-linux-arm-gnueabihf': [ '0.111.0' ],
+268 silly audit   '@oxc-transform/binding-linux-arm-musleabihf': [ '0.111.0' ],
+268 silly audit   '@oxc-transform/binding-linux-arm64-gnu': [ '0.111.0' ],
+268 silly audit   '@oxc-transform/binding-linux-arm64-musl': [ '0.111.0' ],
+268 silly audit   '@oxc-transform/binding-linux-ppc64-gnu': [ '0.111.0' ],
+268 silly audit   '@oxc-transform/binding-linux-riscv64-gnu': [ '0.111.0' ],
+268 silly audit   '@oxc-transform/binding-linux-riscv64-musl': [ '0.111.0' ],
+268 silly audit   '@oxc-transform/binding-linux-s390x-gnu': [ '0.111.0' ],
+268 silly audit   '@oxc-transform/binding-linux-x64-gnu': [ '0.111.0' ],
+268 silly audit   '@oxc-transform/binding-linux-x64-musl': [ '0.111.0' ],
+268 silly audit   '@oxc-transform/binding-openharmony-arm64': [ '0.111.0' ],
+268 silly audit   '@oxc-transform/binding-wasm32-wasi': [ '0.111.0' ],
+268 silly audit   '@oxc-transform/binding-win32-arm64-msvc': [ '0.111.0' ],
+268 silly audit   '@oxc-transform/binding-win32-ia32-msvc': [ '0.111.0' ],
+268 silly audit   '@oxc-transform/binding-win32-x64-msvc': [ '0.111.0' ],
+268 silly audit   '@renovatebot/pep440': [ '4.2.1' ],
+268 silly audit   '@rolldown/binding-android-arm64': [ '1.0.0-rc.1' ],
+268 silly audit   '@rolldown/binding-darwin-arm64': [ '1.0.0-rc.1' ],
+268 silly audit   '@rolldown/binding-darwin-x64': [ '1.0.0-rc.1' ],
+268 silly audit   '@rolldown/binding-freebsd-x64': [ '1.0.0-rc.1' ],
+268 silly audit   '@rolldown/binding-linux-arm-gnueabihf': [ '1.0.0-rc.1' ],
+268 silly audit   '@rolldown/binding-linux-arm64-gnu': [ '1.0.0-rc.1' ],
+268 silly audit   '@rolldown/binding-linux-arm64-musl': [ '1.0.0-rc.1' ],
+268 silly audit   '@rolldown/binding-linux-x64-gnu': [ '1.0.0-rc.1' ],
+268 silly audit   '@rolldown/binding-linux-x64-musl': [ '1.0.0-rc.1' ],
+268 silly audit   '@rolldown/binding-openharmony-arm64': [ '1.0.0-rc.1' ],
+268 silly audit   '@rolldown/binding-wasm32-wasi': [ '1.0.0-rc.1' ],
+268 silly audit   '@rolldown/binding-win32-arm64-msvc': [ '1.0.0-rc.1' ],
+268 silly audit   '@rolldown/binding-win32-x64-msvc': [ '1.0.0-rc.1' ],
+268 silly audit   '@rolldown/pluginutils': [ '1.0.0-rc.1' ],
+268 silly audit   '@rollup/pluginutils': [ '5.3.0' ],
+268 silly audit   '@sinclair/typebox': [ '0.25.24' ],
+268 silly audit   '@supabase/auth-js': [ '2.103.0' ],
+268 silly audit   '@supabase/functions-js': [ '2.103.0' ],
+268 silly audit   '@supabase/phoenix': [ '0.4.0' ],
+268 silly audit   '@supabase/postgrest-js': [ '2.103.0' ],
+268 silly audit   '@supabase/realtime-js': [ '2.103.0' ],
+268 silly audit   '@supabase/ssr': [ '0.10.2' ],
+268 silly audit   '@supabase/storage-js': [ '2.103.0' ],
+268 silly audit   '@supabase/supabase-js': [ '2.103.0' ],
+268 silly audit   '@tootallnate/once': [ '2.0.0' ],
+268 silly audit   '@tootallnate/quickjs-emscripten': [ '0.23.0' ],
+268 silly audit   '@ts-morph/common': [ '0.11.1' ],
+268 silly audit   minimatch: [ '3.1.5', '10.2.5', '10.1.1' ],
+268 silly audit   '@tybys/wasm-util': [ '0.10.1' ],
+268 silly audit   '@types/estree': [ '1.0.8' ],
+268 silly audit   '@types/json-schema': [ '7.0.15' ],
+268 silly audit   '@types/node': [ '25.6.0', '20.11.0' ],
+268 silly audit   '@types/ws': [ '8.18.1' ],
+268 silly audit   '@vercel/backends': [ '0.2.0' ],
+268 silly audit   '@vercel/blob': [ '2.3.0' ],
+268 silly audit   '@vercel/build-utils': [ '13.20.0' ],
+268 silly audit   '@vercel/cervel': [ '0.0.55' ],
+268 silly audit   '@vercel/detect-agent': [ '1.2.3' ],
+268 silly audit   '@vercel/elysia': [ '0.1.71' ],
+268 silly audit   '@vercel/error-utils': [ '2.0.3' ],
+268 silly audit   '@vercel/express': [ '0.1.81' ],
+268 silly audit   '@vercel/fastify': [ '0.1.74' ],
+268 silly audit   '@vercel/fun': [ '1.3.0' ],
+268 silly audit   'path-to-regexp': [ '8.2.0', '6.1.0', '8.3.0', '6.3.0' ],
+268 silly audit   '@vercel/gatsby-plugin-vercel-analytics': [ '1.0.11' ],
+268 silly audit   '@vercel/gatsby-plugin-vercel-builder': [ '2.1.21' ],
+268 silly audit   '@vercel/go': [ '3.5.0' ],
+268 silly audit   '@vercel/h3': [ '0.1.80' ],
+268 silly audit   '@vercel/hono': [ '0.2.74' ],
+268 silly audit   '@vercel/hydrogen': [ '1.3.6' ],
+268 silly audit   '@vercel/koa': [ '0.1.54' ],
+268 silly audit   '@vercel/nestjs': [ '0.2.75' ],
+268 silly audit   '@vercel/next': [ '4.16.8' ],
+268 silly audit   '@vercel/nft': [ '1.5.0' ],
+268 silly audit   '@vercel/node': [ '5.7.13' ],
+268 silly audit   'async-listen': [ '3.0.0', '1.2.0', '3.0.1' ],
+268 silly audit   'es-module-lexer': [ '1.4.1', '1.5.0' ],
+268 silly audit   'node-fetch': [ '2.6.9', '2.6.7' ],
+268 silly audit   undici: [ '5.28.4', '7.25.0', '6.25.0' ],
+268 silly audit   'undici-types': [ '5.26.5', '7.19.2' ],
+268 silly audit   '@vercel/oidc': [ '3.2.0' ],
+268 silly audit   '@vercel/prepare-flags-definitions': [ '0.2.1' ],
+268 silly audit   '@vercel/python': [ '6.36.0' ],
+268 silly audit   '@vercel/python-analysis': [ '0.11.0' ],
+268 silly audit   argparse: [ '2.0.1', '1.0.10' ],
+268 silly audit   'fs-extra': [ '11.1.1', '11.1.0' ],
+268 silly audit   'js-yaml': [ '4.1.1', '3.14.2' ],
+268 silly audit   '@vercel/redwood': [ '2.4.12' ],
+268 silly audit   semver: [ '6.3.1', '7.5.4' ],
+268 silly audit   '@vercel/remix-builder': [ '5.7.2' ],
+268 silly audit   '@vercel/ruby': [ '2.3.2' ],
+268 silly audit   '@vercel/rust': [ '1.1.1' ],
+268 silly audit   execa: [ '5.1.1', '3.2.0' ],
+268 silly audit   'get-stream': [ '6.0.1', '5.2.0' ],
+268 silly audit   'human-signals': [ '2.1.0', '1.1.1' ],
+268 silly audit   'signal-exit': [ '3.0.7', '4.0.2' ],
+268 silly audit   '@vercel/sandbox': [ '1.9.0' ],
+268 silly audit   ms: [ '2.1.3', '2.1.2', '2.1.1' ],
+268 silly audit   picocolors: [ '1.1.1', '1.0.0' ],
+268 silly audit   zod: [ '3.24.4', '4.3.6', '3.22.4' ],
+268 silly audit   '@vercel/static-build': [ '2.9.21' ],
+268 silly audit   '@vercel/static-config': [ '3.2.0' ],
+268 silly audit   '@yarnpkg/parsers': [ '3.0.3' ],
+268 silly audit   abbrev: [ '3.0.1' ],
+268 silly audit   acorn: [ '8.16.0' ],
+268 silly audit   'acorn-import-attributes': [ '1.9.5' ],
+268 silly audit   'agent-base': [ '7.1.4' ],
+268 silly audit   ajv: [ '8.6.3' ],
+268 silly audit   'any-promise': [ '1.3.0' ],
+268 silly audit   arg: [ '4.1.0' ],
+268 silly audit   'ast-types': [ '0.13.4' ],
+268 silly audit   'async-retry': [ '1.3.3' ],
+268 silly audit   'async-sema': [ '3.1.1' ],
+268 silly audit   asynckit: [ '0.4.0' ],
+268 silly audit   b4a: [ '1.8.0' ],
+268 silly audit   'balanced-match': [ '1.0.2', '4.0.4' ],
+268 silly audit   'bare-events': [ '2.8.2' ],
+268 silly audit   'basic-ftp': [ '5.2.2' ],
+268 silly audit   bindings: [ '1.5.0' ],
+268 silly audit   'brace-expansion': [ '1.1.14', '5.0.5' ],
+268 silly audit   braces: [ '3.0.3' ],
+268 silly audit   'buffer-crc32': [ '0.2.13' ],
+268 silly audit   bytes: [ '3.1.0' ],
+268 silly audit   'call-bind-apply-helpers': [ '1.0.2' ],
+268 silly audit   chokidar: [ '4.0.0' ],
+268 silly audit   chownr: [ '3.0.0' ],
+268 silly audit   'cjs-module-lexer': [ '1.2.3' ],
+268 silly audit   'code-block-writer': [ '10.1.1' ],
+268 silly audit   'combined-stream': [ '1.0.8' ],
+268 silly audit   'concat-map': [ '0.0.1' ],
+268 silly audit   consola: [ '3.4.2' ],
+268 silly audit   'content-type': [ '1.0.4' ],
+268 silly audit   'convert-hrtime': [ '3.0.0' ],
+268 silly audit   cookie: [ '1.1.1' ],
+268 silly audit   'cookie-es': [ '2.0.1' ],
+268 silly audit   'cross-spawn': [ '7.0.6' ],
+268 silly audit   'data-uri-to-buffer': [ '6.0.2' ],
+268 silly audit   debug: [ '4.3.4', '4.4.3' ],
+268 silly audit   degenerator: [ '5.0.1' ],
+268 silly audit   'delayed-stream': [ '1.0.0' ],
+268 silly audit   depd: [ '1.1.2' ],
+268 silly audit   'detect-libc': [ '2.1.2' ],
+268 silly audit   'dunder-proto': [ '1.0.1' ],
+268 silly audit   'edge-runtime': [ '2.5.9' ],
+268 silly audit   'end-of-stream': [ '1.4.5', '1.1.0' ],
+268 silly audit   'es-define-property': [ '1.0.1' ],
+268 silly audit   'es-errors': [ '1.3.0' ],
+268 silly audit   'es-object-atoms': [ '1.1.1' ],
+268 silly audit   'es-set-tostringtag': [ '2.1.0' ],
+268 silly audit   esbuild: [ '0.27.0' ],
+268 silly audit   escodegen: [ '2.1.0' ],
+268 silly audit   esprima: [ '4.0.1' ],
+268 silly audit   estraverse: [ '5.3.0' ],
+268 silly audit   'estree-walker': [ '2.0.2' ],
+268 silly audit   esutils: [ '2.0.3' ],
+268 silly audit   etag: [ '1.8.1' ],
+268 silly audit   'events-intercept': [ '2.0.0' ],
+268 silly audit   'events-universal': [ '1.0.1' ],
+268 silly audit   'fast-deep-equal': [ '3.1.3' ],
+268 silly audit   'fast-fifo': [ '1.3.2' ],
+268 silly audit   'fast-glob': [ '3.3.3' ],
+268 silly audit   fastq: [ '1.20.1' ],
+268 silly audit   'fd-slicer': [ '1.1.0' ],
+268 silly audit   'file-uri-to-path': [ '1.0.0' ],
+268 silly audit   'fill-range': [ '7.1.1' ],
+268 silly audit   'form-data': [ '4.0.5' ],
+268 silly audit   fsevents: [ '2.3.3' ],
+268 silly audit   'function-bind': [ '1.1.2' ],
+268 silly audit   'generic-pool': [ '3.4.2' ],
+268 silly audit   'get-intrinsic': [ '1.3.0' ],
+268 silly audit   'get-proto': [ '1.0.1' ],
+268 silly audit   'get-tsconfig': [ '4.14.0' ],
+268 silly audit   'get-uri': [ '6.0.5' ],
+268 silly audit   glob: [ '13.0.6' ],
+268 silly audit   'glob-parent': [ '5.1.2' ],
+268 silly audit   gopd: [ '1.2.0' ],
+268 silly audit   'graceful-fs': [ '4.2.11' ],
+268 silly audit   'has-symbols': [ '1.1.0' ],
+268 silly audit   'has-tostringtag': [ '1.0.2' ],
+268 silly audit   hasown: [ '2.0.2' ],
+268 silly audit   'http-errors': [ '1.7.3' ],
+268 silly audit   'http-proxy-agent': [ '7.0.2' ],
+268 silly audit   'https-proxy-agent': [ '7.0.6' ],
+268 silly audit   'iceberg-js': [ '0.8.1' ],
+268 silly audit   'iconv-lite': [ '0.4.24' ],
+268 silly audit   inherits: [ '2.0.4' ],
+268 silly audit   'ip-address': [ '10.1.0' ],
+268 silly audit   'is-buffer': [ '2.0.5' ],
+268 silly audit   'is-extglob': [ '2.1.1' ],
+268 silly audit   'is-glob': [ '4.0.3' ],
+268 silly audit   'is-node-process': [ '1.2.0' ],
+268 silly audit   'is-number': [ '7.0.0' ],
+268 silly audit   'is-stream': [ '2.0.1' ],
+268 silly audit   isexe: [ '2.0.0' ],
+268 silly audit   jose: [ '5.9.6' ],
+268 silly audit   'json-schema-to-ts': [ '1.6.4' ],
+268 silly audit   'json-schema-traverse': [ '1.0.0' ],
+268 silly audit   jsonfile: [ '6.2.1' ],
+268 silly audit   jsonlines: [ '0.1.1' ],
+268 silly audit   'lru-cache': [ '11.3.5', '7.18.3', '6.0.0' ],
+268 silly audit   luxon: [ '3.7.2' ],
+268 silly audit   'math-intrinsics': [ '1.1.0' ],
+268 silly audit   'merge-stream': [ '2.0.0' ],
+268 silly audit   merge2: [ '1.4.1' ],
+268 silly audit   micro: [ '9.3.5-canary.3' ],
+268 silly audit   micromatch: [ '4.0.8' ],
+268 silly audit   picomatch: [ '2.3.2', '4.0.4' ],
+268 silly audit   'mime-db': [ '1.52.0' ],
+268 silly audit   'mime-types': [ '2.1.35' ],
+268 silly audit   'mimic-fn': [ '2.1.0' ],
+268 silly audit   minipass: [ '7.1.3' ],
+268 silly audit   minizlib: [ '3.1.0' ],
+268 silly audit   mkdirp: [ '1.0.4' ],
+268 silly audit   mri: [ '1.2.0' ],
+268 silly audit   netmask: [ '2.1.1' ],
+268 silly audit   'node-gyp-build': [ '4.8.4' ],
+268 silly audit   nopt: [ '8.1.0' ],
+268 silly audit   'npm-run-path': [ '4.0.1' ],
+268 silly audit   once: [ '1.4.0', '1.3.3' ],
+268 silly audit   onetime: [ '5.1.2' ],
+268 silly audit   'os-paths': [ '4.4.0' ],
+268 silly audit   'oxc-transform': [ '0.111.0' ],
+268 silly audit   'p-finally': [ '2.0.1' ],
+268 silly audit   'pac-proxy-agent': [ '7.2.0' ],
+268 silly audit   'pac-resolver': [ '7.0.1' ],
+268 silly audit   'parse-ms': [ '2.1.0' ],
+268 silly audit   'path-browserify': [ '1.0.1' ],
+268 silly audit   'path-key': [ '3.1.1' ],
+268 silly audit   'path-scurry': [ '2.0.2' ],
+268 silly audit   pend: [ '1.2.0' ],
+268 silly audit   'pretty-ms': [ '7.0.1' ],
+268 silly audit   promisepipe: [ '3.0.0' ],
+268 silly audit   'proxy-agent': [ '6.4.0' ],
+268 silly audit   'proxy-from-env': [ '1.1.0' ],
+268 silly audit   pump: [ '3.0.4' ],
+268 silly audit   punycode: [ '2.3.1' ],
+268 silly audit   'queue-microtask': [ '1.2.3' ],
+268 silly audit   'raw-body': [ '2.4.1' ],
+268 silly audit   readdirp: [ '4.1.2' ],
+268 silly audit   'require-from-string': [ '2.0.2' ],
+268 silly audit   'resolve-from': [ '5.0.0' ],
+268 silly audit   'resolve-pkg-maps': [ '1.0.0' ],
+268 silly audit   'resolve.exports': [ '2.0.3' ],
+268 silly audit   retry: [ '0.13.1' ],
+268 silly audit   reusify: [ '1.1.0' ],
+268 silly audit   rolldown: [ '1.0.0-rc.1' ],
+268 silly audit   'run-parallel': [ '1.2.0' ],
+268 silly audit   'safer-buffer': [ '2.1.2' ],
+268 silly audit   sandbox: [ '2.5.6' ],
+268 silly audit   yallist: [ '4.0.0', '5.0.0' ],
+268 silly audit   setprototypeof: [ '1.1.1' ],
+268 silly audit   'shebang-command': [ '2.0.0' ],
+268 silly audit   'shebang-regex': [ '3.0.0' ],
+268 silly audit   'smart-buffer': [ '4.2.0' ],
+268 silly audit   'smol-toml': [ '1.5.2' ],
+268 silly audit   socks: [ '2.8.7' ],
+268 silly audit   'socks-proxy-agent': [ '8.0.5' ],
+268 silly audit   'source-map': [ '0.6.1' ],
+268 silly audit   'sprintf-js': [ '1.0.3' ],
+268 silly audit   srvx: [ '0.8.9' ],
+268 silly audit   'stat-mode': [ '0.3.0' ],
+268 silly audit   statuses: [ '1.5.0' ],
+268 silly audit   'stream-to-array': [ '2.3.0' ],
+268 silly audit   'stream-to-promise': [ '2.2.0' ],
+268 silly audit   streamx: [ '2.25.0' ],
+268 silly audit   'strip-final-newline': [ '2.0.0' ],
+268 silly audit   tar: [ '7.5.7' ],
+268 silly audit   'tar-stream': [ '3.1.7' ],
+268 silly audit   'text-decoder': [ '1.2.7' ],
+268 silly audit   throttleit: [ '2.1.0' ],
+268 silly audit   'time-span': [ '4.0.0' ],
+268 silly audit   tinyexec: [ '0.3.2' ],
+268 silly audit   'to-regex-range': [ '5.0.1' ],
+268 silly audit   toidentifier: [ '1.0.0' ],
+268 silly audit   tr46: [ '0.0.3' ],
+268 silly audit   'tree-kill': [ '1.2.2' ],
+268 silly audit   'ts-morph': [ '12.0.0' ],
+268 silly audit   'ts-toolbelt': [ '6.15.5' ],
+268 silly audit   tslib: [ '2.8.1' ],
+268 silly audit   tsx: [ '4.21.0' ],
+268 silly audit   typescript: [ '5.9.3' ],
+268 silly audit   'uid-promise': [ '1.0.0' ],
+268 silly audit   universalify: [ '2.0.1' ],
+268 silly audit   unpipe: [ '1.0.0' ],
+268 silly audit   'uri-js': [ '4.4.1' ],
+268 silly audit   vercel: [ '52.0.0' ],
+268 silly audit   'web-vitals': [ '0.2.4' ],
+268 silly audit   'webidl-conversions': [ '3.0.1' ],
+268 silly audit   'whatwg-url': [ '5.0.0' ],
+268 silly audit   which: [ '2.0.2' ],
+268 silly audit   wrappy: [ '1.0.2' ],
+268 silly audit   ws: [ '8.20.0' ],
+268 silly audit   'xdg-app-paths': [ '5.1.0' ],
+268 silly audit   'xdg-portable': [ '7.3.0' ],
+268 silly audit   yauzl: [ '2.10.0' ],
+268 silly audit   'yauzl-clone': [ '1.0.4' ],
+268 silly audit   'yauzl-promise': [ '2.1.3' ]
+268 silly audit }
+269 verbose audit error FetchError: request to https://registry.npmjs.org/-/npm/v1/security/advisories/bulk failed, reason: 
+269 verbose audit error     at ClientRequest.<anonymous> (C:\Program Files\nodejs\node_modules\npm\node_modules\minipass-fetch\lib\index.js:130:14)
+269 verbose audit error     at ClientRequest.emit (node:events:508:28)
+269 verbose audit error     at emitErrorEvent (node:_http_client:108:11)
+269 verbose audit error     at _destroy (node:_http_client:963:9)
+269 verbose audit error     at onSocketNT (node:_http_client:983:5)
+269 verbose audit error     at process.processTicksAndRejections (node:internal/process/task_queues:91:21) {
+269 verbose audit error   code: 'EACCES',
+269 verbose audit error   errno: 'EACCES',
+269 verbose audit error   type: 'system'
+269 verbose audit error }
+270 silly audit error undefined
+271 silly audit report null
+272 http cache @vercel/static-build@https://registry.npmjs.org/@vercel/static-build/-/static-build-2.9.21.tgz 1ms (cache hit)
+273 http cache @vercel/python@https://registry.npmjs.org/@vercel/python/-/python-6.36.0.tgz 0ms (cache hit)
+274 http cache vercel@https://registry.npmjs.org/vercel/-/vercel-52.0.0.tgz 1ms (cache hit)
+275 http cache get-tsconfig@https://registry.npmjs.org/get-tsconfig/-/get-tsconfig-4.14.0.tgz 0ms (cache hit)
+276 http cache @vercel/next@https://registry.npmjs.org/@vercel/next/-/next-4.16.8.tgz 0ms (cache hit)
+277 http cache @vercel/nestjs@https://registry.npmjs.org/@vercel/nestjs/-/nestjs-0.2.75.tgz 0ms (cache hit)
+278 http cache @vercel/koa@https://registry.npmjs.org/@vercel/koa/-/koa-0.1.54.tgz 0ms (cache hit)
+279 http cache @vercel/hono@https://registry.npmjs.org/@vercel/hono/-/hono-0.2.74.tgz 0ms (cache hit)
+280 http cache @vercel/h3@https://registry.npmjs.org/@vercel/h3/-/h3-0.1.80.tgz 0ms (cache hit)
+281 http cache @vercel/fastify@https://registry.npmjs.org/@vercel/fastify/-/fastify-0.1.74.tgz 0ms (cache hit)
+282 http cache @vercel/gatsby-plugin-vercel-builder@https://registry.npmjs.org/@vercel/gatsby-plugin-vercel-builder/-/gatsby-plugin-vercel-builder-2.1.21.tgz 0ms (cache hit)
+283 http cache jsonfile@https://registry.npmjs.org/jsonfile/-/jsonfile-6.2.1.tgz 0ms (cache hit)
+284 http cache @vercel/express@https://registry.npmjs.org/@vercel/express/-/express-0.1.81.tgz 0ms (cache hit)
+285 http cache @vercel/elysia@https://registry.npmjs.org/@vercel/elysia/-/elysia-0.1.71.tgz 0ms (cache hit)
+286 http cache @vercel/cervel@https://registry.npmjs.org/@vercel/cervel/-/cervel-0.0.55.tgz 0ms (cache hit)
+287 http cache @vercel/build-utils@https://registry.npmjs.org/@vercel/build-utils/-/build-utils-13.20.0.tgz 0ms (cache hit)
+288 http cache @vercel/detect-agent@https://registry.npmjs.org/@vercel/detect-agent/-/detect-agent-1.2.3.tgz 0ms (cache hit)
+289 http cache @emnapi/core@https://registry.npmjs.org/@emnapi/core/-/core-1.10.0.tgz 0ms (cache hit)
+290 http cache @vercel/backends@https://registry.npmjs.org/@vercel/backends/-/backends-0.2.0.tgz 0ms (cache hit)
+291 http cache @napi-rs/wasm-runtime@https://registry.npmjs.org/@napi-rs/wasm-runtime/-/wasm-runtime-1.1.4.tgz 0ms (cache hit)
+292 http cache @vercel/static-config@https://registry.npmjs.org/@vercel/static-config/-/static-config-3.2.0.tgz 0ms (cache hit)
+293 http cache @vercel/sandbox@https://registry.npmjs.org/@vercel/sandbox/-/sandbox-1.9.0.tgz 0ms (cache hit)
+294 http cache @vercel/ruby@https://registry.npmjs.org/@vercel/ruby/-/ruby-2.3.2.tgz 0ms (cache hit)
+295 http cache @vercel/remix-builder@https://registry.npmjs.org/@vercel/remix-builder/-/remix-builder-5.7.2.tgz 0ms (cache hit)
+296 http cache @vercel/rust@https://registry.npmjs.org/@vercel/rust/-/rust-1.1.1.tgz 0ms (cache hit)
+297 http cache @yarnpkg/parsers@https://registry.npmjs.org/@yarnpkg/parsers/-/parsers-3.0.3.tgz 0ms (cache hit)
+298 http cache @vercel/redwood@https://registry.npmjs.org/@vercel/redwood/-/redwood-2.4.12.tgz 0ms (cache hit)
+299 http cache @vercel/prepare-flags-definitions@https://registry.npmjs.org/@vercel/prepare-flags-definitions/-/prepare-flags-definitions-0.2.1.tgz 0ms (cache hit)
+300 http cache @vercel/hydrogen@https://registry.npmjs.org/@vercel/hydrogen/-/hydrogen-1.3.6.tgz 0ms (cache hit)
+301 http cache @vercel/python-analysis@https://registry.npmjs.org/@vercel/python-analysis/-/python-analysis-0.11.0.tgz 0ms (cache hit)
+302 http cache @vercel/node@https://registry.npmjs.org/@vercel/node/-/node-5.7.13.tgz 0ms (cache hit)
+303 http cache @emnapi/runtime@https://registry.npmjs.org/@emnapi/runtime/-/runtime-1.10.0.tgz 0ms (cache hit)
+304 http cache @vercel/oidc@https://registry.npmjs.org/@vercel/oidc/-/oidc-3.2.0.tgz 0ms (cache hit)
+305 http cache @vercel/go@https://registry.npmjs.org/@vercel/go/-/go-3.5.0.tgz 0ms (cache hit)
+306 http cache @vercel/nft@https://registry.npmjs.org/@vercel/nft/-/nft-1.5.0.tgz 0ms (cache hit)
+307 http cache @types/json-schema@https://registry.npmjs.org/@types/json-schema/-/json-schema-7.0.15.tgz 0ms (cache hit)
+308 http cache @vercel/error-utils@https://registry.npmjs.org/@vercel/error-utils/-/error-utils-2.0.3.tgz 0ms (cache hit)
+309 http cache @vercel/gatsby-plugin-vercel-analytics@https://registry.npmjs.org/@vercel/gatsby-plugin-vercel-analytics/-/gatsby-plugin-vercel-analytics-1.0.11.tgz 0ms (cache hit)
+310 http cache @ts-morph/common@https://registry.npmjs.org/@ts-morph/common/-/common-0.11.1.tgz 0ms (cache hit)
+311 http cache @types/estree@https://registry.npmjs.org/@types/estree/-/estree-1.0.8.tgz 0ms (cache hit)
+312 http cache @vercel/fun@https://registry.npmjs.org/@vercel/fun/-/fun-1.3.0.tgz 0ms (cache hit)
+313 http cache @rolldown/pluginutils@https://registry.npmjs.org/@rolldown/pluginutils/-/pluginutils-1.0.0-rc.1.tgz 0ms (cache hit)
+314 http cache @vercel/blob@https://registry.npmjs.org/@vercel/blob/-/blob-2.3.0.tgz 0ms (cache hit)
+315 http cache @tootallnate/once@https://registry.npmjs.org/@tootallnate/once/-/once-2.0.0.tgz 0ms (cache hit)
+316 http cache @tybys/wasm-util@https://registry.npmjs.org/@tybys/wasm-util/-/wasm-util-0.10.1.tgz 0ms (cache hit)
+317 http cache @sinclair/typebox@https://registry.npmjs.org/@sinclair/typebox/-/typebox-0.25.24.tgz 0ms (cache hit)
+318 http cache @rollup/pluginutils@https://registry.npmjs.org/@rollup/pluginutils/-/pluginutils-5.3.0.tgz 0ms (cache hit)
+319 http cache @rolldown/binding-win32-x64-msvc@https://registry.npmjs.org/@rolldown/binding-win32-x64-msvc/-/binding-win32-x64-msvc-1.0.0-rc.1.tgz 0ms (cache hit)
+320 http cache @tootallnate/quickjs-emscripten@https://registry.npmjs.org/@tootallnate/quickjs-emscripten/-/quickjs-emscripten-0.23.0.tgz 0ms (cache hit)
+321 http cache @renovatebot/pep440@https://registry.npmjs.org/@renovatebot/pep440/-/pep440-4.2.1.tgz 0ms (cache hit)
+322 http cache @nodelib/fs.scandir@https://registry.npmjs.org/@nodelib/fs.scandir/-/fs.scandir-2.1.5.tgz 0ms (cache hit)
+323 http cache @mapbox/node-pre-gyp@https://registry.npmjs.org/@mapbox/node-pre-gyp/-/node-pre-gyp-2.0.3.tgz 0ms (cache hit)
+324 http cache @oxc-project/types@https://registry.npmjs.org/@oxc-project/types/-/types-0.110.0.tgz 0ms (cache hit)
+325 http cache @nodelib/fs.walk@https://registry.npmjs.org/@nodelib/fs.walk/-/fs.walk-1.2.8.tgz 0ms (cache hit)
+326 http cache @oxc-transform/binding-win32-x64-msvc@https://registry.npmjs.org/@oxc-transform/binding-win32-x64-msvc/-/binding-win32-x64-msvc-0.111.0.tgz 0ms (cache hit)
+327 http cache @edge-runtime/vm@https://registry.npmjs.org/@edge-runtime/vm/-/vm-3.2.0.tgz 0ms (cache hit)
+328 http cache @nodelib/fs.stat@https://registry.npmjs.org/@nodelib/fs.stat/-/fs.stat-2.0.5.tgz 0ms (cache hit)
+329 http cache @isaacs/brace-expansion@https://registry.npmjs.org/@isaacs/brace-expansion/-/brace-expansion-5.0.1.tgz 0ms (cache hit)
+330 http cache @edge-runtime/format@https://registry.npmjs.org/@edge-runtime/format/-/format-2.2.1.tgz 0ms (cache hit)
+331 http cache @isaacs/fs-minipass@https://registry.npmjs.org/@isaacs/fs-minipass/-/fs-minipass-4.0.1.tgz 0ms (cache hit)
+332 http cache @fastify/busboy@https://registry.npmjs.org/@fastify/busboy/-/busboy-2.1.1.tgz 0ms (cache hit)
+333 http cache @edge-runtime/node-utils@https://registry.npmjs.org/@edge-runtime/node-utils/-/node-utils-2.3.0.tgz 0ms (cache hit)
+334 http cache @isaacs/balanced-match@https://registry.npmjs.org/@isaacs/balanced-match/-/balanced-match-4.0.1.tgz 0ms (cache hit)
+335 http cache @esbuild/win32-x64@https://registry.npmjs.org/@esbuild/win32-x64/-/win32-x64-0.27.0.tgz 0ms (cache hit)
+336 http cache @emnapi/wasi-threads@https://registry.npmjs.org/@emnapi/wasi-threads/-/wasi-threads-1.2.1.tgz 0ms (cache hit)
+337 http cache zod@https://registry.npmjs.org/zod/-/zod-3.22.4.tgz 0ms (cache hit)
+338 http cache xdg-portable@https://registry.npmjs.org/xdg-portable/-/xdg-portable-7.3.0.tgz 0ms (cache hit)
+339 http cache yauzl-promise@https://registry.npmjs.org/yauzl-promise/-/yauzl-promise-2.1.3.tgz 0ms (cache hit)
+340 http cache yauzl@https://registry.npmjs.org/yauzl/-/yauzl-2.10.0.tgz 0ms (cache hit)
+341 http cache @edge-runtime/ponyfill@https://registry.npmjs.org/@edge-runtime/ponyfill/-/ponyfill-2.4.2.tgz 0ms (cache hit)
+342 http cache @bytecodealliance/preview2-shim@https://registry.npmjs.org/@bytecodealliance/preview2-shim/-/preview2-shim-0.17.6.tgz 0ms (cache hit)
+343 http cache yauzl-clone@https://registry.npmjs.org/yauzl-clone/-/yauzl-clone-1.0.4.tgz 0ms (cache hit)
+344 http cache xdg-app-paths@https://registry.npmjs.org/xdg-app-paths/-/xdg-app-paths-5.1.0.tgz 0ms (cache hit)
+345 http cache wrappy@https://registry.npmjs.org/wrappy/-/wrappy-1.0.2.tgz 0ms (cache hit)
+346 http cache yallist@https://registry.npmjs.org/yallist/-/yallist-5.0.0.tgz 0ms (cache hit)
+347 http cache whatwg-url@https://registry.npmjs.org/whatwg-url/-/whatwg-url-5.0.0.tgz 0ms (cache hit)
+348 http cache @edge-runtime/primitives@https://registry.npmjs.org/@edge-runtime/primitives/-/primitives-4.1.0.tgz 0ms (cache hit)
+349 http cache which@https://registry.npmjs.org/which/-/which-2.0.2.tgz 0ms (cache hit)
+350 http cache uri-js@https://registry.npmjs.org/uri-js/-/uri-js-4.4.1.tgz 0ms (cache hit)
+351 http cache web-vitals@https://registry.npmjs.org/web-vitals/-/web-vitals-0.2.4.tgz 0ms (cache hit)
+352 http cache webidl-conversions@https://registry.npmjs.org/webidl-conversions/-/webidl-conversions-3.0.1.tgz 0ms (cache hit)
+353 http cache unpipe@https://registry.npmjs.org/unpipe/-/unpipe-1.0.0.tgz 0ms (cache hit)
+354 http cache ts-morph@https://registry.npmjs.org/ts-morph/-/ts-morph-12.0.0.tgz 0ms (cache hit)
+355 http cache universalify@https://registry.npmjs.org/universalify/-/universalify-2.0.1.tgz 0ms (cache hit)
+356 http cache uid-promise@https://registry.npmjs.org/uid-promise/-/uid-promise-1.0.0.tgz 0ms (cache hit)
+357 http cache tsx@https://registry.npmjs.org/tsx/-/tsx-4.21.0.tgz 0ms (cache hit)
+358 http cache undici@https://registry.npmjs.org/undici/-/undici-6.25.0.tgz 0ms (cache hit)
+359 http cache ts-toolbelt@https://registry.npmjs.org/ts-toolbelt/-/ts-toolbelt-6.15.5.tgz 0ms (cache hit)
+360 http cache tree-kill@https://registry.npmjs.org/tree-kill/-/tree-kill-1.2.2.tgz 0ms (cache hit)
+361 http cache tr46@https://registry.npmjs.org/tr46/-/tr46-0.0.3.tgz 0ms (cache hit)
+362 http cache typescript@https://registry.npmjs.org/typescript/-/typescript-5.9.3.tgz 0ms (cache hit)
+363 http cache toidentifier@https://registry.npmjs.org/toidentifier/-/toidentifier-1.0.0.tgz 0ms (cache hit)
+364 http cache to-regex-range@https://registry.npmjs.org/to-regex-range/-/to-regex-range-5.0.1.tgz 0ms (cache hit)
+365 http cache strip-final-newline@https://registry.npmjs.org/strip-final-newline/-/strip-final-newline-2.0.0.tgz 0ms (cache hit)
+366 http cache tinyexec@https://registry.npmjs.org/tinyexec/-/tinyexec-0.3.2.tgz 0ms (cache hit)
+367 http cache text-decoder@https://registry.npmjs.org/text-decoder/-/text-decoder-1.2.7.tgz 0ms (cache hit)
+368 http cache time-span@https://registry.npmjs.org/time-span/-/time-span-4.0.0.tgz 0ms (cache hit)
+369 http cache tar-stream@https://registry.npmjs.org/tar-stream/-/tar-stream-3.1.7.tgz 0ms (cache hit)
+370 http cache throttleit@https://registry.npmjs.org/throttleit/-/throttleit-2.1.0.tgz 0ms (cache hit)
+371 http cache source-map@https://registry.npmjs.org/source-map/-/source-map-0.6.1.tgz 0ms (cache hit)
+372 http cache stream-to-promise@https://registry.npmjs.org/stream-to-promise/-/stream-to-promise-2.2.0.tgz 0ms (cache hit)
+373 http cache streamx@https://registry.npmjs.org/streamx/-/streamx-2.25.0.tgz 0ms (cache hit)
+374 http cache statuses@https://registry.npmjs.org/statuses/-/statuses-1.5.0.tgz 0ms (cache hit)
+375 http cache tar@https://registry.npmjs.org/tar/-/tar-7.5.7.tgz 0ms (cache hit)
+376 http cache stat-mode@https://registry.npmjs.org/stat-mode/-/stat-mode-0.3.0.tgz 0ms (cache hit)
+377 http cache stream-to-array@https://registry.npmjs.org/stream-to-array/-/stream-to-array-2.3.0.tgz 0ms (cache hit)
+378 http cache srvx@https://registry.npmjs.org/srvx/-/srvx-0.8.9.tgz 0ms (cache hit)
+379 http cache sprintf-js@https://registry.npmjs.org/sprintf-js/-/sprintf-js-1.0.3.tgz 0ms (cache hit)
+380 http cache socks-proxy-agent@https://registry.npmjs.org/socks-proxy-agent/-/socks-proxy-agent-8.0.5.tgz 0ms (cache hit)
+381 http cache socks@https://registry.npmjs.org/socks/-/socks-2.8.7.tgz 0ms (cache hit)
+382 http cache signal-exit@https://registry.npmjs.org/signal-exit/-/signal-exit-4.0.2.tgz 0ms (cache hit)
+383 http cache smol-toml@https://registry.npmjs.org/smol-toml/-/smol-toml-1.5.2.tgz 0ms (cache hit)
+384 http cache shebang-regex@https://registry.npmjs.org/shebang-regex/-/shebang-regex-3.0.0.tgz 0ms (cache hit)
+385 http cache shebang-command@https://registry.npmjs.org/shebang-command/-/shebang-command-2.0.0.tgz 0ms (cache hit)
+386 http cache smart-buffer@https://registry.npmjs.org/smart-buffer/-/smart-buffer-4.2.0.tgz 0ms (cache hit)
+387 http cache sandbox@https://registry.npmjs.org/sandbox/-/sandbox-2.5.6.tgz 0ms (cache hit)
+388 http cache semver@https://registry.npmjs.org/semver/-/semver-7.5.4.tgz 0ms (cache hit)
+389 http cache safer-buffer@https://registry.npmjs.org/safer-buffer/-/safer-buffer-2.1.2.tgz 0ms (cache hit)
+390 http cache run-parallel@https://registry.npmjs.org/run-parallel/-/run-parallel-1.2.0.tgz 0ms (cache hit)
+391 http cache setprototypeof@https://registry.npmjs.org/setprototypeof/-/setprototypeof-1.1.1.tgz 0ms (cache hit)
+392 http cache rolldown@https://registry.npmjs.org/rolldown/-/rolldown-1.0.0-rc.1.tgz 0ms (cache hit)
+393 http cache resolve-from@https://registry.npmjs.org/resolve-from/-/resolve-from-5.0.0.tgz 0ms (cache hit)
+394 http cache reusify@https://registry.npmjs.org/reusify/-/reusify-1.1.0.tgz 0ms (cache hit)
+395 http cache readdirp@https://registry.npmjs.org/readdirp/-/readdirp-4.1.2.tgz 0ms (cache hit)
+396 http cache resolve.exports@https://registry.npmjs.org/resolve.exports/-/resolve.exports-2.0.3.tgz 0ms (cache hit)
+397 http cache require-from-string@https://registry.npmjs.org/require-from-string/-/require-from-string-2.0.2.tgz 0ms (cache hit)
+398 http cache raw-body@https://registry.npmjs.org/raw-body/-/raw-body-2.4.1.tgz 0ms (cache hit)
+399 http cache resolve-pkg-maps@https://registry.npmjs.org/resolve-pkg-maps/-/resolve-pkg-maps-1.0.0.tgz 0ms (cache hit)
+400 http cache retry@https://registry.npmjs.org/retry/-/retry-0.13.1.tgz 0ms (cache hit)
+401 http cache promisepipe@https://registry.npmjs.org/promisepipe/-/promisepipe-3.0.0.tgz 0ms (cache hit)
+402 http cache proxy-agent@https://registry.npmjs.org/proxy-agent/-/proxy-agent-6.4.0.tgz 0ms (cache hit)
+403 http cache queue-microtask@https://registry.npmjs.org/queue-microtask/-/queue-microtask-1.2.3.tgz 0ms (cache hit)
+404 http cache proxy-from-env@https://registry.npmjs.org/proxy-from-env/-/proxy-from-env-1.1.0.tgz 0ms (cache hit)
+405 http cache pump@https://registry.npmjs.org/pump/-/pump-3.0.4.tgz 0ms (cache hit)
+406 http cache picocolors@https://registry.npmjs.org/picocolors/-/picocolors-1.0.0.tgz 0ms (cache hit)
+407 http cache punycode@https://registry.npmjs.org/punycode/-/punycode-2.3.1.tgz 0ms (cache hit)
+408 http cache picomatch@https://registry.npmjs.org/picomatch/-/picomatch-4.0.4.tgz 0ms (cache hit)
+409 http cache pretty-ms@https://registry.npmjs.org/pretty-ms/-/pretty-ms-7.0.1.tgz 0ms (cache hit)
+410 http cache pac-proxy-agent@https://registry.npmjs.org/pac-proxy-agent/-/pac-proxy-agent-7.2.0.tgz 0ms (cache hit)
+411 http cache path-to-regexp@https://registry.npmjs.org/path-to-regexp/-/path-to-regexp-8.3.0.tgz 0ms (cache hit)
+412 http cache path-to-regexp-updated@https://registry.npmjs.org/path-to-regexp/-/path-to-regexp-6.3.0.tgz 0ms (cache hit)
+413 http cache path-scurry@https://registry.npmjs.org/path-scurry/-/path-scurry-2.0.2.tgz 0ms (cache hit)
+414 http cache pend@https://registry.npmjs.org/pend/-/pend-1.2.0.tgz 0ms (cache hit)
+415 http cache oxc-transform@https://registry.npmjs.org/oxc-transform/-/oxc-transform-0.111.0.tgz 0ms (cache hit)
+416 http cache path-key@https://registry.npmjs.org/path-key/-/path-key-3.1.1.tgz 0ms (cache hit)
+417 http cache parse-ms@https://registry.npmjs.org/parse-ms/-/parse-ms-2.1.0.tgz 0ms (cache hit)
+418 http cache path-browserify@https://registry.npmjs.org/path-browserify/-/path-browserify-1.0.1.tgz 0ms (cache hit)
+419 http cache pac-resolver@https://registry.npmjs.org/pac-resolver/-/pac-resolver-7.0.1.tgz 0ms (cache hit)
+420 http cache p-finally@https://registry.npmjs.org/p-finally/-/p-finally-2.0.1.tgz 0ms (cache hit)
+421 http cache os-paths@https://registry.npmjs.org/os-paths/-/os-paths-4.4.0.tgz 0ms (cache hit)
+422 http cache npm-run-path@https://registry.npmjs.org/npm-run-path/-/npm-run-path-4.0.1.tgz 0ms (cache hit)
+423 http cache once@https://registry.npmjs.org/once/-/once-1.4.0.tgz 0ms (cache hit)
+424 http cache onetime@https://registry.npmjs.org/onetime/-/onetime-5.1.2.tgz 0ms (cache hit)
+425 http cache nopt@https://registry.npmjs.org/nopt/-/nopt-8.1.0.tgz 0ms (cache hit)
+426 http cache node-gyp-build@https://registry.npmjs.org/node-gyp-build/-/node-gyp-build-4.8.4.tgz 0ms (cache hit)
+427 http cache mkdirp@https://registry.npmjs.org/mkdirp/-/mkdirp-1.0.4.tgz 0ms (cache hit)
+428 http cache ms@https://registry.npmjs.org/ms/-/ms-2.1.1.tgz 0ms (cache hit)
+429 http cache node-fetch@https://registry.npmjs.org/node-fetch/-/node-fetch-2.6.7.tgz 0ms (cache hit)
+430 http cache mri@https://registry.npmjs.org/mri/-/mri-1.2.0.tgz 0ms (cache hit)
+431 http cache minimatch@https://registry.npmjs.org/minimatch/-/minimatch-10.1.1.tgz 0ms (cache hit)
+432 http cache merge2@https://registry.npmjs.org/merge2/-/merge2-1.4.1.tgz 0ms (cache hit)
+433 http cache minipass@https://registry.npmjs.org/minipass/-/minipass-7.1.3.tgz 0ms (cache hit)
+434 http cache minizlib@https://registry.npmjs.org/minizlib/-/minizlib-3.1.0.tgz 0ms (cache hit)
+435 http cache mimic-fn@https://registry.npmjs.org/mimic-fn/-/mimic-fn-2.1.0.tgz 0ms (cache hit)
+436 http cache mime-types@https://registry.npmjs.org/mime-types/-/mime-types-2.1.35.tgz 0ms (cache hit)
+437 http cache mime-db@https://registry.npmjs.org/mime-db/-/mime-db-1.52.0.tgz 0ms (cache hit)
+438 http cache micromatch@https://registry.npmjs.org/micromatch/-/micromatch-4.0.8.tgz 0ms (cache hit)
+439 http cache micro@https://registry.npmjs.org/micro/-/micro-9.3.5-canary.3.tgz 0ms (cache hit)
+440 http cache netmask@https://registry.npmjs.org/netmask/-/netmask-2.1.1.tgz 0ms (cache hit)
+441 http cache merge-stream@https://registry.npmjs.org/merge-stream/-/merge-stream-2.0.0.tgz 0ms (cache hit)
+442 http cache math-intrinsics@https://registry.npmjs.org/math-intrinsics/-/math-intrinsics-1.1.0.tgz 0ms (cache hit)
+443 http cache json-schema-traverse@https://registry.npmjs.org/json-schema-traverse/-/json-schema-traverse-1.0.0.tgz 0ms (cache hit)
+444 http cache jsonlines@https://registry.npmjs.org/jsonlines/-/jsonlines-0.1.1.tgz 0ms (cache hit)
+445 http cache jose@https://registry.npmjs.org/jose/-/jose-5.9.6.tgz 0ms (cache hit)
+446 http cache json-schema-to-ts@https://registry.npmjs.org/json-schema-to-ts/-/json-schema-to-ts-1.6.4.tgz 0ms (cache hit)
+447 http cache luxon@https://registry.npmjs.org/luxon/-/luxon-3.7.2.tgz 0ms (cache hit)
+448 http cache isexe@https://registry.npmjs.org/isexe/-/isexe-2.0.0.tgz 0ms (cache hit)
+449 http cache is-stream@https://registry.npmjs.org/is-stream/-/is-stream-2.0.1.tgz 0ms (cache hit)
+450 http cache js-yaml@https://registry.npmjs.org/js-yaml/-/js-yaml-3.14.2.tgz 0ms (cache hit)
+451 http cache is-number@https://registry.npmjs.org/is-number/-/is-number-7.0.0.tgz 0ms (cache hit)
+452 http cache is-node-process@https://registry.npmjs.org/is-node-process/-/is-node-process-1.2.0.tgz 0ms (cache hit)
+453 http cache is-glob@https://registry.npmjs.org/is-glob/-/is-glob-4.0.3.tgz 0ms (cache hit)
+454 http cache is-extglob@https://registry.npmjs.org/is-extglob/-/is-extglob-2.1.1.tgz 0ms (cache hit)
+455 http cache ip-address@https://registry.npmjs.org/ip-address/-/ip-address-10.1.0.tgz 0ms (cache hit)
+456 http cache http-errors@https://registry.npmjs.org/http-errors/-/http-errors-1.7.3.tgz 0ms (cache hit)
+457 http cache inherits@https://registry.npmjs.org/inherits/-/inherits-2.0.4.tgz 0ms (cache hit)
+458 http cache iconv-lite@https://registry.npmjs.org/iconv-lite/-/iconv-lite-0.4.24.tgz 0ms (cache hit)
+459 http cache is-buffer@https://registry.npmjs.org/is-buffer/-/is-buffer-2.0.5.tgz 0ms (cache hit)
+460 http cache human-signals@https://registry.npmjs.org/human-signals/-/human-signals-1.1.1.tgz 0ms (cache hit)
+461 http cache lru-cache@https://registry.npmjs.org/lru-cache/-/lru-cache-11.3.5.tgz 0ms (cache hit)
+462 http cache https-proxy-agent@https://registry.npmjs.org/https-proxy-agent/-/https-proxy-agent-7.0.6.tgz 0ms (cache hit)
+463 http cache hasown@https://registry.npmjs.org/hasown/-/hasown-2.0.2.tgz 0ms (cache hit)
+464 http cache http-proxy-agent@https://registry.npmjs.org/http-proxy-agent/-/http-proxy-agent-7.0.2.tgz 0ms (cache hit)
+465 http cache has-tostringtag@https://registry.npmjs.org/has-tostringtag/-/has-tostringtag-1.0.2.tgz 0ms (cache hit)
+466 http cache has-symbols@https://registry.npmjs.org/has-symbols/-/has-symbols-1.1.0.tgz 0ms (cache hit)
+467 http cache glob@https://registry.npmjs.org/glob/-/glob-13.0.6.tgz 0ms (cache hit)
+468 http cache graceful-fs@https://registry.npmjs.org/graceful-fs/-/graceful-fs-4.2.11.tgz 0ms (cache hit)
+469 http cache gopd@https://registry.npmjs.org/gopd/-/gopd-1.2.0.tgz 0ms (cache hit)
+470 http cache get-uri@https://registry.npmjs.org/get-uri/-/get-uri-6.0.5.tgz 0ms (cache hit)
+471 http cache glob-parent@https://registry.npmjs.org/glob-parent/-/glob-parent-5.1.2.tgz 0ms (cache hit)
+472 http cache get-proto@https://registry.npmjs.org/get-proto/-/get-proto-1.0.1.tgz 0ms (cache hit)
+473 http cache get-stream@https://registry.npmjs.org/get-stream/-/get-stream-5.2.0.tgz 0ms (cache hit)
+474 http cache generic-pool@https://registry.npmjs.org/generic-pool/-/generic-pool-3.4.2.tgz 0ms (cache hit)
+475 http cache fs-extra@https://registry.npmjs.org/fs-extra/-/fs-extra-11.1.0.tgz 0ms (cache hit)
+476 http cache fill-range@https://registry.npmjs.org/fill-range/-/fill-range-7.1.1.tgz 0ms (cache hit)
+477 http cache get-intrinsic@https://registry.npmjs.org/get-intrinsic/-/get-intrinsic-1.3.0.tgz 0ms (cache hit)
+478 http cache function-bind@https://registry.npmjs.org/function-bind/-/function-bind-1.1.2.tgz 0ms (cache hit)
+479 http cache form-data@https://registry.npmjs.org/form-data/-/form-data-4.0.5.tgz 0ms (cache hit)
+480 http cache fastq@https://registry.npmjs.org/fastq/-/fastq-1.20.1.tgz 0ms (cache hit)
+481 http cache fd-slicer@https://registry.npmjs.org/fd-slicer/-/fd-slicer-1.1.0.tgz 0ms (cache hit)
+482 http cache fast-deep-equal@https://registry.npmjs.org/fast-deep-equal/-/fast-deep-equal-3.1.3.tgz 0ms (cache hit)
+483 http cache fast-glob@https://registry.npmjs.org/fast-glob/-/fast-glob-3.3.3.tgz 0ms (cache hit)
+484 http cache fast-fifo@https://registry.npmjs.org/fast-fifo/-/fast-fifo-1.3.2.tgz 0ms (cache hit)
+485 http cache file-uri-to-path@https://registry.npmjs.org/file-uri-to-path/-/file-uri-to-path-1.0.0.tgz 0ms (cache hit)
+486 http cache events-intercept@https://registry.npmjs.org/events-intercept/-/events-intercept-2.0.0.tgz 0ms (cache hit)
+487 http cache execa@https://registry.npmjs.org/execa/-/execa-3.2.0.tgz 0ms (cache hit)
+488 http cache events-universal@https://registry.npmjs.org/events-universal/-/events-universal-1.0.1.tgz 0ms (cache hit)
+489 http cache esutils@https://registry.npmjs.org/esutils/-/esutils-2.0.3.tgz 0ms (cache hit)
+490 http cache estraverse@https://registry.npmjs.org/estraverse/-/estraverse-5.3.0.tgz 0ms (cache hit)
+491 http cache estree-walker@https://registry.npmjs.org/estree-walker/-/estree-walker-2.0.2.tgz 0ms (cache hit)
+492 http cache esbuild@https://registry.npmjs.org/esbuild/-/esbuild-0.27.0.tgz 0ms (cache hit)
+493 http cache esprima@https://registry.npmjs.org/esprima/-/esprima-4.0.1.tgz 0ms (cache hit)
+494 http cache escodegen@https://registry.npmjs.org/escodegen/-/escodegen-2.1.0.tgz 0ms (cache hit)
+495 http cache es-set-tostringtag@https://registry.npmjs.org/es-set-tostringtag/-/es-set-tostringtag-2.1.0.tgz 0ms (cache hit)
+496 http cache es-object-atoms@https://registry.npmjs.org/es-object-atoms/-/es-object-atoms-1.1.1.tgz 0ms (cache hit)
+497 http cache es-errors@https://registry.npmjs.org/es-errors/-/es-errors-1.3.0.tgz 0ms (cache hit)
+498 http cache es-define-property@https://registry.npmjs.org/es-define-property/-/es-define-property-1.0.1.tgz 0ms (cache hit)
+499 http cache etag@https://registry.npmjs.org/etag/-/etag-1.8.1.tgz 0ms (cache hit)
+500 http cache es-module-lexer@https://registry.npmjs.org/es-module-lexer/-/es-module-lexer-1.5.0.tgz 0ms (cache hit)
+501 http cache edge-runtime@https://registry.npmjs.org/edge-runtime/-/edge-runtime-2.5.9.tgz 0ms (cache hit)
+502 http cache detect-libc@https://registry.npmjs.org/detect-libc/-/detect-libc-2.1.2.tgz 0ms (cache hit)
+503 http cache degenerator@https://registry.npmjs.org/degenerator/-/degenerator-5.0.1.tgz 0ms (cache hit)
+504 http cache dunder-proto@https://registry.npmjs.org/dunder-proto/-/dunder-proto-1.0.1.tgz 0ms (cache hit)
+505 http cache end-of-stream@https://registry.npmjs.org/end-of-stream/-/end-of-stream-1.4.5.tgz 0ms (cache hit)
+506 http cache debug@https://registry.npmjs.org/debug/-/debug-4.3.4.tgz 0ms (cache hit)
+507 http cache delayed-stream@https://registry.npmjs.org/delayed-stream/-/delayed-stream-1.0.0.tgz 0ms (cache hit)
+508 http cache data-uri-to-buffer@https://registry.npmjs.org/data-uri-to-buffer/-/data-uri-to-buffer-6.0.2.tgz 0ms (cache hit)
+509 http cache cross-spawn@https://registry.npmjs.org/cross-spawn/-/cross-spawn-7.0.6.tgz 0ms (cache hit)
+510 http cache chokidar@https://registry.npmjs.org/chokidar/-/chokidar-4.0.0.tgz 0ms (cache hit)
+511 http cache convert-hrtime@https://registry.npmjs.org/convert-hrtime/-/convert-hrtime-3.0.0.tgz 0ms (cache hit)
+512 http cache content-type@https://registry.npmjs.org/content-type/-/content-type-1.0.4.tgz 0ms (cache hit)
+513 http cache depd@https://registry.npmjs.org/depd/-/depd-1.1.2.tgz 0ms (cache hit)
+514 http cache concat-map@https://registry.npmjs.org/concat-map/-/concat-map-0.0.1.tgz 0ms (cache hit)
+515 http cache cjs-module-lexer@https://registry.npmjs.org/cjs-module-lexer/-/cjs-module-lexer-1.2.3.tgz 1ms (cache hit)
+516 http cache cookie-es@https://registry.npmjs.org/cookie-es/-/cookie-es-2.0.1.tgz 0ms (cache hit)
+517 http cache code-block-writer@https://registry.npmjs.org/code-block-writer/-/code-block-writer-10.1.1.tgz 0ms (cache hit)
+518 http cache combined-stream@https://registry.npmjs.org/combined-stream/-/combined-stream-1.0.8.tgz 0ms (cache hit)
+519 http cache consola@https://registry.npmjs.org/consola/-/consola-3.4.2.tgz 0ms (cache hit)
+520 http cache call-bind-apply-helpers@https://registry.npmjs.org/call-bind-apply-helpers/-/call-bind-apply-helpers-1.0.2.tgz 0ms (cache hit)
+521 http cache bare-events@https://registry.npmjs.org/bare-events/-/bare-events-2.8.2.tgz 0ms (cache hit)
+522 http cache chownr@https://registry.npmjs.org/chownr/-/chownr-3.0.0.tgz 0ms (cache hit)
+523 http cache braces@https://registry.npmjs.org/braces/-/braces-3.0.3.tgz 0ms (cache hit)
+524 http cache bytes@https://registry.npmjs.org/bytes/-/bytes-3.1.0.tgz 0ms (cache hit)
+525 http cache bindings@https://registry.npmjs.org/bindings/-/bindings-1.5.0.tgz 0ms (cache hit)
+526 http cache balanced-match@https://registry.npmjs.org/balanced-match/-/balanced-match-1.0.2.tgz 0ms (cache hit)
+527 http cache brace-expansion@https://registry.npmjs.org/brace-expansion/-/brace-expansion-1.1.14.tgz 0ms (cache hit)
+528 http cache async-retry@https://registry.npmjs.org/async-retry/-/async-retry-1.3.3.tgz 0ms (cache hit)
+529 http cache asynckit@https://registry.npmjs.org/asynckit/-/asynckit-0.4.0.tgz 0ms (cache hit)
+530 http cache basic-ftp@https://registry.npmjs.org/basic-ftp/-/basic-ftp-5.2.2.tgz 0ms (cache hit)
+531 http cache buffer-crc32@https://registry.npmjs.org/buffer-crc32/-/buffer-crc32-0.2.13.tgz 0ms (cache hit)
+532 http cache async-sema@https://registry.npmjs.org/async-sema/-/async-sema-3.1.1.tgz 0ms (cache hit)
+533 http cache b4a@https://registry.npmjs.org/b4a/-/b4a-1.8.0.tgz 0ms (cache hit)
+534 http cache ast-types@https://registry.npmjs.org/ast-types/-/ast-types-0.13.4.tgz 0ms (cache hit)
+535 http cache arg@https://registry.npmjs.org/arg/-/arg-4.1.0.tgz 0ms (cache hit)
+536 http cache acorn@https://registry.npmjs.org/acorn/-/acorn-8.16.0.tgz 0ms (cache hit)
+537 http cache any-promise@https://registry.npmjs.org/any-promise/-/any-promise-1.3.0.tgz 0ms (cache hit)
+538 http cache argparse@https://registry.npmjs.org/argparse/-/argparse-1.0.10.tgz 0ms (cache hit)
+539 http cache ajv@https://registry.npmjs.org/ajv/-/ajv-8.6.3.tgz 0ms (cache hit)
+540 http cache async-listen@https://registry.npmjs.org/async-listen/-/async-listen-1.2.0.tgz 0ms (cache hit)
+541 http cache agent-base@https://registry.npmjs.org/agent-base/-/agent-base-7.1.4.tgz 0ms (cache hit)
+542 http cache acorn-import-attributes@https://registry.npmjs.org/acorn-import-attributes/-/acorn-import-attributes-1.9.5.tgz 0ms (cache hit)
+543 http cache abbrev@https://registry.npmjs.org/abbrev/-/abbrev-3.0.1.tgz 0ms (cache hit)
+544 http cache get-stream@https://registry.npmjs.org/get-stream/-/get-stream-6.0.1.tgz 0ms (cache hit)
+545 http cache picocolors@https://registry.npmjs.org/picocolors/-/picocolors-1.1.1.tgz 0ms (cache hit)
+546 http cache zod@https://registry.npmjs.org/zod/-/zod-3.24.4.tgz 0ms (cache hit)
+547 http cache undici@https://registry.npmjs.org/undici/-/undici-7.25.0.tgz 0ms (cache hit)
+548 http cache path-to-regexp@https://registry.npmjs.org/path-to-regexp/-/path-to-regexp-6.1.0.tgz 0ms (cache hit)
+549 http cache signal-exit@https://registry.npmjs.org/signal-exit/-/signal-exit-3.0.7.tgz 0ms (cache hit)
+550 http cache semver@https://registry.npmjs.org/semver/-/semver-6.3.1.tgz 0ms (cache hit)
+551 http cache execa@https://registry.npmjs.org/execa/-/execa-5.1.1.tgz 0ms (cache hit)
+552 http cache undici-types@https://registry.npmjs.org/undici-types/-/undici-types-5.26.5.tgz 0ms (cache hit)
+553 http cache undici@https://registry.npmjs.org/undici/-/undici-5.28.4.tgz 0ms (cache hit)
+554 http cache human-signals@https://registry.npmjs.org/human-signals/-/human-signals-2.1.0.tgz 0ms (cache hit)
+555 http cache js-yaml@https://registry.npmjs.org/js-yaml/-/js-yaml-4.1.1.tgz 0ms (cache hit)
+556 http cache @types/node@https://registry.npmjs.org/@types/node/-/node-20.11.0.tgz 0ms (cache hit)
+557 http cache argparse@https://registry.npmjs.org/argparse/-/argparse-2.0.1.tgz 0ms (cache hit)
+558 http cache async-listen@https://registry.npmjs.org/async-listen/-/async-listen-3.0.0.tgz 0ms (cache hit)
+559 http cache node-fetch@https://registry.npmjs.org/node-fetch/-/node-fetch-2.6.9.tgz 0ms (cache hit)
+560 http cache path-to-regexp@https://registry.npmjs.org/path-to-regexp/-/path-to-regexp-6.1.0.tgz 0ms (cache hit)
+561 http cache fs-extra@https://registry.npmjs.org/fs-extra/-/fs-extra-11.1.1.tgz 0ms (cache hit)
+562 http cache path-to-regexp@https://registry.npmjs.org/path-to-regexp/-/path-to-regexp-8.2.0.tgz 0ms (cache hit)
+563 http cache ms@https://registry.npmjs.org/ms/-/ms-2.1.3.tgz 0ms (cache hit)
+564 http cache once@https://registry.npmjs.org/once/-/once-1.3.3.tgz 0ms (cache hit)
+565 http cache es-module-lexer@https://registry.npmjs.org/es-module-lexer/-/es-module-lexer-1.4.1.tgz 0ms (cache hit)
+566 http cache minimatch@https://registry.npmjs.org/minimatch/-/minimatch-3.1.5.tgz 0ms (cache hit)
+567 http cache lru-cache@https://registry.npmjs.org/lru-cache/-/lru-cache-6.0.0.tgz 0ms (cache hit)
+568 http cache yallist@https://registry.npmjs.org/yallist/-/yallist-4.0.0.tgz 0ms (cache hit)
+569 http cache zod@https://registry.npmjs.org/zod/-/zod-4.3.6.tgz 0ms (cache hit)
+570 http cache ms@https://registry.npmjs.org/ms/-/ms-2.1.3.tgz 0ms (cache hit)
+571 http cache debug@https://registry.npmjs.org/debug/-/debug-4.4.3.tgz 0ms (cache hit)
+572 http cache end-of-stream@https://registry.npmjs.org/end-of-stream/-/end-of-stream-1.1.0.tgz 0ms (cache hit)
+573 http cache lru-cache@https://registry.npmjs.org/lru-cache/-/lru-cache-7.18.3.tgz 0ms (cache hit)
+574 http cache minimatch@https://registry.npmjs.org/minimatch/-/minimatch-10.2.5.tgz 0ms (cache hit)
+575 http cache balanced-match@https://registry.npmjs.org/balanced-match/-/balanced-match-4.0.4.tgz 0ms (cache hit)
+576 http cache ms@https://registry.npmjs.org/ms/-/ms-2.1.2.tgz 0ms (cache hit)
+577 http cache signal-exit@https://registry.npmjs.org/signal-exit/-/signal-exit-3.0.7.tgz 0ms (cache hit)
+578 http cache brace-expansion@https://registry.npmjs.org/brace-expansion/-/brace-expansion-5.0.5.tgz 0ms (cache hit)
+579 http cache picomatch@https://registry.npmjs.org/picomatch/-/picomatch-2.3.2.tgz 0ms (cache hit)
+580 silly tarball no local data for @vercel/static-build@https://registry.npmjs.org/@vercel/static-build/-/static-build-2.9.21.tgz. Extracting by manifest.
+581 http cache async-listen@https://registry.npmjs.org/async-listen/-/async-listen-3.0.1.tgz 0ms (cache hit)
+582 silly tarball no local data for @vercel/python@https://registry.npmjs.org/@vercel/python/-/python-6.36.0.tgz. Extracting by manifest.
+583 silly tarball no local data for vercel@https://registry.npmjs.org/vercel/-/vercel-52.0.0.tgz. Extracting by manifest.
+584 silly tarball no local data for get-tsconfig@https://registry.npmjs.org/get-tsconfig/-/get-tsconfig-4.14.0.tgz. Extracting by manifest.
+585 silly tarball no local data for @vercel/next@https://registry.npmjs.org/@vercel/next/-/next-4.16.8.tgz. Extracting by manifest.
+586 silly tarball no local data for @vercel/nestjs@https://registry.npmjs.org/@vercel/nestjs/-/nestjs-0.2.75.tgz. Extracting by manifest.
+587 silly tarball no local data for @vercel/koa@https://registry.npmjs.org/@vercel/koa/-/koa-0.1.54.tgz. Extracting by manifest.
+588 silly tarball no local data for @vercel/hono@https://registry.npmjs.org/@vercel/hono/-/hono-0.2.74.tgz. Extracting by manifest.
+589 silly tarball no local data for @vercel/h3@https://registry.npmjs.org/@vercel/h3/-/h3-0.1.80.tgz. Extracting by manifest.
+590 silly tarball no local data for @vercel/fastify@https://registry.npmjs.org/@vercel/fastify/-/fastify-0.1.74.tgz. Extracting by manifest.
+591 silly tarball no local data for @vercel/gatsby-plugin-vercel-builder@https://registry.npmjs.org/@vercel/gatsby-plugin-vercel-builder/-/gatsby-plugin-vercel-builder-2.1.21.tgz. Extracting by manifest.
+592 silly tarball no local data for jsonfile@https://registry.npmjs.org/jsonfile/-/jsonfile-6.2.1.tgz. Extracting by manifest.
+593 silly tarball no local data for @vercel/express@https://registry.npmjs.org/@vercel/express/-/express-0.1.81.tgz. Extracting by manifest.
+594 silly tarball no local data for @vercel/elysia@https://registry.npmjs.org/@vercel/elysia/-/elysia-0.1.71.tgz. Extracting by manifest.
+595 silly tarball no local data for @vercel/cervel@https://registry.npmjs.org/@vercel/cervel/-/cervel-0.0.55.tgz. Extracting by manifest.
+596 silly tarball no local data for @vercel/build-utils@https://registry.npmjs.org/@vercel/build-utils/-/build-utils-13.20.0.tgz. Extracting by manifest.
+597 silly tarball no local data for @vercel/detect-agent@https://registry.npmjs.org/@vercel/detect-agent/-/detect-agent-1.2.3.tgz. Extracting by manifest.
+598 silly tarball no local data for @emnapi/core@https://registry.npmjs.org/@emnapi/core/-/core-1.10.0.tgz. Extracting by manifest.
+599 silly tarball no local data for @vercel/backends@https://registry.npmjs.org/@vercel/backends/-/backends-0.2.0.tgz. Extracting by manifest.
+600 silly tarball no local data for @napi-rs/wasm-runtime@https://registry.npmjs.org/@napi-rs/wasm-runtime/-/wasm-runtime-1.1.4.tgz. Extracting by manifest.
+601 silly tarball no local data for @vercel/static-config@https://registry.npmjs.org/@vercel/static-config/-/static-config-3.2.0.tgz. Extracting by manifest.
+602 silly tarball no local data for @vercel/sandbox@https://registry.npmjs.org/@vercel/sandbox/-/sandbox-1.9.0.tgz. Extracting by manifest.
+603 silly tarball no local data for @vercel/ruby@https://registry.npmjs.org/@vercel/ruby/-/ruby-2.3.2.tgz. Extracting by manifest.
+604 silly tarball no local data for @vercel/remix-builder@https://registry.npmjs.org/@vercel/remix-builder/-/remix-builder-5.7.2.tgz. Extracting by manifest.
+605 silly tarball no local data for @vercel/rust@https://registry.npmjs.org/@vercel/rust/-/rust-1.1.1.tgz. Extracting by manifest.
+606 silly tarball no local data for @yarnpkg/parsers@https://registry.npmjs.org/@yarnpkg/parsers/-/parsers-3.0.3.tgz. Extracting by manifest.
+607 silly tarball no local data for @vercel/redwood@https://registry.npmjs.org/@vercel/redwood/-/redwood-2.4.12.tgz. Extracting by manifest.
+608 silly tarball no local data for @vercel/prepare-flags-definitions@https://registry.npmjs.org/@vercel/prepare-flags-definitions/-/prepare-flags-definitions-0.2.1.tgz. Extracting by manifest.
+609 silly tarball no local data for @vercel/hydrogen@https://registry.npmjs.org/@vercel/hydrogen/-/hydrogen-1.3.6.tgz. Extracting by manifest.
+610 silly tarball no local data for @vercel/python-analysis@https://registry.npmjs.org/@vercel/python-analysis/-/python-analysis-0.11.0.tgz. Extracting by manifest.
+611 silly tarball no local data for @vercel/node@https://registry.npmjs.org/@vercel/node/-/node-5.7.13.tgz. Extracting by manifest.
+612 silly tarball no local data for @emnapi/runtime@https://registry.npmjs.org/@emnapi/runtime/-/runtime-1.10.0.tgz. Extracting by manifest.
+613 silly tarball no local data for @vercel/oidc@https://registry.npmjs.org/@vercel/oidc/-/oidc-3.2.0.tgz. Extracting by manifest.
+614 silly tarball no local data for @vercel/go@https://registry.npmjs.org/@vercel/go/-/go-3.5.0.tgz. Extracting by manifest.
+615 silly tarball no local data for @vercel/nft@https://registry.npmjs.org/@vercel/nft/-/nft-1.5.0.tgz. Extracting by manifest.
+616 silly tarball no local data for @types/json-schema@https://registry.npmjs.org/@types/json-schema/-/json-schema-7.0.15.tgz. Extracting by manifest.
+617 silly tarball no local data for @vercel/error-utils@https://registry.npmjs.org/@vercel/error-utils/-/error-utils-2.0.3.tgz. Extracting by manifest.
+618 silly tarball no local data for @vercel/gatsby-plugin-vercel-analytics@https://registry.npmjs.org/@vercel/gatsby-plugin-vercel-analytics/-/gatsby-plugin-vercel-analytics-1.0.11.tgz. Extracting by manifest.
+619 silly tarball no local data for @ts-morph/common@https://registry.npmjs.org/@ts-morph/common/-/common-0.11.1.tgz. Extracting by manifest.
+620 silly tarball no local data for @types/estree@https://registry.npmjs.org/@types/estree/-/estree-1.0.8.tgz. Extracting by manifest.
+621 silly tarball no local data for @vercel/fun@https://registry.npmjs.org/@vercel/fun/-/fun-1.3.0.tgz. Extracting by manifest.
+622 silly tarball no local data for @rolldown/pluginutils@https://registry.npmjs.org/@rolldown/pluginutils/-/pluginutils-1.0.0-rc.1.tgz. Extracting by manifest.
+623 silly tarball no local data for @vercel/blob@https://registry.npmjs.org/@vercel/blob/-/blob-2.3.0.tgz. Extracting by manifest.
+624 silly tarball no local data for @tootallnate/once@https://registry.npmjs.org/@tootallnate/once/-/once-2.0.0.tgz. Extracting by manifest.
+625 silly tarball no local data for @tybys/wasm-util@https://registry.npmjs.org/@tybys/wasm-util/-/wasm-util-0.10.1.tgz. Extracting by manifest.
+626 silly tarball no local data for @sinclair/typebox@https://registry.npmjs.org/@sinclair/typebox/-/typebox-0.25.24.tgz. Extracting by manifest.
+627 silly tarball no local data for @rollup/pluginutils@https://registry.npmjs.org/@rollup/pluginutils/-/pluginutils-5.3.0.tgz. Extracting by manifest.
+628 silly tarball no local data for @rolldown/binding-win32-x64-msvc@https://registry.npmjs.org/@rolldown/binding-win32-x64-msvc/-/binding-win32-x64-msvc-1.0.0-rc.1.tgz. Extracting by manifest.
+629 silly tarball no local data for @tootallnate/quickjs-emscripten@https://registry.npmjs.org/@tootallnate/quickjs-emscripten/-/quickjs-emscripten-0.23.0.tgz. Extracting by manifest.
+630 silly tarball no local data for @renovatebot/pep440@https://registry.npmjs.org/@renovatebot/pep440/-/pep440-4.2.1.tgz. Extracting by manifest.
+631 silly tarball no local data for @nodelib/fs.scandir@https://registry.npmjs.org/@nodelib/fs.scandir/-/fs.scandir-2.1.5.tgz. Extracting by manifest.
+632 silly tarball no local data for @mapbox/node-pre-gyp@https://registry.npmjs.org/@mapbox/node-pre-gyp/-/node-pre-gyp-2.0.3.tgz. Extracting by manifest.
+633 silly tarball no local data for @oxc-project/types@https://registry.npmjs.org/@oxc-project/types/-/types-0.110.0.tgz. Extracting by manifest.
+634 silly tarball no local data for @nodelib/fs.walk@https://registry.npmjs.org/@nodelib/fs.walk/-/fs.walk-1.2.8.tgz. Extracting by manifest.
+635 silly tarball no local data for @oxc-transform/binding-win32-x64-msvc@https://registry.npmjs.org/@oxc-transform/binding-win32-x64-msvc/-/binding-win32-x64-msvc-0.111.0.tgz. Extracting by manifest.
+636 silly tarball no local data for @edge-runtime/vm@https://registry.npmjs.org/@edge-runtime/vm/-/vm-3.2.0.tgz. Extracting by manifest.
+637 silly tarball no local data for @nodelib/fs.stat@https://registry.npmjs.org/@nodelib/fs.stat/-/fs.stat-2.0.5.tgz. Extracting by manifest.
+638 silly tarball no local data for @isaacs/brace-expansion@https://registry.npmjs.org/@isaacs/brace-expansion/-/brace-expansion-5.0.1.tgz. Extracting by manifest.
+639 silly tarball no local data for @edge-runtime/format@https://registry.npmjs.org/@edge-runtime/format/-/format-2.2.1.tgz. Extracting by manifest.
+640 silly tarball no local data for @isaacs/fs-minipass@https://registry.npmjs.org/@isaacs/fs-minipass/-/fs-minipass-4.0.1.tgz. Extracting by manifest.
+641 silly tarball no local data for @fastify/busboy@https://registry.npmjs.org/@fastify/busboy/-/busboy-2.1.1.tgz. Extracting by manifest.
+642 silly tarball no local data for @edge-runtime/node-utils@https://registry.npmjs.org/@edge-runtime/node-utils/-/node-utils-2.3.0.tgz. Extracting by manifest.
+643 silly tarball no local data for @isaacs/balanced-match@https://registry.npmjs.org/@isaacs/balanced-match/-/balanced-match-4.0.1.tgz. Extracting by manifest.
+644 silly tarball no local data for @esbuild/win32-x64@https://registry.npmjs.org/@esbuild/win32-x64/-/win32-x64-0.27.0.tgz. Extracting by manifest.
+645 silly tarball no local data for @emnapi/wasi-threads@https://registry.npmjs.org/@emnapi/wasi-threads/-/wasi-threads-1.2.1.tgz. Extracting by manifest.
+646 silly tarball no local data for zod@https://registry.npmjs.org/zod/-/zod-3.22.4.tgz. Extracting by manifest.
+647 silly tarball no local data for xdg-portable@https://registry.npmjs.org/xdg-portable/-/xdg-portable-7.3.0.tgz. Extracting by manifest.
+648 silly tarball no local data for yauzl-promise@https://registry.npmjs.org/yauzl-promise/-/yauzl-promise-2.1.3.tgz. Extracting by manifest.
+649 silly tarball no local data for yauzl@https://registry.npmjs.org/yauzl/-/yauzl-2.10.0.tgz. Extracting by manifest.
+650 silly tarball no local data for @edge-runtime/ponyfill@https://registry.npmjs.org/@edge-runtime/ponyfill/-/ponyfill-2.4.2.tgz. Extracting by manifest.
+651 silly tarball no local data for @bytecodealliance/preview2-shim@https://registry.npmjs.org/@bytecodealliance/preview2-shim/-/preview2-shim-0.17.6.tgz. Extracting by manifest.
+652 silly tarball no local data for yauzl-clone@https://registry.npmjs.org/yauzl-clone/-/yauzl-clone-1.0.4.tgz. Extracting by manifest.
+653 silly tarball no local data for xdg-app-paths@https://registry.npmjs.org/xdg-app-paths/-/xdg-app-paths-5.1.0.tgz. Extracting by manifest.
+654 silly tarball no local data for wrappy@https://registry.npmjs.org/wrappy/-/wrappy-1.0.2.tgz. Extracting by manifest.
+655 silly tarball no local data for yallist@https://registry.npmjs.org/yallist/-/yallist-5.0.0.tgz. Extracting by manifest.
+656 silly tarball no local data for whatwg-url@https://registry.npmjs.org/whatwg-url/-/whatwg-url-5.0.0.tgz. Extracting by manifest.
+657 silly tarball no local data for @edge-runtime/primitives@https://registry.npmjs.org/@edge-runtime/primitives/-/primitives-4.1.0.tgz. Extracting by manifest.
+658 silly tarball no local data for which@https://registry.npmjs.org/which/-/which-2.0.2.tgz. Extracting by manifest.
+659 silly tarball no local data for uri-js@https://registry.npmjs.org/uri-js/-/uri-js-4.4.1.tgz. Extracting by manifest.
+660 silly tarball no local data for web-vitals@https://registry.npmjs.org/web-vitals/-/web-vitals-0.2.4.tgz. Extracting by manifest.
+661 silly tarball no local data for webidl-conversions@https://registry.npmjs.org/webidl-conversions/-/webidl-conversions-3.0.1.tgz. Extracting by manifest.
+662 silly tarball no local data for unpipe@https://registry.npmjs.org/unpipe/-/unpipe-1.0.0.tgz. Extracting by manifest.
+663 silly tarball no local data for ts-morph@https://registry.npmjs.org/ts-morph/-/ts-morph-12.0.0.tgz. Extracting by manifest.
+664 silly tarball no local data for universalify@https://registry.npmjs.org/universalify/-/universalify-2.0.1.tgz. Extracting by manifest.
+665 silly tarball no local data for uid-promise@https://registry.npmjs.org/uid-promise/-/uid-promise-1.0.0.tgz. Extracting by manifest.
+666 silly tarball no local data for tsx@https://registry.npmjs.org/tsx/-/tsx-4.21.0.tgz. Extracting by manifest.
+667 silly tarball no local data for undici@https://registry.npmjs.org/undici/-/undici-6.25.0.tgz. Extracting by manifest.
+668 silly tarball no local data for ts-toolbelt@https://registry.npmjs.org/ts-toolbelt/-/ts-toolbelt-6.15.5.tgz. Extracting by manifest.
+669 silly tarball no local data for tree-kill@https://registry.npmjs.org/tree-kill/-/tree-kill-1.2.2.tgz. Extracting by manifest.
+670 silly tarball no local data for tr46@https://registry.npmjs.org/tr46/-/tr46-0.0.3.tgz. Extracting by manifest.
+671 silly tarball no local data for typescript@https://registry.npmjs.org/typescript/-/typescript-5.9.3.tgz. Extracting by manifest.
+672 silly tarball no local data for toidentifier@https://registry.npmjs.org/toidentifier/-/toidentifier-1.0.0.tgz. Extracting by manifest.
+673 silly tarball no local data for to-regex-range@https://registry.npmjs.org/to-regex-range/-/to-regex-range-5.0.1.tgz. Extracting by manifest.
+674 silly tarball no local data for strip-final-newline@https://registry.npmjs.org/strip-final-newline/-/strip-final-newline-2.0.0.tgz. Extracting by manifest.
+675 silly tarball no local data for tinyexec@https://registry.npmjs.org/tinyexec/-/tinyexec-0.3.2.tgz. Extracting by manifest.
+676 silly tarball no local data for text-decoder@https://registry.npmjs.org/text-decoder/-/text-decoder-1.2.7.tgz. Extracting by manifest.
+677 silly tarball no local data for time-span@https://registry.npmjs.org/time-span/-/time-span-4.0.0.tgz. Extracting by manifest.
+678 silly tarball no local data for tar-stream@https://registry.npmjs.org/tar-stream/-/tar-stream-3.1.7.tgz. Extracting by manifest.
+679 silly tarball no local data for throttleit@https://registry.npmjs.org/throttleit/-/throttleit-2.1.0.tgz. Extracting by manifest.
+680 silly tarball no local data for source-map@https://registry.npmjs.org/source-map/-/source-map-0.6.1.tgz. Extracting by manifest.
+681 silly tarball no local data for stream-to-promise@https://registry.npmjs.org/stream-to-promise/-/stream-to-promise-2.2.0.tgz. Extracting by manifest.
+682 silly tarball no local data for streamx@https://registry.npmjs.org/streamx/-/streamx-2.25.0.tgz. Extracting by manifest.
+683 silly tarball no local data for statuses@https://registry.npmjs.org/statuses/-/statuses-1.5.0.tgz. Extracting by manifest.
+684 silly tarball no local data for tar@https://registry.npmjs.org/tar/-/tar-7.5.7.tgz. Extracting by manifest.
+685 silly tarball no local data for stat-mode@https://registry.npmjs.org/stat-mode/-/stat-mode-0.3.0.tgz. Extracting by manifest.
+686 silly tarball no local data for stream-to-array@https://registry.npmjs.org/stream-to-array/-/stream-to-array-2.3.0.tgz. Extracting by manifest.
+687 silly tarball no local data for srvx@https://registry.npmjs.org/srvx/-/srvx-0.8.9.tgz. Extracting by manifest.
+688 silly tarball no local data for sprintf-js@https://registry.npmjs.org/sprintf-js/-/sprintf-js-1.0.3.tgz. Extracting by manifest.
+689 silly tarball no local data for socks-proxy-agent@https://registry.npmjs.org/socks-proxy-agent/-/socks-proxy-agent-8.0.5.tgz. Extracting by manifest.
+690 silly tarball no local data for socks@https://registry.npmjs.org/socks/-/socks-2.8.7.tgz. Extracting by manifest.
+691 silly tarball no local data for signal-exit@https://registry.npmjs.org/signal-exit/-/signal-exit-4.0.2.tgz. Extracting by manifest.
+692 silly tarball no local data for smol-toml@https://registry.npmjs.org/smol-toml/-/smol-toml-1.5.2.tgz. Extracting by manifest.
+693 silly tarball no local data for shebang-regex@https://registry.npmjs.org/shebang-regex/-/shebang-regex-3.0.0.tgz. Extracting by manifest.
+694 silly tarball no local data for shebang-command@https://registry.npmjs.org/shebang-command/-/shebang-command-2.0.0.tgz. Extracting by manifest.
+695 silly tarball no local data for smart-buffer@https://registry.npmjs.org/smart-buffer/-/smart-buffer-4.2.0.tgz. Extracting by manifest.
+696 silly tarball no local data for sandbox@https://registry.npmjs.org/sandbox/-/sandbox-2.5.6.tgz. Extracting by manifest.
+697 silly tarball no local data for semver@https://registry.npmjs.org/semver/-/semver-7.5.4.tgz. Extracting by manifest.
+698 silly tarball no local data for safer-buffer@https://registry.npmjs.org/safer-buffer/-/safer-buffer-2.1.2.tgz. Extracting by manifest.
+699 silly tarball no local data for run-parallel@https://registry.npmjs.org/run-parallel/-/run-parallel-1.2.0.tgz. Extracting by manifest.
+700 silly tarball no local data for setprototypeof@https://registry.npmjs.org/setprototypeof/-/setprototypeof-1.1.1.tgz. Extracting by manifest.
+701 silly tarball no local data for rolldown@https://registry.npmjs.org/rolldown/-/rolldown-1.0.0-rc.1.tgz. Extracting by manifest.
+702 silly tarball no local data for resolve-from@https://registry.npmjs.org/resolve-from/-/resolve-from-5.0.0.tgz. Extracting by manifest.
+703 silly tarball no local data for reusify@https://registry.npmjs.org/reusify/-/reusify-1.1.0.tgz. Extracting by manifest.
+704 silly tarball no local data for readdirp@https://registry.npmjs.org/readdirp/-/readdirp-4.1.2.tgz. Extracting by manifest.
+705 silly tarball no local data for resolve.exports@https://registry.npmjs.org/resolve.exports/-/resolve.exports-2.0.3.tgz. Extracting by manifest.
+706 silly tarball no local data for require-from-string@https://registry.npmjs.org/require-from-string/-/require-from-string-2.0.2.tgz. Extracting by manifest.
+707 silly tarball no local data for raw-body@https://registry.npmjs.org/raw-body/-/raw-body-2.4.1.tgz. Extracting by manifest.
+708 silly tarball no local data for resolve-pkg-maps@https://registry.npmjs.org/resolve-pkg-maps/-/resolve-pkg-maps-1.0.0.tgz. Extracting by manifest.
+709 silly tarball no local data for retry@https://registry.npmjs.org/retry/-/retry-0.13.1.tgz. Extracting by manifest.
+710 silly tarball no local data for promisepipe@https://registry.npmjs.org/promisepipe/-/promisepipe-3.0.0.tgz. Extracting by manifest.
+711 silly tarball no local data for proxy-agent@https://registry.npmjs.org/proxy-agent/-/proxy-agent-6.4.0.tgz. Extracting by manifest.
+712 silly tarball no local data for queue-microtask@https://registry.npmjs.org/queue-microtask/-/queue-microtask-1.2.3.tgz. Extracting by manifest.
+713 silly tarball no local data for proxy-from-env@https://registry.npmjs.org/proxy-from-env/-/proxy-from-env-1.1.0.tgz. Extracting by manifest.
+714 silly tarball no local data for pump@https://registry.npmjs.org/pump/-/pump-3.0.4.tgz. Extracting by manifest.
+715 silly tarball no local data for picocolors@https://registry.npmjs.org/picocolors/-/picocolors-1.0.0.tgz. Extracting by manifest.
+716 silly tarball no local data for punycode@https://registry.npmjs.org/punycode/-/punycode-2.3.1.tgz. Extracting by manifest.
+717 silly tarball no local data for picomatch@https://registry.npmjs.org/picomatch/-/picomatch-4.0.4.tgz. Extracting by manifest.
+718 silly tarball no local data for pretty-ms@https://registry.npmjs.org/pretty-ms/-/pretty-ms-7.0.1.tgz. Extracting by manifest.
+719 silly tarball no local data for pac-proxy-agent@https://registry.npmjs.org/pac-proxy-agent/-/pac-proxy-agent-7.2.0.tgz. Extracting by manifest.
+720 silly tarball no local data for path-to-regexp@https://registry.npmjs.org/path-to-regexp/-/path-to-regexp-8.3.0.tgz. Extracting by manifest.
+721 silly tarball no local data for path-to-regexp-updated@https://registry.npmjs.org/path-to-regexp/-/path-to-regexp-6.3.0.tgz. Extracting by manifest.
+722 silly tarball no local data for path-scurry@https://registry.npmjs.org/path-scurry/-/path-scurry-2.0.2.tgz. Extracting by manifest.
+723 silly tarball no local data for pend@https://registry.npmjs.org/pend/-/pend-1.2.0.tgz. Extracting by manifest.
+724 silly tarball no local data for oxc-transform@https://registry.npmjs.org/oxc-transform/-/oxc-transform-0.111.0.tgz. Extracting by manifest.
+725 silly tarball no local data for path-key@https://registry.npmjs.org/path-key/-/path-key-3.1.1.tgz. Extracting by manifest.
+726 silly tarball no local data for parse-ms@https://registry.npmjs.org/parse-ms/-/parse-ms-2.1.0.tgz. Extracting by manifest.
+727 silly tarball no local data for path-browserify@https://registry.npmjs.org/path-browserify/-/path-browserify-1.0.1.tgz. Extracting by manifest.
+728 silly tarball no local data for pac-resolver@https://registry.npmjs.org/pac-resolver/-/pac-resolver-7.0.1.tgz. Extracting by manifest.
+729 silly tarball no local data for p-finally@https://registry.npmjs.org/p-finally/-/p-finally-2.0.1.tgz. Extracting by manifest.
+730 silly tarball no local data for os-paths@https://registry.npmjs.org/os-paths/-/os-paths-4.4.0.tgz. Extracting by manifest.
+731 silly tarball no local data for npm-run-path@https://registry.npmjs.org/npm-run-path/-/npm-run-path-4.0.1.tgz. Extracting by manifest.
+732 silly tarball no local data for once@https://registry.npmjs.org/once/-/once-1.4.0.tgz. Extracting by manifest.
+733 silly tarball no local data for onetime@https://registry.npmjs.org/onetime/-/onetime-5.1.2.tgz. Extracting by manifest.
+734 silly tarball no local data for nopt@https://registry.npmjs.org/nopt/-/nopt-8.1.0.tgz. Extracting by manifest.
+735 silly tarball no local data for node-gyp-build@https://registry.npmjs.org/node-gyp-build/-/node-gyp-build-4.8.4.tgz. Extracting by manifest.
+736 silly tarball no local data for mkdirp@https://registry.npmjs.org/mkdirp/-/mkdirp-1.0.4.tgz. Extracting by manifest.
+737 silly tarball no local data for ms@https://registry.npmjs.org/ms/-/ms-2.1.1.tgz. Extracting by manifest.
+738 silly tarball no local data for node-fetch@https://registry.npmjs.org/node-fetch/-/node-fetch-2.6.7.tgz. Extracting by manifest.
+739 silly tarball no local data for mri@https://registry.npmjs.org/mri/-/mri-1.2.0.tgz. Extracting by manifest.
+740 silly tarball no local data for minimatch@https://registry.npmjs.org/minimatch/-/minimatch-10.1.1.tgz. Extracting by manifest.
+741 silly tarball no local data for merge2@https://registry.npmjs.org/merge2/-/merge2-1.4.1.tgz. Extracting by manifest.
+742 silly tarball no local data for minipass@https://registry.npmjs.org/minipass/-/minipass-7.1.3.tgz. Extracting by manifest.
+743 silly tarball no local data for minizlib@https://registry.npmjs.org/minizlib/-/minizlib-3.1.0.tgz. Extracting by manifest.
+744 silly tarball no local data for mimic-fn@https://registry.npmjs.org/mimic-fn/-/mimic-fn-2.1.0.tgz. Extracting by manifest.
+745 silly tarball no local data for mime-types@https://registry.npmjs.org/mime-types/-/mime-types-2.1.35.tgz. Extracting by manifest.
+746 silly tarball no local data for mime-db@https://registry.npmjs.org/mime-db/-/mime-db-1.52.0.tgz. Extracting by manifest.
+747 silly tarball no local data for micromatch@https://registry.npmjs.org/micromatch/-/micromatch-4.0.8.tgz. Extracting by manifest.
+748 silly tarball no local data for micro@https://registry.npmjs.org/micro/-/micro-9.3.5-canary.3.tgz. Extracting by manifest.
+749 silly tarball no local data for netmask@https://registry.npmjs.org/netmask/-/netmask-2.1.1.tgz. Extracting by manifest.
+750 silly tarball no local data for merge-stream@https://registry.npmjs.org/merge-stream/-/merge-stream-2.0.0.tgz. Extracting by manifest.
+751 silly tarball no local data for math-intrinsics@https://registry.npmjs.org/math-intrinsics/-/math-intrinsics-1.1.0.tgz. Extracting by manifest.
+752 silly tarball no local data for json-schema-traverse@https://registry.npmjs.org/json-schema-traverse/-/json-schema-traverse-1.0.0.tgz. Extracting by manifest.
+753 silly tarball no local data for jsonlines@https://registry.npmjs.org/jsonlines/-/jsonlines-0.1.1.tgz. Extracting by manifest.
+754 silly tarball no local data for jose@https://registry.npmjs.org/jose/-/jose-5.9.6.tgz. Extracting by manifest.
+755 silly tarball no local data for json-schema-to-ts@https://registry.npmjs.org/json-schema-to-ts/-/json-schema-to-ts-1.6.4.tgz. Extracting by manifest.
+756 silly tarball no local data for luxon@https://registry.npmjs.org/luxon/-/luxon-3.7.2.tgz. Extracting by manifest.
+757 silly tarball no local data for isexe@https://registry.npmjs.org/isexe/-/isexe-2.0.0.tgz. Extracting by manifest.
+758 silly tarball no local data for is-stream@https://registry.npmjs.org/is-stream/-/is-stream-2.0.1.tgz. Extracting by manifest.
+759 silly tarball no local data for js-yaml@https://registry.npmjs.org/js-yaml/-/js-yaml-3.14.2.tgz. Extracting by manifest.
+760 silly tarball no local data for is-number@https://registry.npmjs.org/is-number/-/is-number-7.0.0.tgz. Extracting by manifest.
+761 silly tarball no local data for is-node-process@https://registry.npmjs.org/is-node-process/-/is-node-process-1.2.0.tgz. Extracting by manifest.
+762 silly tarball no local data for is-glob@https://registry.npmjs.org/is-glob/-/is-glob-4.0.3.tgz. Extracting by manifest.
+763 silly tarball no local data for is-extglob@https://registry.npmjs.org/is-extglob/-/is-extglob-2.1.1.tgz. Extracting by manifest.
+764 silly tarball no local data for ip-address@https://registry.npmjs.org/ip-address/-/ip-address-10.1.0.tgz. Extracting by manifest.
+765 silly tarball no local data for http-errors@https://registry.npmjs.org/http-errors/-/http-errors-1.7.3.tgz. Extracting by manifest.
+766 silly tarball no local data for inherits@https://registry.npmjs.org/inherits/-/inherits-2.0.4.tgz. Extracting by manifest.
+767 silly tarball no local data for iconv-lite@https://registry.npmjs.org/iconv-lite/-/iconv-lite-0.4.24.tgz. Extracting by manifest.
+768 silly tarball no local data for is-buffer@https://registry.npmjs.org/is-buffer/-/is-buffer-2.0.5.tgz. Extracting by manifest.
+769 silly tarball no local data for human-signals@https://registry.npmjs.org/human-signals/-/human-signals-1.1.1.tgz. Extracting by manifest.
+770 silly tarball no local data for lru-cache@https://registry.npmjs.org/lru-cache/-/lru-cache-11.3.5.tgz. Extracting by manifest.
+771 silly tarball no local data for https-proxy-agent@https://registry.npmjs.org/https-proxy-agent/-/https-proxy-agent-7.0.6.tgz. Extracting by manifest.
+772 silly tarball no local data for hasown@https://registry.npmjs.org/hasown/-/hasown-2.0.2.tgz. Extracting by manifest.
+773 silly tarball no local data for http-proxy-agent@https://registry.npmjs.org/http-proxy-agent/-/http-proxy-agent-7.0.2.tgz. Extracting by manifest.
+774 silly tarball no local data for has-tostringtag@https://registry.npmjs.org/has-tostringtag/-/has-tostringtag-1.0.2.tgz. Extracting by manifest.
+775 silly tarball no local data for has-symbols@https://registry.npmjs.org/has-symbols/-/has-symbols-1.1.0.tgz. Extracting by manifest.
+776 silly tarball no local data for glob@https://registry.npmjs.org/glob/-/glob-13.0.6.tgz. Extracting by manifest.
+777 silly tarball no local data for graceful-fs@https://registry.npmjs.org/graceful-fs/-/graceful-fs-4.2.11.tgz. Extracting by manifest.
+778 silly tarball no local data for gopd@https://registry.npmjs.org/gopd/-/gopd-1.2.0.tgz. Extracting by manifest.
+779 silly tarball no local data for get-uri@https://registry.npmjs.org/get-uri/-/get-uri-6.0.5.tgz. Extracting by manifest.
+780 silly tarball no local data for glob-parent@https://registry.npmjs.org/glob-parent/-/glob-parent-5.1.2.tgz. Extracting by manifest.
+781 silly tarball no local data for get-proto@https://registry.npmjs.org/get-proto/-/get-proto-1.0.1.tgz. Extracting by manifest.
+782 silly tarball no local data for get-stream@https://registry.npmjs.org/get-stream/-/get-stream-5.2.0.tgz. Extracting by manifest.
+783 silly tarball no local data for generic-pool@https://registry.npmjs.org/generic-pool/-/generic-pool-3.4.2.tgz. Extracting by manifest.
+784 silly tarball no local data for fs-extra@https://registry.npmjs.org/fs-extra/-/fs-extra-11.1.0.tgz. Extracting by manifest.
+785 silly tarball no local data for fill-range@https://registry.npmjs.org/fill-range/-/fill-range-7.1.1.tgz. Extracting by manifest.
+786 silly tarball no local data for get-intrinsic@https://registry.npmjs.org/get-intrinsic/-/get-intrinsic-1.3.0.tgz. Extracting by manifest.
+787 silly tarball no local data for function-bind@https://registry.npmjs.org/function-bind/-/function-bind-1.1.2.tgz. Extracting by manifest.
+788 silly tarball no local data for form-data@https://registry.npmjs.org/form-data/-/form-data-4.0.5.tgz. Extracting by manifest.
+789 silly tarball no local data for fastq@https://registry.npmjs.org/fastq/-/fastq-1.20.1.tgz. Extracting by manifest.
+790 silly tarball no local data for fd-slicer@https://registry.npmjs.org/fd-slicer/-/fd-slicer-1.1.0.tgz. Extracting by manifest.
+791 silly tarball no local data for fast-deep-equal@https://registry.npmjs.org/fast-deep-equal/-/fast-deep-equal-3.1.3.tgz. Extracting by manifest.
+792 silly tarball no local data for fast-glob@https://registry.npmjs.org/fast-glob/-/fast-glob-3.3.3.tgz. Extracting by manifest.
+793 silly tarball no local data for fast-fifo@https://registry.npmjs.org/fast-fifo/-/fast-fifo-1.3.2.tgz. Extracting by manifest.
+794 silly tarball no local data for file-uri-to-path@https://registry.npmjs.org/file-uri-to-path/-/file-uri-to-path-1.0.0.tgz. Extracting by manifest.
+795 silly tarball no local data for events-intercept@https://registry.npmjs.org/events-intercept/-/events-intercept-2.0.0.tgz. Extracting by manifest.
+796 silly tarball no local data for execa@https://registry.npmjs.org/execa/-/execa-3.2.0.tgz. Extracting by manifest.
+797 silly tarball no local data for events-universal@https://registry.npmjs.org/events-universal/-/events-universal-1.0.1.tgz. Extracting by manifest.
+798 silly tarball no local data for esutils@https://registry.npmjs.org/esutils/-/esutils-2.0.3.tgz. Extracting by manifest.
+799 silly tarball no local data for estraverse@https://registry.npmjs.org/estraverse/-/estraverse-5.3.0.tgz. Extracting by manifest.
+800 silly tarball no local data for estree-walker@https://registry.npmjs.org/estree-walker/-/estree-walker-2.0.2.tgz. Extracting by manifest.
+801 silly tarball no local data for esprima@https://registry.npmjs.org/esprima/-/esprima-4.0.1.tgz. Extracting by manifest.
+802 silly tarball no local data for esbuild@https://registry.npmjs.org/esbuild/-/esbuild-0.27.0.tgz. Extracting by manifest.
+803 silly tarball no local data for escodegen@https://registry.npmjs.org/escodegen/-/escodegen-2.1.0.tgz. Extracting by manifest.
+804 silly tarball no local data for es-set-tostringtag@https://registry.npmjs.org/es-set-tostringtag/-/es-set-tostringtag-2.1.0.tgz. Extracting by manifest.
+805 silly tarball no local data for es-object-atoms@https://registry.npmjs.org/es-object-atoms/-/es-object-atoms-1.1.1.tgz. Extracting by manifest.
+806 silly tarball no local data for es-errors@https://registry.npmjs.org/es-errors/-/es-errors-1.3.0.tgz. Extracting by manifest.
+807 silly tarball no local data for es-define-property@https://registry.npmjs.org/es-define-property/-/es-define-property-1.0.1.tgz. Extracting by manifest.
+808 silly tarball no local data for etag@https://registry.npmjs.org/etag/-/etag-1.8.1.tgz. Extracting by manifest.
+809 silly tarball no local data for es-module-lexer@https://registry.npmjs.org/es-module-lexer/-/es-module-lexer-1.5.0.tgz. Extracting by manifest.
+810 silly tarball no local data for edge-runtime@https://registry.npmjs.org/edge-runtime/-/edge-runtime-2.5.9.tgz. Extracting by manifest.
+811 silly tarball no local data for detect-libc@https://registry.npmjs.org/detect-libc/-/detect-libc-2.1.2.tgz. Extracting by manifest.
+812 silly tarball no local data for degenerator@https://registry.npmjs.org/degenerator/-/degenerator-5.0.1.tgz. Extracting by manifest.
+813 silly tarball no local data for dunder-proto@https://registry.npmjs.org/dunder-proto/-/dunder-proto-1.0.1.tgz. Extracting by manifest.
+814 silly tarball no local data for end-of-stream@https://registry.npmjs.org/end-of-stream/-/end-of-stream-1.4.5.tgz. Extracting by manifest.
+815 silly tarball no local data for debug@https://registry.npmjs.org/debug/-/debug-4.3.4.tgz. Extracting by manifest.
+816 silly tarball no local data for delayed-stream@https://registry.npmjs.org/delayed-stream/-/delayed-stream-1.0.0.tgz. Extracting by manifest.
+817 silly tarball no local data for data-uri-to-buffer@https://registry.npmjs.org/data-uri-to-buffer/-/data-uri-to-buffer-6.0.2.tgz. Extracting by manifest.
+818 silly tarball no local data for cross-spawn@https://registry.npmjs.org/cross-spawn/-/cross-spawn-7.0.6.tgz. Extracting by manifest.
+819 silly tarball no local data for chokidar@https://registry.npmjs.org/chokidar/-/chokidar-4.0.0.tgz. Extracting by manifest.
+820 silly tarball no local data for convert-hrtime@https://registry.npmjs.org/convert-hrtime/-/convert-hrtime-3.0.0.tgz. Extracting by manifest.
+821 silly tarball no local data for content-type@https://registry.npmjs.org/content-type/-/content-type-1.0.4.tgz. Extracting by manifest.
+822 silly tarball no local data for depd@https://registry.npmjs.org/depd/-/depd-1.1.2.tgz. Extracting by manifest.
+823 silly tarball no local data for concat-map@https://registry.npmjs.org/concat-map/-/concat-map-0.0.1.tgz. Extracting by manifest.
+824 silly tarball no local data for cjs-module-lexer@https://registry.npmjs.org/cjs-module-lexer/-/cjs-module-lexer-1.2.3.tgz. Extracting by manifest.
+825 silly tarball no local data for cookie-es@https://registry.npmjs.org/cookie-es/-/cookie-es-2.0.1.tgz. Extracting by manifest.
+826 silly tarball no local data for code-block-writer@https://registry.npmjs.org/code-block-writer/-/code-block-writer-10.1.1.tgz. Extracting by manifest.
+827 silly tarball no local data for combined-stream@https://registry.npmjs.org/combined-stream/-/combined-stream-1.0.8.tgz. Extracting by manifest.
+828 silly tarball no local data for consola@https://registry.npmjs.org/consola/-/consola-3.4.2.tgz. Extracting by manifest.
+829 silly tarball no local data for call-bind-apply-helpers@https://registry.npmjs.org/call-bind-apply-helpers/-/call-bind-apply-helpers-1.0.2.tgz. Extracting by manifest.
+830 silly tarball no local data for bare-events@https://registry.npmjs.org/bare-events/-/bare-events-2.8.2.tgz. Extracting by manifest.
+831 silly tarball no local data for chownr@https://registry.npmjs.org/chownr/-/chownr-3.0.0.tgz. Extracting by manifest.
+832 silly tarball no local data for braces@https://registry.npmjs.org/braces/-/braces-3.0.3.tgz. Extracting by manifest.
+833 silly tarball no local data for bytes@https://registry.npmjs.org/bytes/-/bytes-3.1.0.tgz. Extracting by manifest.
+834 silly tarball no local data for bindings@https://registry.npmjs.org/bindings/-/bindings-1.5.0.tgz. Extracting by manifest.
+835 silly tarball no local data for balanced-match@https://registry.npmjs.org/balanced-match/-/balanced-match-1.0.2.tgz. Extracting by manifest.
+836 silly tarball no local data for brace-expansion@https://registry.npmjs.org/brace-expansion/-/brace-expansion-1.1.14.tgz. Extracting by manifest.
+837 silly tarball no local data for async-retry@https://registry.npmjs.org/async-retry/-/async-retry-1.3.3.tgz. Extracting by manifest.
+838 silly tarball no local data for asynckit@https://registry.npmjs.org/asynckit/-/asynckit-0.4.0.tgz. Extracting by manifest.
+839 silly tarball no local data for basic-ftp@https://registry.npmjs.org/basic-ftp/-/basic-ftp-5.2.2.tgz. Extracting by manifest.
+840 silly tarball no local data for buffer-crc32@https://registry.npmjs.org/buffer-crc32/-/buffer-crc32-0.2.13.tgz. Extracting by manifest.
+841 silly tarball no local data for async-sema@https://registry.npmjs.org/async-sema/-/async-sema-3.1.1.tgz. Extracting by manifest.
+842 silly tarball no local data for b4a@https://registry.npmjs.org/b4a/-/b4a-1.8.0.tgz. Extracting by manifest.
+843 silly tarball no local data for ast-types@https://registry.npmjs.org/ast-types/-/ast-types-0.13.4.tgz. Extracting by manifest.
+844 silly tarball no local data for arg@https://registry.npmjs.org/arg/-/arg-4.1.0.tgz. Extracting by manifest.
+845 silly tarball no local data for acorn@https://registry.npmjs.org/acorn/-/acorn-8.16.0.tgz. Extracting by manifest.
+846 silly tarball no local data for any-promise@https://registry.npmjs.org/any-promise/-/any-promise-1.3.0.tgz. Extracting by manifest.
+847 silly tarball no local data for argparse@https://registry.npmjs.org/argparse/-/argparse-1.0.10.tgz. Extracting by manifest.
+848 silly tarball no local data for ajv@https://registry.npmjs.org/ajv/-/ajv-8.6.3.tgz. Extracting by manifest.
+849 silly tarball no local data for async-listen@https://registry.npmjs.org/async-listen/-/async-listen-1.2.0.tgz. Extracting by manifest.
+850 silly tarball no local data for agent-base@https://registry.npmjs.org/agent-base/-/agent-base-7.1.4.tgz. Extracting by manifest.
+851 silly tarball no local data for acorn-import-attributes@https://registry.npmjs.org/acorn-import-attributes/-/acorn-import-attributes-1.9.5.tgz. Extracting by manifest.
+852 silly tarball no local data for abbrev@https://registry.npmjs.org/abbrev/-/abbrev-3.0.1.tgz. Extracting by manifest.
+853 silly tarball no local data for get-stream@https://registry.npmjs.org/get-stream/-/get-stream-6.0.1.tgz. Extracting by manifest.
+854 silly tarball no local data for picocolors@https://registry.npmjs.org/picocolors/-/picocolors-1.1.1.tgz. Extracting by manifest.
+855 silly tarball no local data for zod@https://registry.npmjs.org/zod/-/zod-3.24.4.tgz. Extracting by manifest.
+856 silly tarball no local data for undici@https://registry.npmjs.org/undici/-/undici-7.25.0.tgz. Extracting by manifest.
+857 silly tarball no local data for path-to-regexp@https://registry.npmjs.org/path-to-regexp/-/path-to-regexp-6.1.0.tgz. Extracting by manifest.
+858 silly tarball no local data for signal-exit@https://registry.npmjs.org/signal-exit/-/signal-exit-3.0.7.tgz. Extracting by manifest.
+859 silly tarball no local data for semver@https://registry.npmjs.org/semver/-/semver-6.3.1.tgz. Extracting by manifest.
+860 silly tarball no local data for execa@https://registry.npmjs.org/execa/-/execa-5.1.1.tgz. Extracting by manifest.
+861 silly tarball no local data for undici-types@https://registry.npmjs.org/undici-types/-/undici-types-5.26.5.tgz. Extracting by manifest.
+862 silly tarball no local data for undici@https://registry.npmjs.org/undici/-/undici-5.28.4.tgz. Extracting by manifest.
+863 silly tarball no local data for human-signals@https://registry.npmjs.org/human-signals/-/human-signals-2.1.0.tgz. Extracting by manifest.
+864 silly tarball no local data for js-yaml@https://registry.npmjs.org/js-yaml/-/js-yaml-4.1.1.tgz. Extracting by manifest.
+865 silly tarball no local data for @types/node@https://registry.npmjs.org/@types/node/-/node-20.11.0.tgz. Extracting by manifest.
+866 silly tarball no local data for argparse@https://registry.npmjs.org/argparse/-/argparse-2.0.1.tgz. Extracting by manifest.
+867 silly tarball no local data for async-listen@https://registry.npmjs.org/async-listen/-/async-listen-3.0.0.tgz. Extracting by manifest.
+868 silly tarball no local data for node-fetch@https://registry.npmjs.org/node-fetch/-/node-fetch-2.6.9.tgz. Extracting by manifest.
+869 silly tarball no local data for path-to-regexp@https://registry.npmjs.org/path-to-regexp/-/path-to-regexp-6.1.0.tgz. Extracting by manifest.
+870 silly tarball no local data for fs-extra@https://registry.npmjs.org/fs-extra/-/fs-extra-11.1.1.tgz. Extracting by manifest.
+871 silly tarball no local data for path-to-regexp@https://registry.npmjs.org/path-to-regexp/-/path-to-regexp-8.2.0.tgz. Extracting by manifest.
+872 silly tarball no local data for ms@https://registry.npmjs.org/ms/-/ms-2.1.3.tgz. Extracting by manifest.
+873 silly tarball no local data for once@https://registry.npmjs.org/once/-/once-1.3.3.tgz. Extracting by manifest.
+874 silly tarball no local data for es-module-lexer@https://registry.npmjs.org/es-module-lexer/-/es-module-lexer-1.4.1.tgz. Extracting by manifest.
+875 silly tarball no local data for minimatch@https://registry.npmjs.org/minimatch/-/minimatch-3.1.5.tgz. Extracting by manifest.
+876 silly tarball no local data for lru-cache@https://registry.npmjs.org/lru-cache/-/lru-cache-6.0.0.tgz. Extracting by manifest.
+877 silly tarball no local data for yallist@https://registry.npmjs.org/yallist/-/yallist-4.0.0.tgz. Extracting by manifest.
+878 silly tarball no local data for zod@https://registry.npmjs.org/zod/-/zod-4.3.6.tgz. Extracting by manifest.
+879 silly tarball no local data for ms@https://registry.npmjs.org/ms/-/ms-2.1.3.tgz. Extracting by manifest.
+880 silly tarball no local data for debug@https://registry.npmjs.org/debug/-/debug-4.4.3.tgz. Extracting by manifest.
+881 silly tarball no local data for end-of-stream@https://registry.npmjs.org/end-of-stream/-/end-of-stream-1.1.0.tgz. Extracting by manifest.
+882 silly tarball no local data for lru-cache@https://registry.npmjs.org/lru-cache/-/lru-cache-7.18.3.tgz. Extracting by manifest.
+883 silly tarball no local data for minimatch@https://registry.npmjs.org/minimatch/-/minimatch-10.2.5.tgz. Extracting by manifest.
+884 silly tarball no local data for balanced-match@https://registry.npmjs.org/balanced-match/-/balanced-match-4.0.4.tgz. Extracting by manifest.
+885 silly tarball no local data for ms@https://registry.npmjs.org/ms/-/ms-2.1.2.tgz. Extracting by manifest.
+886 silly tarball no local data for signal-exit@https://registry.npmjs.org/signal-exit/-/signal-exit-3.0.7.tgz. Extracting by manifest.
+887 silly tarball no local data for brace-expansion@https://registry.npmjs.org/brace-expansion/-/brace-expansion-5.0.5.tgz. Extracting by manifest.
+888 silly tarball no local data for picomatch@https://registry.npmjs.org/picomatch/-/picomatch-2.3.2.tgz. Extracting by manifest.
+889 silly tarball no local data for async-listen@https://registry.npmjs.org/async-listen/-/async-listen-3.0.1.tgz. Extracting by manifest.
+890 http fetch GET https://registry.npmjs.org/@vercel/static-build/-/static-build-2.9.21.tgz attempt 1 failed with EACCES
+891 http fetch GET https://registry.npmjs.org/@vercel/python/-/python-6.36.0.tgz attempt 1 failed with EACCES
+892 http fetch GET https://registry.npmjs.org/vercel/-/vercel-52.0.0.tgz attempt 1 failed with EACCES
+893 http fetch GET https://registry.npmjs.org/get-tsconfig/-/get-tsconfig-4.14.0.tgz attempt 1 failed with EACCES
+894 http fetch GET https://registry.npmjs.org/@vercel/next/-/next-4.16.8.tgz attempt 1 failed with EACCES
+895 http fetch GET https://registry.npmjs.org/@vercel/nestjs/-/nestjs-0.2.75.tgz attempt 1 failed with EACCES
+896 http fetch GET https://registry.npmjs.org/@vercel/koa/-/koa-0.1.54.tgz attempt 1 failed with EACCES
+897 http fetch GET https://registry.npmjs.org/@vercel/hono/-/hono-0.2.74.tgz attempt 1 failed with EACCES
+898 http fetch GET https://registry.npmjs.org/@vercel/h3/-/h3-0.1.80.tgz attempt 1 failed with EACCES
+899 http fetch GET https://registry.npmjs.org/@vercel/fastify/-/fastify-0.1.74.tgz attempt 1 failed with EACCES
+900 http fetch GET https://registry.npmjs.org/@vercel/gatsby-plugin-vercel-builder/-/gatsby-plugin-vercel-builder-2.1.21.tgz attempt 1 failed with EACCES
+901 http fetch GET https://registry.npmjs.org/jsonfile/-/jsonfile-6.2.1.tgz attempt 1 failed with EACCES
+902 http fetch GET https://registry.npmjs.org/@vercel/express/-/express-0.1.81.tgz attempt 1 failed with EACCES
+903 http fetch GET https://registry.npmjs.org/@vercel/elysia/-/elysia-0.1.71.tgz attempt 1 failed with EACCES
+904 http fetch GET https://registry.npmjs.org/@vercel/cervel/-/cervel-0.0.55.tgz attempt 1 failed with EACCES
+905 http fetch GET https://registry.npmjs.org/npm attempt 2 failed with EACCES
+906 http fetch GET https://registry.npmjs.org/@vercel/static-build/-/static-build-2.9.21.tgz attempt 2 failed with EACCES
+907 http fetch GET https://registry.npmjs.org/@vercel/python/-/python-6.36.0.tgz attempt 2 failed with EACCES
+908 http fetch GET https://registry.npmjs.org/vercel/-/vercel-52.0.0.tgz attempt 2 failed with EACCES
+909 http fetch GET https://registry.npmjs.org/get-tsconfig/-/get-tsconfig-4.14.0.tgz attempt 2 failed with EACCES
+910 http fetch GET https://registry.npmjs.org/@vercel/next/-/next-4.16.8.tgz attempt 2 failed with EACCES
+911 http fetch GET https://registry.npmjs.org/@vercel/nestjs/-/nestjs-0.2.75.tgz attempt 2 failed with EACCES
+912 http fetch GET https://registry.npmjs.org/@vercel/koa/-/koa-0.1.54.tgz attempt 2 failed with EACCES
+913 http fetch GET https://registry.npmjs.org/@vercel/hono/-/hono-0.2.74.tgz attempt 2 failed with EACCES
+914 http fetch GET https://registry.npmjs.org/@vercel/h3/-/h3-0.1.80.tgz attempt 2 failed with EACCES
+915 http fetch GET https://registry.npmjs.org/@vercel/fastify/-/fastify-0.1.74.tgz attempt 2 failed with EACCES
+916 http fetch GET https://registry.npmjs.org/@vercel/gatsby-plugin-vercel-builder/-/gatsby-plugin-vercel-builder-2.1.21.tgz attempt 2 failed with EACCES
+917 http fetch GET https://registry.npmjs.org/jsonfile/-/jsonfile-6.2.1.tgz attempt 2 failed with EACCES
+918 http fetch GET https://registry.npmjs.org/@vercel/express/-/express-0.1.81.tgz attempt 2 failed with EACCES
+919 http fetch GET https://registry.npmjs.org/@vercel/elysia/-/elysia-0.1.71.tgz attempt 2 failed with EACCES
+920 http fetch GET https://registry.npmjs.org/@vercel/cervel/-/cervel-0.0.55.tgz attempt 2 failed with EACCES
+921 http fetch GET https://registry.npmjs.org/npm attempt 3 failed with EACCES
+922 http fetch GET https://registry.npmjs.org/@vercel/static-build/-/static-build-2.9.21.tgz attempt 3 failed with EACCES
+923 http fetch GET https://registry.npmjs.org/@vercel/python/-/python-6.36.0.tgz attempt 3 failed with EACCES
+924 http fetch GET https://registry.npmjs.org/vercel/-/vercel-52.0.0.tgz attempt 3 failed with EACCES
+925 http fetch GET https://registry.npmjs.org/get-tsconfig/-/get-tsconfig-4.14.0.tgz attempt 3 failed with EACCES
+926 http fetch GET https://registry.npmjs.org/@vercel/next/-/next-4.16.8.tgz attempt 3 failed with EACCES
+927 http fetch GET https://registry.npmjs.org/@vercel/nestjs/-/nestjs-0.2.75.tgz attempt 3 failed with EACCES
+928 http fetch GET https://registry.npmjs.org/@vercel/koa/-/koa-0.1.54.tgz attempt 3 failed with EACCES
+929 http fetch GET https://registry.npmjs.org/@vercel/hono/-/hono-0.2.74.tgz attempt 3 failed with EACCES
+930 http fetch GET https://registry.npmjs.org/@vercel/h3/-/h3-0.1.80.tgz attempt 3 failed with EACCES
+931 http fetch GET https://registry.npmjs.org/@vercel/fastify/-/fastify-0.1.74.tgz attempt 3 failed with EACCES
+932 http fetch GET https://registry.npmjs.org/@vercel/gatsby-plugin-vercel-builder/-/gatsby-plugin-vercel-builder-2.1.21.tgz attempt 3 failed with EACCES
+933 http fetch GET https://registry.npmjs.org/jsonfile/-/jsonfile-6.2.1.tgz attempt 3 failed with EACCES
+934 http fetch GET https://registry.npmjs.org/@vercel/express/-/express-0.1.81.tgz attempt 3 failed with EACCES
+935 http fetch GET https://registry.npmjs.org/@vercel/elysia/-/elysia-0.1.71.tgz attempt 3 failed with EACCES
+936 http fetch GET https://registry.npmjs.org/@vercel/cervel/-/cervel-0.0.55.tgz attempt 3 failed with EACCES
+937 verbose cwd C:\Users\zakar\OneDrive\WEEKLY PAY\Weekly CRM
+938 verbose os Windows_NT 10.0.26200
+939 verbose node v24.14.0
+940 verbose npm  v11.9.0
+941 error Exit handler never called!
+942 error This is an error with npm itself. Please report this error at:
+943 error   <https://github.com/npm/cli/issues>
+944 verbose exit 1
+945 verbose code 1
+946 error A complete log of this run can be found in: C:\Users\zakar\OneDrive\WEEKLY PAY\Weekly CRM\.npm-cache\_logs\2026-05-13T18_32_41_679Z-debug-0.log
