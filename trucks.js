@@ -34,8 +34,8 @@ const TRUCK_DEFAULTS_BY_NUMBER = new Map([
   ["841", { registration: "XV90EH", model: "HINO", capacity: 8, serviceDueDate: "2026-07-01", regoExpiryDate: "2026-08-11", status: "Available", notes: "" }]
 ]);
 const REQUIRED_TRUCK_NUMBERS = ["330", "853"];
-const DELETED_TRUCK_NUMBERS = new Set(["001", "002"]);
-const DELETE_SPARSE_ONLY_TRUCK_NUMBERS = new Set(["672"]);
+const DELETED_TRUCK_NUMBERS = new Set(["001", "002", "672", "ALL"]);
+const DELETE_SPARSE_ONLY_TRUCK_NUMBERS = new Set();
 const state = { trucks: readData() };
 let truckAttachmentStore = readTruckAttachmentStore();
 let truckSyncTimerId = 0;
@@ -139,9 +139,10 @@ function normalizeSearchValue(value) {
 }
 
 function normalizeTruckRecord(row) {
+  const normalizedTruckNumber = normalizeTruckNumberValue(row.truckNumber);
   return {
     id: row.id,
-    truckNumber: String(row.truckNumber ?? "").trim(),
+    truckNumber: normalizedTruckNumber,
     registration: String(row.registration ?? "").trim(),
     model: String(row.model ?? "").trim(),
     capacity: Number(row.capacity || 0),
@@ -353,7 +354,14 @@ function readStorageArray(key) {
 }
 
 function normalizeTruckNumberKey(value) {
-  return String(value || "").trim().toUpperCase();
+  return normalizeTruckNumberValue(value).toUpperCase();
+}
+
+function normalizeTruckNumberValue(value) {
+  return String(value || "")
+    .trim()
+    .replace(/[`'"]/g, "")
+    .replace(/\s+/g, " ");
 }
 
 function isDeletedTruckNumber(value) {
@@ -1071,7 +1079,7 @@ document.getElementById("trucksForm").addEventListener("submit", (e) => {
     return;
   }
   if (shouldDeleteTruckRow(payload)) {
-    alert(`Truck ${payload.truckNumber} entry is incomplete and was blocked. Keep truck 672 with registration 1DK3DE.`);
+    alert(`Truck ${payload.truckNumber} entry is incomplete and was blocked.`);
     return;
   }
 
