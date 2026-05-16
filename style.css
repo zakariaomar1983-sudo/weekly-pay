@@ -248,6 +248,14 @@ h2 {
   font-size: 1.3rem;
 }
 
+.stat-card .stat-value {
+  margin: 0.35rem 0 0;
+  font-family: "Space Grotesk", "Segoe UI", sans-serif;
+  font-size: 1.3rem;
+  color: var(--ink);
+  line-height: 1.1;
+}
+
 .stat-card.profit-positive {
   border-color: #85c7a4;
   background: #edf9f1;
@@ -467,10 +475,11 @@ h2 {
 }
 
 .chart-bar-label {
-  font-size: 0.72rem;
-  color: var(--muted);
+  font-size: 0.79rem;
+  color: #364850;
   text-align: center;
   line-height: 1.2;
+  font-weight: 600;
 }
 
 .chart-card-live {
@@ -1028,8 +1037,8 @@ tr.row-rego-soon td {
 }
 
 .muted {
-  color: var(--muted);
-  font-size: 0.85rem;
+  color: #3f4f58;
+  font-size: 0.9rem;
 }
 
 .data-status {

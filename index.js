@@ -35,6 +35,19 @@ const EXPENSE_KEY = "transport_crm_spending";
 const RECEIPTS_KEY = "transport_crm_whatsapp_receipts";
 const PAY_KEY = "transport_crm_payslips";
 const NIGHT_DROP_DEFAULT_RATE = 90;
+const DELETED_TRUCK_NUMBERS = new Set(["001", "002", "672", "ALL"]);
+
+function normalizeTruckNumber(value) {
+  return String(value || "")
+    .trim()
+    .replace(/[`'"]/g, "")
+    .replace(/\s+/g, " ")
+    .toUpperCase();
+}
+
+function isDeletedTruckNumber(value) {
+  return DELETED_TRUCK_NUMBERS.has(normalizeTruckNumber(value));
+}
 
 function dashboardRoleProfile() {
   const roleName = String(currentRole?.name || "").trim().toLowerCase();
@@ -154,11 +167,16 @@ function readCount(key) {
   }
 }
 
+function readTruckCount() {
+  const rows = readRows("transport_crm_trucks");
+  return rows.filter((row) => !isDeletedTruckNumber(row?.truckNumber)).length;
+}
+
 function drawStats() {
   const userCount = Array.isArray(window.OPXAuth.getUsers?.()) ? window.OPXAuth.getUsers().length : 0;
   const stats = [
     { label: "Drivers", value: String(readCount("transport_crm_drivers")), show: auth.can("viewDrivers") },
-    { label: "Trucks", value: String(readCount("transport_crm_trucks")), show: auth.can("viewTrucks") },
+    { label: "Trucks", value: String(readTruckCount()), show: auth.can("viewTrucks") },
     { label: "Roster Shifts", value: String(readCount("transport_crm_roster")), show: auth.can("viewRoster") },
     { label: "Income Rows", value: String(readCount("transport_crm_truck_income")), show: auth.can("viewTruckIncome") },
     { label: "Receipts", value: String(readCount(RECEIPTS_KEY)), show: auth.can("accessCRM") && (auth.can("viewSpending") || auth.can("editSpending") || auth.can("accessControlPanel")) },
@@ -168,7 +186,7 @@ function drawStats() {
   ].filter((item) => item.show);
 
   document.getElementById("homeStats").innerHTML = stats
-    .map((s) => `<article class="stat-card"><p>${s.label}</p><h3>${s.value}</h3></article>`)
+    .map((s) => `<article class="stat-card"><p>${s.label}</p><p class="stat-value">${s.value}</p></article>`)
     .join("");
 }
 
