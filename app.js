@@ -28,6 +28,7 @@ const REQUIRED_TRUCKS = [
     notes: ""
   }
 ];
+const DELETED_TRUCK_NUMBERS = new Set(["001", "002", "672", "ALL"]);
 
 const state = {
   drivers: readData(storageKeys.drivers),
@@ -52,7 +53,15 @@ const moduleAccess = [
 const money = (value) => `$${Number(value || 0).toFixed(2)}`;
 
 function normalizeTruckNumber(value) {
-  return String(value || "").trim().toUpperCase();
+  return String(value || "")
+    .trim()
+    .replace(/[`'"]/g, "")
+    .replace(/\s+/g, " ")
+    .toUpperCase();
+}
+
+function isDeletedTruckNumber(value) {
+  return DELETED_TRUCK_NUMBERS.has(normalizeTruckNumber(value));
 }
 
 function readArrayFromStorage(key) {
@@ -65,7 +74,9 @@ function readArrayFromStorage(key) {
 }
 
 function ensureTruckRows(rows) {
-  const list = Array.isArray(rows) ? [...rows] : [];
+  const list = (Array.isArray(rows) ? rows : [])
+    .filter((item) => !isDeletedTruckNumber(item?.truckNumber))
+    .map((item) => ({ ...item, truckNumber: normalizeTruckNumber(item?.truckNumber) }));
   const existing = new Set(
     list
       .map((item) => normalizeTruckNumber(item?.truckNumber))
@@ -75,6 +86,7 @@ function ensureTruckRows(rows) {
 
   REQUIRED_TRUCKS.forEach((defaults) => {
     const truckNumber = normalizeTruckNumber(defaults.truckNumber);
+    if (isDeletedTruckNumber(truckNumber)) return;
     if (!truckNumber || existing.has(truckNumber)) return;
     list.push({
       id: uid(),
@@ -96,6 +108,7 @@ function ensureTruckRows(rows) {
       const truckNumber = normalizeTruckNumber(row?.truckNumber || row?.truck_number);
       if (!truckNumber || existing.has(truckNumber)) return;
       if (truckNumber === "-" || truckNumber === "N/A") return;
+      if (isDeletedTruckNumber(truckNumber)) return;
       list.push({
         id: uid(),
         truckNumber,
@@ -393,6 +406,11 @@ document.getElementById("trucksForm").addEventListener("submit", (e) => {
     status: document.getElementById("truckStatus").value,
     notes: document.getElementById("truckNotes").value.trim()
   };
+
+  if (isDeletedTruckNumber(payload.truckNumber)) {
+    alert(`Truck ${payload.truckNumber} has been removed and cannot be added.`);
+    return;
+  }
 
   state.trucks = id ? state.trucks.map((item) => item.id === id ? payload : item) : [...state.trucks, payload];
   saveData(storageKeys.trucks, state.trucks);
