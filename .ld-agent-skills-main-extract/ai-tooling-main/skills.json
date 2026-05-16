@@ -1,0 +1,278 @@
+{
+  "skills": [
+    {
+      "name": "aiconfig-agent-graphs",
+      "description": "Create and manage agent graphs \u2014 directed graphs of AI Configs connected by edges with handoff logic. Use when building multi-agent workflows where configs route to each other.",
+      "path": "skills/ai-configs/aiconfig-agent-graphs",
+      "version": "0.1.0",
+      "license": "Apache-2.0",
+      "compatibility": "Requires the remotely hosted LaunchDarkly MCP server"
+    },
+    {
+      "name": "aiconfig-ai-metrics",
+      "description": "Instrument an existing codebase with LaunchDarkly AI Config tracking. Walks the four-tier ladder (managed runner \u2192 provider package \u2192 custom extractor + trackMetricsOf \u2192 raw manual) and picks the lowest-ceremony option that still captures duration, tokens, and success/error.",
+      "path": "skills/ai-configs/aiconfig-ai-metrics",
+      "version": "1.0.0-experimental",
+      "license": "Apache-2.0",
+      "compatibility": "Requires the LaunchDarkly server-side AI SDK (`launchdarkly-server-sdk-ai>=0.18.0` for Python or `@launchdarkly/server-sdk-ai>=0.17.0` for Node) and an existing AI Config."
+    },
+    {
+      "name": "aiconfig-create",
+      "description": "Create and configure AI Configs in LaunchDarkly. Helps you choose between agent vs completion mode, create the config, add variations with models and prompts, and verify the setup.",
+      "path": "skills/ai-configs/aiconfig-create",
+      "version": "1.0.0-experimental",
+      "license": "Apache-2.0",
+      "compatibility": "Requires the remotely hosted LaunchDarkly MCP server"
+    },
+    {
+      "name": "aiconfig-custom-metrics",
+      "description": "Create, track, retrieve, update, and delete custom business metrics for AI Configs. Covers full lifecycle: define metric kinds via API, emit events via SDK, and query results.",
+      "path": "skills/ai-configs/aiconfig-custom-metrics",
+      "version": "1.0.0-experimental",
+      "license": "Apache-2.0",
+      "compatibility": "Requires the LaunchDarkly server SDK and a LaunchDarkly API token with the `writer` role for metric management."
+    },
+    {
+      "name": "aiconfig-migrate",
+      "description": "Migrate an application with hardcoded LLM prompts to a full LaunchDarkly AI Configs implementation in five stages: audit the code, wrap the call, move the tools, add tracking, attach evaluators. Use when the user wants to externalize model/prompt configuration, move from direct provider calls (OpenAI, Anthropic, Bedrock, Gemini, Strands) to a managed AI Config, or stage a full hardcoded-to-LaunchDarkly migration.",
+      "path": "skills/ai-configs/aiconfig-migrate",
+      "version": "0.1.0",
+      "license": "Apache-2.0",
+      "compatibility": "Requires the remotely hosted LaunchDarkly MCP server"
+    },
+    {
+      "name": "aiconfig-online-evals",
+      "description": "Attach judges to AI Config variations for automatic LLM-as-a-judge evaluation. Create custom judges, configure sampling rates, and monitor quality scores.",
+      "path": "skills/ai-configs/aiconfig-online-evals",
+      "version": "0.1.0",
+      "compatibility": "Requires LaunchDarkly API access token with ai-configs:write permission. SDK versions Python v0.18.0+ or Node.js v0.17.0+ for automatic metric recording and the consolidated `track_judge_result` / `trackJudgeResult` API."
+    },
+    {
+      "name": "aiconfig-projects",
+      "description": "Guide for setting up LaunchDarkly projects in your codebase. Helps you assess your stack, choose the right approach, and integrate project management that makes sense for your architecture.",
+      "path": "skills/ai-configs/aiconfig-projects",
+      "version": "0.4.0",
+      "compatibility": "Requires LaunchDarkly API access token with projects:write permission or LaunchDarkly MCP server."
+    },
+    {
+      "name": "aiconfig-snippets",
+      "description": "Create and manage prompt snippets \u2014 reusable text blocks referenced inside AI Config variation prompts. Keeps common instructions, personas, and guardrails consistent across multiple configs.",
+      "path": "skills/ai-configs/aiconfig-snippets",
+      "version": "0.1.0",
+      "license": "Apache-2.0",
+      "compatibility": "Requires the remotely hosted LaunchDarkly MCP server"
+    },
+    {
+      "name": "aiconfig-targeting",
+      "description": "Configure AI Config targeting rules to control which variations serve to different users. Enable percentage rollouts, attribute-based rules, segment targeting, and guarded rollouts.",
+      "path": "skills/ai-configs/aiconfig-targeting",
+      "version": "0.1.0",
+      "compatibility": "Requires LaunchDarkly API access token with ai-configs:write permission."
+    },
+    {
+      "name": "aiconfig-tools",
+      "description": "Give your AI agents capabilities through tools (function calling). Helps you identify what your AI needs to do, create tool definitions, and attach them to AI Config variations.",
+      "path": "skills/ai-configs/aiconfig-tools",
+      "version": "1.0.0-experimental",
+      "license": "Apache-2.0",
+      "compatibility": "Requires the remotely hosted LaunchDarkly MCP server"
+    },
+    {
+      "name": "aiconfig-update",
+      "description": "Update, archive, and delete LaunchDarkly AI Configs and their variations. Use when you need to modify config properties, change model parameters, update instructions or messages, archive unused configs, or permanently remove them.",
+      "path": "skills/ai-configs/aiconfig-update",
+      "version": "1.0.0-experimental",
+      "license": "Apache-2.0",
+      "compatibility": "Requires the remotely hosted LaunchDarkly MCP server"
+    },
+    {
+      "name": "aiconfig-variations",
+      "description": "Experiment with AI configurations by creating and managing variations. Helps you test different models, prompts, and parameters to find what works best through systematic experimentation.",
+      "path": "skills/ai-configs/aiconfig-variations",
+      "version": "1.0.0-experimental",
+      "license": "Apache-2.0",
+      "compatibility": "Requires the remotely hosted LaunchDarkly MCP server"
+    },
+    {
+      "name": "apply",
+      "description": "Apply LaunchDarkly SDK onboarding: install dependency (or dual-SDK pair), configure env and secrets with consent, add init at entrypoint(s), verify compile. Nested under sdk-install; next is run.",
+      "path": "skills/onboarding/sdk-install/apply",
+      "version": "0.2.0",
+      "license": "Apache-2.0",
+      "compatibility": "Requires integration plan and LaunchDarkly credentials (see parent onboarding)"
+    },
+    {
+      "name": "detect",
+      "description": "Detect repository stack for LaunchDarkly SDK onboarding: languages, frameworks, package managers, monorepo targets, entrypoints, existing LD usage. Nested under sdk-install; next is plan.",
+      "path": "skills/onboarding/sdk-install/detect",
+      "version": "0.1.0",
+      "license": "Apache-2.0",
+      "compatibility": "Requires access to the project repository"
+    },
+    {
+      "name": "first-flag",
+      "description": "Create a boolean first flag, add evaluation, toggle on/off for end-to-end proof. Parent onboarding Step 6; uses MCP, API, or ldcli; optional flag-create skill.",
+      "path": "skills/onboarding/first-flag",
+      "version": "0.1.0",
+      "license": "Apache-2.0",
+      "compatibility": "Requires SDK installed (parent Step 5) and LaunchDarkly project access"
+    },
+    {
+      "name": "launchdarkly-experiment-setup",
+      "description": "Set up and run experiments in LaunchDarkly. Create experiments with metrics and treatments, start iterations to collect data, and monitor results.",
+      "path": "skills/experiments/launchdarkly-experiment-setup",
+      "version": "0.1.0",
+      "license": "Apache-2.0",
+      "compatibility": "Requires the remotely hosted LaunchDarkly MCP server"
+    },
+    {
+      "name": "launchdarkly-flag-cleanup",
+      "description": "Safely remove a feature flag from code while preserving production behavior. Use when the user wants to remove a flag from code, delete flag references, or create a PR that hardcodes the winning variation after a rollout is complete.",
+      "path": "skills/feature-flags/launchdarkly-flag-cleanup",
+      "version": "1.0.0-experimental",
+      "license": "Apache-2.0",
+      "compatibility": "Requires the remotely hosted LaunchDarkly MCP server",
+      "tags": [
+        "launchdarkly",
+        "feature-flags",
+        "feature-management",
+        "stale-flags",
+        "tech-debt",
+        "cleanup",
+        "code-removal",
+        "devops",
+        "mcp"
+      ]
+    },
+    {
+      "name": "launchdarkly-flag-create",
+      "description": "Create and configure LaunchDarkly feature flags in a way that fits the existing codebase. Use when the user wants to create a new flag, wrap code in a flag, add a feature toggle, or set up an experiment. Guides exploration of existing patterns before creating.",
+      "path": "skills/feature-flags/launchdarkly-flag-create",
+      "version": "1.0.0-experimental",
+      "license": "Apache-2.0",
+      "compatibility": "Requires the remotely hosted LaunchDarkly MCP server",
+      "tags": [
+        "launchdarkly",
+        "feature-flags",
+        "feature-management",
+        "flag-creation",
+        "feature-toggle",
+        "sdk",
+        "devops",
+        "mcp"
+      ]
+    },
+    {
+      "name": "launchdarkly-flag-discovery",
+      "description": "Audit your LaunchDarkly feature flags to understand the landscape, find stale or launched flags, and assess removal readiness. Use when the user asks about flag debt, stale flags, cleanup candidates, flag health, or wants to understand their flag inventory.",
+      "path": "skills/feature-flags/launchdarkly-flag-discovery",
+      "version": "1.0.0-experimental",
+      "license": "Apache-2.0",
+      "compatibility": "Requires the remotely hosted LaunchDarkly MCP server",
+      "tags": [
+        "launchdarkly",
+        "feature-flags",
+        "feature-management",
+        "flag-audit",
+        "flag-health",
+        "stale-flags",
+        "tech-debt",
+        "inventory",
+        "discovery",
+        "mcp"
+      ]
+    },
+    {
+      "name": "launchdarkly-flag-targeting",
+      "description": "Control LaunchDarkly feature flag targeting including toggling flags on/off, percentage rollouts, targeting rules, individual targets, and copying flag configurations between environments. Use when the user wants to change who sees a flag, roll out to a percentage, add targeting rules, or promote config between environments.",
+      "path": "skills/feature-flags/launchdarkly-flag-targeting",
+      "version": "1.0.0-experimental",
+      "license": "Apache-2.0",
+      "compatibility": "Requires the remotely hosted LaunchDarkly MCP server",
+      "tags": [
+        "launchdarkly",
+        "feature-flags",
+        "feature-management",
+        "targeting",
+        "rollout",
+        "percentage-rollout",
+        "devops",
+        "mcp"
+      ]
+    },
+    {
+      "name": "launchdarkly-guarded-rollout",
+      "description": "Configure guarded rollouts with progressive traffic increases, metric monitoring, and automatic rollback. Use when releasing features gradually with safety thresholds.",
+      "path": "skills/feature-flags/launchdarkly-guarded-rollout",
+      "version": "0.1.0",
+      "license": "Apache-2.0",
+      "compatibility": "Requires the remotely hosted LaunchDarkly MCP server"
+    },
+    {
+      "name": "launchdarkly-metric-choose",
+      "description": "Choose the right metrics for a LaunchDarkly experiment, guarded rollout, or release policy. Use when the user wants to know which metrics to use, which is the primary metric for an experiment, what guardrails to add, or which events to monitor in a rollout. Surfaces what will auto-attach from existing release policies before making additional recommendations.",
+      "path": "skills/metrics/launchdarkly-metric-choose",
+      "version": "1.0.0-experimental",
+      "license": "Apache-2.0",
+      "compatibility": "Requires the remotely hosted LaunchDarkly MCP server"
+    },
+    {
+      "name": "launchdarkly-metric-create",
+      "description": "Create a LaunchDarkly metric that measures what matters for an experiment or rollout. Use when the user wants to create a metric, track an event, measure page views, button clicks, conversion, latency, error rate, or any custom numeric or binary outcome. Instruments the event first when needed (including SDK setup and .env), then creates and verifies the metric.",
+      "path": "skills/metrics/launchdarkly-metric-create",
+      "version": "1.4.0-experimental",
+      "license": "Apache-2.0",
+      "compatibility": "Requires the remotely hosted LaunchDarkly MCP server"
+    },
+    {
+      "name": "launchdarkly-metric-instrument",
+      "description": "Instrument a LaunchDarkly metric event in a codebase by adding a track() call. Use when the user wants to wire up an event, instrument an action for a metric, add tracking to a feature, or confirm that an event is flowing to LaunchDarkly.",
+      "path": "skills/metrics/launchdarkly-metric-instrument",
+      "version": "1.0.0-experimental",
+      "license": "Apache-2.0",
+      "compatibility": "Requires the remotely hosted LaunchDarkly MCP server"
+    },
+    {
+      "name": "mcp-configure",
+      "description": "Configure the LaunchDarkly hosted MCP server during onboarding. Use when the parent LaunchDarkly onboarding skill reaches Step 4 (MCP). Supports Cursor, Claude Code, Windsurf, GitHub Copilot, and other MCP-compatible agents. OAuth authentication; no API keys for the hosted server.",
+      "path": "skills/onboarding/mcp-configure",
+      "version": "0.1.0",
+      "license": "Apache-2.0",
+      "compatibility": "Requires an MCP-compatible coding agent and a LaunchDarkly account"
+    },
+    {
+      "name": "onboarding",
+      "description": "Onboard a project to LaunchDarkly: kickoff roadmap, resumable log, explore repo, MCP, companion flag skills, nested SDK install (detect/plan/apply), first flag. Use when adding LaunchDarkly, setting up or integrating feature flags in a project, SDK integration, or 'onboard me'.",
+      "path": "skills/onboarding",
+      "version": "0.2.0",
+      "license": "Apache-2.0",
+      "compatibility": "Requires an MCP-capable coding agent, `npx` on PATH for optional skill installs, and a LaunchDarkly account. SDK keys, client-side IDs, mobile keys, and API tokens are only needed when the step that uses them runs (see Prerequisites).",
+      "tags": [
+        "launchdarkly",
+        "feature-flags",
+        "feature-management",
+        "onboarding",
+        "sdk",
+        "mcp",
+        "getting-started",
+        "setup"
+      ]
+    },
+    {
+      "name": "plan",
+      "description": "Generate a minimal LaunchDarkly SDK integration plan from detected stack: choose SDK type(s), dual-SDK server+client when required, files to change, env conventions. Nested under sdk-install; follows detect, precedes apply.",
+      "path": "skills/onboarding/sdk-install/plan",
+      "version": "0.2.0",
+      "license": "Apache-2.0",
+      "compatibility": "Requires completed or equivalent detect context (see sibling detect skill)"
+    },
+    {
+      "name": "sdk-install",
+      "description": "Install and initialize the correct LaunchDarkly SDK during onboarding by running nested skills in order: detect, plan, apply. Parent onboarding Step 6 is first flag.",
+      "path": "skills/onboarding/sdk-install",
+      "version": "0.2.0",
+      "license": "Apache-2.0",
+      "compatibility": "Requires a supported language/framework in the project. SDK credentials are required by [Apply](apply/SKILL.md), not for [Detect](detect/SKILL.md) / [Plan](plan/SKILL.md) alone (see parent onboarding **Prerequisites**)."
+    }
+  ]
+}

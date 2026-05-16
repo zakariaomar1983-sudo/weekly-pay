@@ -1,0 +1,10 @@
+{
+  "dependencies": {
+    "degit": "^2.8.4"
+  },
+  "_npx": {
+    "packages": [
+      "degit"
+    ]
+  }
+}
