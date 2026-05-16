@@ -582,7 +582,7 @@ function drawManagerSummary() {
   grid.innerHTML = items.map((item) => `
     <article class="stat-card manager-summary-card manager-summary-card-${item.tone}">
       <p>${item.label}</p>
-      <h3>${item.value}</h3>
+      <p class="stat-value">${item.value}</p>
     </article>
   `).join("");
 
@@ -635,7 +635,7 @@ function drawWeekSnapshot() {
   grid.innerHTML = items.map((item) => `
     <article class="stat-card manager-summary-card manager-summary-card-${item.tone}">
       <p>${item.label}</p>
-      <h3>${item.value}</h3>
+      <p class="stat-value">${item.value}</p>
     </article>
   `).join("");
 }
