@@ -635,6 +635,41 @@ function escapeHtml(value) {
     .replaceAll("'", "&#39;");
 }
 
+function escapeCssAttributeValue(value) {
+  const normalized = String(value || "");
+  if (typeof CSS !== "undefined" && typeof CSS.escape === "function") {
+    return CSS.escape(normalized);
+  }
+  return normalized
+    .replaceAll("\\", "\\\\")
+    .replaceAll('"', '\\"');
+}
+
+function buildBoardCellSelector({ shiftDate = "", driverName = "", truckNumber = "" } = {}) {
+  const parts = [".roster-board-table td.board-cell"];
+  const date = String(shiftDate || "").trim();
+  const driver = String(driverName || "").trim();
+  const truck = String(truckNumber || "").trim();
+  if (date) parts.push(`[data-drop-date="${escapeCssAttributeValue(date)}"]`);
+  if (driver) parts.push(`[data-drop-driver="${escapeCssAttributeValue(driver)}"]`);
+  if (truck) parts.push(`[data-drop-truck="${escapeCssAttributeValue(truck)}"]`);
+  return parts.join("");
+}
+
+function findBoardCell(meta = {}, root = document) {
+  if (!root?.querySelector) return null;
+  return root.querySelector(buildBoardCellSelector(meta));
+}
+
+function buildDriverBoardRowSelector(driverName = "") {
+  return `.roster-board-table tr[data-driver-key="${escapeCssAttributeValue(driverName)}"]`;
+}
+
+function findDriverBoardRow(driverName = "", root = document) {
+  if (!root?.querySelector || !driverName) return null;
+  return root.querySelector(buildDriverBoardRowSelector(driverName));
+}
+
 function createNodeFromMarkup(markup) {
   const template = document.createElement("template");
   template.innerHTML = String(markup || "").trim();
@@ -3242,3 +3277,10 @@ document.addEventListener("visibilitychange", () => {
 });
 
 window.addEventListener("beforeunload", stopRosterRealtimeSync, { once: true });
+
+window.OPXRosterSelectors = {
+  buildBoardCellSelector,
+  findBoardCell,
+  buildDriverBoardRowSelector,
+  findDriverBoardRow
+};
