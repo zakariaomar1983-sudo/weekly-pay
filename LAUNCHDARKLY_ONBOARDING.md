@@ -7,7 +7,7 @@ Last updated: 2026-05-17 (Australia/Sydney)
 - Step 1: Explore project and integration surface — done
 - Step 2: Detect agent environment — done
 - Step 3: Install companion flag-management skills — done (installed from local LaunchDarkly package due network/TLS and folder-permission constraints)
-- Step 4: Configure MCP server — not started
+- Step 4: Configure MCP server — in progress (hosted endpoint added; awaiting agent restart for tool availability)
 - Step 5: Install and initialize SDK — not started
 - Step 6: Create first feature flag and verify toggle path — not started
 
@@ -22,9 +22,12 @@ Last updated: 2026-05-17 (Australia/Sydney)
 - LaunchDarkly environment key: unknown
 
 ## MCP
-- Configured: no
-- Mode: pending (hosted MCP preferred)
-- Config path: N/A
+- Configured: pending verification
+- Mode: hosted MCP preferred
+- Config path: user supplied
+  - `[mcp_servers.launchdarkly-v2]`
+  - `url = "https://mcp.launchdarkly.com/mcp/fm"`
+  - `http_headers = {}`
 
 ## Commands Run
 - `npx skills add launchdarkly/agent-skills --skill onboarding -y`
@@ -43,4 +46,4 @@ Last updated: 2026-05-17 (Australia/Sydney)
 - Resolved by installing from local LaunchDarkly package already present in workspace and copying skills into global Codex skills directory.
 
 ## Next step
-Step 4: Configure the MCP server.
+Step 4: Restart/refresh the agent and verify MCP tool availability.
