@@ -1,0 +1,35 @@
+0 verbose cli C:\Program Files\nodejs\node.exe C:\Program Files\nodejs\node_modules\npm\bin\npm-cli.js
+1 info using npm@11.9.0
+2 info using node@v24.14.0
+3 silly config load:file:C:\Program Files\nodejs\node_modules\npm\npmrc
+4 silly config load:file:C:\Users\zakar\OneDrive\WEEKLY PAY\.npmrc
+5 silly config load:file:C:\Users\zakar\.npmrc
+6 silly config load:file:C:\Users\zakar\AppData\Roaming\npm\etc\npmrc
+7 verbose title npm exec skills add launchdarkly/agent-skills --skill onboarding -y
+8 verbose argv "exec" "--" "skills" "add" "launchdarkly/agent-skills" "--skill" "onboarding" "-y"
+9 verbose logfile logs-max:10 dir:C:\Users\zakar\OneDrive\WEEKLY PAY\.npm-cache\_logs\2026-05-17T10_19_43_757Z-
+10 verbose logfile C:\Users\zakar\OneDrive\WEEKLY PAY\.npm-cache\_logs\2026-05-17T10_19_43_757Z-debug-0.log
+11 silly logfile done cleaning log files
+12 silly packumentCache heap:4496293888 maxSize:1124073472 maxEntrySize:562036736
+13 verbose shrinkwrap failed to load node_modules/.package-lock.json out of date, updated: node_modules
+14 http fetch GET 200 https://registry.npmjs.org/skills 259ms (cache revalidated)
+15 silly packumentCache heap:4496293888 maxSize:1124073472 maxEntrySize:562036736
+16 silly packumentCache heap:4496293888 maxSize:1124073472 maxEntrySize:562036736
+17 verbose shrinkwrap failed to load node_modules/.package-lock.json out of date, updated: node_modules
+18 warn exec The following package was not found and will be installed: skills@1.5.7
+19 silly idealTree buildDeps
+20 silly fetch manifest skills@1.5.7
+21 silly packumentCache full:https://registry.npmjs.org/skills cache-miss
+22 http fetch GET 200 https://registry.npmjs.org/skills 195ms (cache revalidated)
+23 silly packumentCache full:https://registry.npmjs.org/skills set size:208054 disposed:false
+24 silly placeDep ROOT skills@1.5.7 REPLACE for:  want: 1.5.7
+25 silly reify moves {}
+26 silly audit bulk request { yaml: [ '2.9.0' ], skills: [ '1.5.7' ] }
+27 http fetch POST 200 https://registry.npmjs.org/-/npm/v1/security/advisories/bulk 193ms
+28 silly audit report {}
+29 verbose cwd C:\Users\zakar\OneDrive\WEEKLY PAY
+30 verbose os Windows_NT 10.0.26200
+31 verbose node v24.14.0
+32 verbose npm  v11.9.0
+33 verbose exit 1
+34 verbose code 1

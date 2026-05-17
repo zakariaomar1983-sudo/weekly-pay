@@ -10,6 +10,7 @@
   "dependencies": {
     "@supabase/ssr": "^0.10.2",
     "@supabase/supabase-js": "^2.103.0",
+    "launchdarkly-ai-tooling": "file:.ld-agent-skills-main-extract/ai-tooling-main",
     "vercel": "^52.0.0"
   }
 }
