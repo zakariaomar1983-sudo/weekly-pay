@@ -91,6 +91,9 @@ const LEGACY_DRIVER_NAME_ALIASES = new Map([
   [normalizeDriverNameKey("Muhamed Siyad"), "Muhammed A H Siyad"]
 ]);
 const REQUIRED_DRIVER_NAMES = ["Soleh Sungkar", "Faaid Warsame"];
+const REQUIRED_WEEK_VIEW_ROWS = [
+  { driverName: "Soleh Sungkar", truckNumber: "840" }
+];
 const ROSTER_EXCLUDED_DRIVER_NAMES = new Set([
   normalizeDriverNameKey("Muhammed A H Siyad")
 ]);
@@ -2266,7 +2269,14 @@ function buildDriverPlans(weekRows) {
   const activeDrivers = getActiveDrivers();
   const activeDriverNames = activeDrivers.map((item) => item.name).filter(Boolean);
   const namesFromRoster = [...new Set(weekRows.map((item) => item.driverName).filter(Boolean))];
-  const combined = [...new Set([...activeDriverNames, ...namesFromRoster])].slice(0, TARGET_DRIVERS);
+  const requiredNames = REQUIRED_WEEK_VIEW_ROWS
+    .map((item) => canonicalDriverName(item?.driverName || ""))
+    .filter(Boolean);
+  const combined = [...new Set([...activeDriverNames, ...namesFromRoster])];
+
+  requiredNames.forEach((name) => {
+    if (!combined.includes(name)) combined.push(name);
+  });
 
   while (combined.length < TARGET_DRIVERS) {
     combined.push(`Open Driver Slot ${combined.length + 1}`);
@@ -2295,7 +2305,11 @@ function buildDriverPlans(weekRows) {
 
     return {
       driverName,
-      truckNumber: firstTruckForDriver(driverRows),
+      truckNumber: firstTruckForDriver(driverRows) !== "-"
+        ? firstTruckForDriver(driverRows)
+        : (REQUIRED_WEEK_VIEW_ROWS.find((item) => canonicalDriverName(item.driverName) === driverName)?.truckNumber
+          || getPreferredTruckForDriver(driverName)
+          || "-"),
       assignments,
       plannedDays,
       weekdayDays,

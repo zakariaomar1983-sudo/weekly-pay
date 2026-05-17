@@ -246,7 +246,7 @@
   <script src="./supabase-client.js?v=20260413g"></script>
   <script src="./seed-data.js?v=20260507b"></script>
   <script src="./auth.js?v=20260513a"></script>
-  <script src="./roster.js?v=20260504b"></script>
+  <script src="./roster.js?v=20260517a"></script>
   <script>
     (function rosterQuickAddRecovery() {
       const DRIVERS_KEY = "transport_crm_drivers";
@@ -709,12 +709,17 @@
       }
 
       function activePairs() {
-        const drivers = readArray(DRIVERS_KEY)
+        const driversFromStore = readArray(DRIVERS_KEY)
           .filter((item) => String(item.status || "").toLowerCase() !== "inactive")
           .map((item) => String(item.name || "").trim())
           .filter((name) => !EXCLUDED_DRIVER_NAMES.has(normalizeDriverNameKey(name)))
           .filter(Boolean)
           .sort((a, b) => a.localeCompare(b));
+        const driversFromRoster = readRoster()
+          .map((row) => canonicalDriverName(row?.driverName))
+          .filter((name) => !EXCLUDED_DRIVER_NAMES.has(normalizeDriverNameKey(name)))
+          .filter(Boolean);
+        const drivers = [...new Set([...driversFromStore, ...driversFromRoster])];
         REQUIRED_DRIVER_NAMES.forEach((name) => {
           if (!drivers.some((existing) => existing.toLowerCase() === name.toLowerCase())) {
             drivers.push(name);
@@ -726,14 +731,33 @@
           .map((item) => String(item.truckNumber || "").trim())
           .filter(Boolean)
           .sort((a, b) => a.localeCompare(b));
-        if (!drivers.length || !trucks.length) return fallbackPairs;
+        if (!drivers.length) return fallbackPairs;
+        if (!trucks.length) {
+          return drivers.map((name) => ({
+            name,
+            truck: fallbackPairs.find((item) => item.name === name)?.truck || ""
+          }));
+        }
+
         const activeTruckSet = new Set(trucks);
-        return drivers.slice(0, 7)
+        const truckByDriverFromRoster = new Map();
+        readRoster().forEach((row) => {
+          const name = canonicalDriverName(row?.driverName);
+          const truckNumber = String(row?.truckNumber || "").trim();
+          if (!name || !truckNumber || truckByDriverFromRoster.has(name)) return;
+          if (!activeTruckSet.has(truckNumber)) return;
+          truckByDriverFromRoster.set(name, truckNumber);
+        });
+
+        return drivers
           .map((name, index) => {
-            const mapped = fallbackPairs.find((item) => item.name === name)?.truck || "";
-            return { name, truck: activeTruckSet.has(mapped) ? mapped : (trucks[index] || "") };
+            const configured = fallbackPairs.find((item) => item.name === name)?.truck || "";
+            const rosterMatched = truckByDriverFromRoster.get(name) || "";
+            const fallbackMatched = activeTruckSet.has(configured) ? configured : "";
+            const truck = rosterMatched || fallbackMatched || trucks[index] || configured || "";
+            return { name, truck };
           })
-          .filter((item) => item.name && item.truck);
+          .filter((item) => item.name);
       }
 
       function activeDriverNames() {
@@ -1095,6 +1119,7 @@
         const templateRows = [];
         activePairs().forEach((item) => {
           if (isAutoTemplateBlockedDriver(item.name)) return;
+          if (!item.truck) return;
           if (hasDriverHistory && !establishedDriverNames.has(item.name)) return;
           weekKeys.slice(0, 5).forEach((shiftDate) => {
             if (existingDriverDates.has(`${item.name}__${shiftDate}`) || existingTruckDates.has(`${item.truck}__${shiftDate}`)) return;
@@ -1355,7 +1380,7 @@
               <td class="board-driver-cell">
                 <div class="board-driver-name">
                   <strong>${item.name}</strong>
-                  <span class="board-driver-meta">Primary truck ${item.truck} | ${nightRuns} night runs | ${leaveDays} away days</span>
+                  <span class="board-driver-meta">Primary truck ${item.truck || "-"} | ${nightRuns} night runs | ${leaveDays} away days</span>
                 </div>
               </td>
               ${cells}
@@ -1488,7 +1513,7 @@
               <td class="board-driver-cell">
                 <div class="board-driver-name">
                   <strong>${item.name}</strong>
-                  <span class="board-driver-meta">Primary truck ${item.truck} | ${nightRuns} night runs | ${leaveDays} away days</span>
+                  <span class="board-driver-meta">Primary truck ${item.truck || "-"} | ${nightRuns} night runs | ${leaveDays} away days</span>
                 </div>
               </td>
               <td>${item.truck}</td>
