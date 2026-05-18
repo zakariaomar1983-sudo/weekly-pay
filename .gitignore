@@ -2,3 +2,8 @@
 .env*.local
 node_modules/
 npm-debug.log*
+.cache/
+.npm-cache/
+.ld-agent-skills-main-extract/
+.ld-agent-skills-main.zip
+Weekly CRM/.npm-cache/
