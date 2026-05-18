@@ -7,3 +7,4 @@ npm-debug.log*
 .ld-agent-skills-main-extract/
 .ld-agent-skills-main.zip
 Weekly CRM/.npm-cache/
+node_modules/.package-lock.json
