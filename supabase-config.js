@@ -12,16 +12,27 @@
   // Option 3: one-time bootstrap via URL query params.
   // Example: ?sbUrl=https://xyz.supabase.co&sbAnon=eyJ...
   const params = new URLSearchParams(window.location.search);
-  const paramUrl = params.get("sbUrl") || "";
-  const paramAnon = params.get("sbAnon") || "";
+  const paramUrl = (params.get("sbUrl") || "").trim();
+  const paramAnon = (params.get("sbAnon") || "").trim();
 
-  if (paramUrl && paramAnon) {
-    localStorage.setItem("OPX_SUPABASE_URL", paramUrl);
-    localStorage.setItem("OPX_SUPABASE_ANON_KEY", paramAnon);
+  const paramConfig = paramUrl && paramAnon ? { url: paramUrl, anonKey: paramAnon } : null;
+  const storedConfig = storedUrl && storedAnon ? {
+    url: storedUrl.trim(),
+    anonKey: storedAnon.trim()
+  } : null;
+  const fallbackConfig = {
+    url: String(hardcoded.url || "").trim(),
+    anonKey: String(hardcoded.anonKey || "").trim()
+  };
+
+  if (paramConfig) {
+    localStorage.setItem("OPX_SUPABASE_URL", paramConfig.url);
+    localStorage.setItem("OPX_SUPABASE_ANON_KEY", paramConfig.anonKey);
   }
 
-  const url = (hardcoded.url || paramUrl || storedUrl).trim();
-  const anonKey = (hardcoded.anonKey || paramAnon || storedAnon).trim();
+  // Prefer complete explicit browser/runtime configuration over the baked-in
+  // default, and avoid mixing a URL from one source with a key from another.
+  const config = paramConfig || storedConfig || fallbackConfig;
 
-  window.OPX_SUPABASE = { url, anonKey };
+  window.OPX_SUPABASE = { url: config.url, anonKey: config.anonKey };
 })();

@@ -195,20 +195,37 @@ async function handleApiRequest(req, res, pathname, searchParams) {
   }
 }
 
+function isPathInsideRoot(candidate) {
+  const relative = path.relative(root, candidate);
+  return relative === "" || (!relative.startsWith("..") && !path.isAbsolute(relative));
+}
+
+function getStaticFilePath(urlPath) {
+  const relativePath = urlPath === "/" ? "index.html" : urlPath.replace(/^\/+/, "");
+  const full = path.resolve(root, relativePath);
+  return isPathInsideRoot(full) ? full : "";
+}
+
 function createLocalServer() {
   return http.createServer(async (req, res) => {
     const parsedUrl = new URL(req.url || "/", `http://${req.headers.host || "localhost"}`);
-    const urlPath = decodeURIComponent(parsedUrl.pathname);
+    let urlPath;
+
+    try {
+      urlPath = decodeURIComponent(parsedUrl.pathname);
+    } catch {
+      send(res, 400, "Bad Request");
+      return;
+    }
 
     if (urlPath.startsWith("/api/")) {
       await handleApiRequest(req, res, urlPath, parsedUrl.searchParams);
       return;
     }
 
-    const rel = urlPath === "/" ? "/index.html" : urlPath;
-    const full = path.normalize(path.join(root, rel));
+    const full = getStaticFilePath(urlPath);
 
-    if (!full.startsWith(root)) {
+    if (!full) {
       send(res, 403, "Forbidden");
       return;
     }
