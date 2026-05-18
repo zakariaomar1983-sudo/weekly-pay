@@ -2356,8 +2356,8 @@ function drawStats() {
   }).length;
 
   const stats = [
-    { label: "Drivers Planned", value: `${driversPlanned}/${Math.min(activeDrivers.length || TARGET_DRIVERS, TARGET_DRIVERS)}` },
-    { label: "Trucks Assigned", value: `${trucksAssigned}/${Math.min(activeTrucks.length || TARGET_TRUCKS, TARGET_TRUCKS)}` },
+    { label: "Drivers Planned", value: `${driversPlanned}/${Math.max(activeDrivers.length, 1)}` },
+    { label: "Trucks Assigned", value: `${trucksAssigned}/${Math.max(activeTrucks.length, 1)}` },
     { label: "Drivers At 5 Days", value: String(targetHit) },
     { label: "Weekday Shifts", value: String(weekRows.filter((x) => {
       const date = parseDateOnly(x.shiftDate);
@@ -2373,12 +2373,17 @@ function drawStats() {
 
 function drawRosterModel() {
   const strip = document.getElementById("rosterRuleStrip");
+  const fleetGoalValue = document.getElementById("rosterFleetGoalValue");
   const activeDrivers = getActiveDrivers();
   const activeTrucks = getActiveTrucks();
 
+  if (fleetGoalValue) {
+    fleetGoalValue.textContent = `${activeDrivers.length} Drivers | ${activeTrucks.length} Trucks`;
+  }
+
   const items = [
-    { label: "Active drivers", value: `${Math.min(activeDrivers.length, TARGET_DRIVERS)}/${TARGET_DRIVERS}` },
-    { label: "Active trucks", value: `${Math.min(activeTrucks.length, TARGET_TRUCKS)}/${TARGET_TRUCKS}` },
+    { label: "Active drivers", value: String(activeDrivers.length) },
+    { label: "Active trucks", value: String(activeTrucks.length) },
     { label: "Driver target", value: `${TARGET_DAYS_PER_DRIVER} days` },
     { label: "Core pattern", value: "Mon-Fri" },
     { label: "Overflow", value: "Sat-Sun when required" }
@@ -2510,12 +2515,12 @@ function drawDriverBoard() {
     },
     {
       label: "Driver coverage",
-      value: `${new Set(weekRows.map((item) => item.driverName).filter(Boolean)).size}/${TARGET_DRIVERS}`,
-      detail: "Use this as the live check for whether all 7 roster slots are covered."
+      value: `${new Set(weekRows.map((item) => item.driverName).filter(Boolean)).size}/${Math.max(getActiveDrivers().length, 1)}`,
+      detail: "Live check for how many active drivers are currently covered this week."
     },
     {
       label: "Truck coverage",
-      value: `${new Set(weekRows.map((item) => item.truckNumber).filter(Boolean)).size}/${TARGET_TRUCKS}`,
+      value: `${new Set(weekRows.map((item) => item.truckNumber).filter(Boolean)).size}/${Math.max(getActiveTrucks().length, 1)}`,
       detail: "Truck count shows how many fleet units are actually assigned this week."
     },
     {
