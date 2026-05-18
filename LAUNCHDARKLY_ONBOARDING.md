@@ -17,14 +17,17 @@ Last updated: 2026-05-17 (Australia/Sydney)
 - Language/runtime: JavaScript (Node.js)
 - Framework/app type: Vanilla JS multi-page app + Node local server + Vercel cron/api routes
 - Monorepo target path: N/A (single repo)
-- LaunchDarkly status: not integrated in application code yet (no SDK usage found)
+- LaunchDarkly status: server-side bootstrap added in `api/_launchdarkly-server.js` with health endpoint `api/launchdarkly-health.js`
 - LaunchDarkly project key: unknown
 - LaunchDarkly environment key: unknown
 
 ## MCP
-- Configured: pending verification
+- Configured: yes (hosted FM endpoint)
 - Mode: hosted MCP preferred
-- Config path: user supplied
+- Config path:
+  - `.vscode/mcp.json` (repo root)
+  - `Weekly CRM/.vscode/mcp.json` (legacy/subproject copy)
+  - user supplied snippet
   - `[mcp_servers.launchdarkly-v2]`
   - `url = "https://mcp.launchdarkly.com/mcp/fm"`
   - `http_headers = {}`
@@ -38,12 +41,15 @@ Last updated: 2026-05-17 (Australia/Sydney)
 - Local copy fallback to global Codex skills:
   - `C:\Users\zakar\.codex\skills\onboarding`
   - `C:\Users\zakar\.codex\skills\launchdarkly-flag-{create,discovery,targeting,cleanup}`
+- `npm install @launchdarkly/node-server-sdk` (failed: PowerShell script policy)
+- `npm.cmd install @launchdarkly/node-server-sdk` (failed: EACCES / fetch failure on this machine)
 
 ## Blockers / Errors
 - PowerShell policy blocked `npx.ps1`; switched to `npx.cmd`.
 - GitHub clone via `skills add` failed with schannel TLS (`SEC_E_NO_CREDENTIALS`).
 - Installer could not write to workspace `.agents\skills` (`EPERM`).
+- `npm` PowerShell shim blocked by execution policy; `npm.cmd` also failed to fetch/install package in current environment (`EACCES`).
 - Resolved by installing from local LaunchDarkly package already present in workspace and copying skills into global Codex skills directory.
 
 ## Next step
-Step 4: Restart/refresh the agent and verify MCP tool availability.
+Step 5: Install `@launchdarkly/node-server-sdk` on this machine, set `LAUNCHDARKLY_SDK_KEY`, then verify `/api/launchdarkly-health`.
