@@ -1,14 +1,15 @@
 ﻿# LaunchDarkly Onboarding Log
 
 Last updated: 2026-05-17 (Australia/Sydney)
+Last updated: 2026-05-19 (Australia/Sydney)
 
 ## Checklist
 - Step 0: Onboarding log — done
 - Step 1: Explore project and integration surface — done
 - Step 2: Detect agent environment — done
 - Step 3: Install companion flag-management skills — done (installed from local LaunchDarkly package due network/TLS and folder-permission constraints)
-- Step 4: Configure MCP server — in progress (hosted endpoint added; awaiting agent restart for tool availability)
-- Step 5: Install and initialize SDK — not started
+- Step 4: Configure MCP server — done (hosted endpoint configured; awaiting editor restart/enable + OAuth prompt)
+- Step 5: Install and initialize SDK — in progress (server helper + health endpoint added; npm install blocked locally)
 - Step 6: Create first feature flag and verify toggle path — not started
 
 ## Context
