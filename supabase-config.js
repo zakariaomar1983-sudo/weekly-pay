@@ -5,9 +5,25 @@
     anonKey: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNwaHNoY3ZyYmR0c2FmdHV3YXlhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzU5NjUzMDAsImV4cCI6MjA5MTU0MTMwMH0.kmmByItNnTjTrJXyUGccWLNLdrZ8U_lHOTYLrBxA-gQ"
   };
 
+  function readStoredValue(key) {
+    try {
+      return window.localStorage?.getItem(key) || "";
+    } catch {
+      return "";
+    }
+  }
+
+  function writeStoredValue(key, value) {
+    try {
+      window.localStorage?.setItem(key, value);
+    } catch {
+      // Storage may be unavailable in restricted/private browser contexts.
+    }
+  }
+
   // Option 2: persist per-device values (set once, then reused).
-  const storedUrl = localStorage.getItem("OPX_SUPABASE_URL") || "";
-  const storedAnon = localStorage.getItem("OPX_SUPABASE_ANON_KEY") || "";
+  const storedUrl = readStoredValue("OPX_SUPABASE_URL");
+  const storedAnon = readStoredValue("OPX_SUPABASE_ANON_KEY");
 
   // Option 3: one-time bootstrap via URL query params.
   // Example: ?sbUrl=https://xyz.supabase.co&sbAnon=eyJ...
@@ -26,8 +42,8 @@
   };
 
   if (paramConfig) {
-    localStorage.setItem("OPX_SUPABASE_URL", paramConfig.url);
-    localStorage.setItem("OPX_SUPABASE_ANON_KEY", paramConfig.anonKey);
+    writeStoredValue("OPX_SUPABASE_URL", paramConfig.url);
+    writeStoredValue("OPX_SUPABASE_ANON_KEY", paramConfig.anonKey);
   }
 
   // Prefer complete explicit browser/runtime configuration over the baked-in
