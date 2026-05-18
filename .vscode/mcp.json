@@ -1,0 +1,10 @@
+{
+	"servers": {
+		"LaunchDarkly+FM": {
+			"url": "https://mcp.launchdarkly.com/mcp/fm",
+			"headers": {},
+			"type": "http"
+		}
+	},
+	"inputs": []
+}
