@@ -1333,7 +1333,14 @@ function getActiveDrivers() {
   const selectedNames = readRosterDriverPoolNames();
   if (!selectedNames.length) return available;
 
+  const requiredNames = [
+    ...REQUIRED_DRIVER_NAMES,
+    ...REQUIRED_WEEK_VIEW_ROWS.map((item) => item?.driverName || "")
+  ]
+    .map((name) => canonicalDriverName(name))
+    .filter(Boolean);
   const selectedKeys = new Set(selectedNames.map((name) => normalizeDriverNameKey(name)));
+  requiredNames.forEach((name) => selectedKeys.add(normalizeDriverNameKey(name)));
   const filtered = available.filter((item) => selectedKeys.has(normalizeDriverNameKey(item.name)));
   return filtered.length ? filtered : available;
 }
@@ -1549,20 +1556,7 @@ function getPreferredTruckForDriver(driverName) {
 
 function buildWeekTemplateRows(weekKeys, actualWeekRows = []) {
   const uniqueActualRows = dedupeRosterRows(actualWeekRows);
-  const weekStartKey = String(weekKeys?.[0] || "").trim();
-  const activeDrivers = getActiveDrivers().slice(0, TARGET_DRIVERS);
-  const establishedDriverNames = new Set(
-    state.roster
-      .filter((row) => row && typeof row === "object" && !row.isTemplate)
-      .filter((row) => {
-        const shiftDate = String(row.shiftDate || "").trim();
-        if (!shiftDate || !weekStartKey) return false;
-        return shiftDate < weekStartKey;
-      })
-      .map((row) => canonicalDriverName(row.driverName))
-      .filter(Boolean)
-  );
-  const hasDriverHistory = establishedDriverNames.size > 0;
+  const activeDrivers = getActiveDrivers();
   const existingDriverDates = new Set();
   const existingTruckDates = new Set();
   const templateRows = [];
@@ -1578,7 +1572,6 @@ function buildWeekTemplateRows(weekKeys, actualWeekRows = []) {
   activeDrivers.forEach((driver, index) => {
     const driverName = String(driver.name || "").trim();
     if (isAutoTemplateBlockedDriver(driverName)) return;
-    if (hasDriverHistory && !establishedDriverNames.has(driverName)) return;
     const truckNumber = String(getPreferredTruckForDriver(driverName) || "").trim();
     if (!driverName || !truckNumber) return;
 
