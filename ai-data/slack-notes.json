@@ -1,0 +1,20 @@
+[
+  {
+    "title": "GitHub Slack app sign-in confirmed",
+    "at": "2026-05-20T01:28:46+10:00",
+    "source": "https://app.slack.com/client/T0B189AAPDL/D0B4RRDG01L",
+    "text": "The GitHub Slack app confirmed the account zakariaomar1983-sudo was already signed in after the /github signin command."
+  },
+  {
+    "title": "GitHub Slack app command scope limitation",
+    "at": "2026-05-20T03:08:43+10:00",
+    "source": "https://app.slack.com/client/T0B189AAPDL/D0B4RRDG01L",
+    "text": "The GitHub Slack app clarified it can only create GitHub issues or pull requests in this mode, and cannot run general shell commands like cd your_project_directory."
+  },
+  {
+    "title": "Speakeasy watch command request",
+    "at": "2026-05-20T03:09:38+10:00",
+    "source": "https://app.slack.com/client/T0B189AAPDL/D0B4RRDG01L",
+    "text": "After the message speakeasy run --watch, the GitHub Slack app asked for target repository and whether the change should be a new script or a CI/CD workflow update."
+  }
+]

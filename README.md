@@ -90,3 +90,35 @@ npx vercel --prod
 - `truck_expense`
 - `payslips`
 3. If data still does not appear, verify RLS/policies for anon access.
+
+## Project AI Knowledge Training
+This project now includes an offline knowledge indexing flow so your AI can answer using your codebase plus selected Slack notes.
+
+1. Train/build the knowledge index:
+```bash
+npm run ai:train
+```
+
+2. Start the local server:
+```bash
+npm run dev
+```
+
+3. Ask for grounded project context:
+```bash
+curl "http://localhost:4173/api/project-ai-context?q=how%20do%20weekly%20report%20emails%20work&topK=6"
+```
+
+4. Ask for a direct final answer (with source citations):
+```bash
+curl "http://localhost:4173/api/project-ai-chat?q=how%20do%20weekly%20report%20emails%20work&topK=6"
+```
+
+### Files Used by the AI Flow
+- `scripts/build-project-knowledge.js`: scans project files and builds `ai-data/project-knowledge.json`
+- `ai-data/slack-notes.json`: hand-picked Slack notes to include in training context
+- `api/project-ai-context.js`: query endpoint that returns top relevant context chunks and sources
+- `api/project-ai-chat.js`: query endpoint that returns a final answer grounded in the indexed project sources
+
+### Updating Slack Knowledge
+Edit `ai-data/slack-notes.json` and run `npm run ai:train` again to refresh the index.
