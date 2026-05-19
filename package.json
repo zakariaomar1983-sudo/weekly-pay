@@ -1,16 +1,18 @@
-{
+﻿{
   "engines": {
     "node": "22.x"
   },
   "scripts": {
     "dev": "node local-server.js",
     "start": "node local-server.js",
-    "health-check": "node scripts/health-check.js"
+    "health-check": "node scripts/health-check.js",
+    "ai:train": "node scripts/build-project-knowledge.js"
   },
   "dependencies": {
     "@supabase/ssr": "^0.10.2",
     "@supabase/supabase-js": "^2.103.0",
     "launchdarkly-ai-tooling": "file:.ld-agent-skills-main-extract/ai-tooling-main",
-    "vercel": "^52.0.0"
+    "vercel": "^53.4.0"
   }
 }
+
