@@ -114,6 +114,11 @@ curl "http://localhost:4173/api/project-ai-context?q=how%20do%20weekly%20report%
 curl "http://localhost:4173/api/project-ai-chat?q=how%20do%20weekly%20report%20emails%20work&topK=6"
 ```
 
+### Boolean Feature Flag
+- `FEATURE_PROJECT_AI_CHAT_ENABLED` controls `/api/project-ai-chat`
+- Default: `true`
+- Set to `false` to disable the endpoint
+
 ### Files Used by the AI Flow
 - `scripts/build-project-knowledge.js`: scans project files and builds `ai-data/project-knowledge.json`
 - `ai-data/slack-notes.json`: hand-picked Slack notes to include in training context

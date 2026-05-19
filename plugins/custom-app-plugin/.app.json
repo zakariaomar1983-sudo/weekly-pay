@@ -1,0 +1,10 @@
+{
+  "apps": [
+    {
+      "name": "[TODO: app-name]",
+      "description": "[TODO: App description shown in Apps section]",
+      "entrypoint": "[TODO: app entrypoint]",
+      "settings": {}
+    }
+  ]
+}

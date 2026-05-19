@@ -16,5 +16,11 @@
     "at": "2026-05-20T03:09:38+10:00",
     "source": "https://app.slack.com/client/T0B189AAPDL/D0B4RRDG01L",
     "text": "After the message speakeasy run --watch, the GitHub Slack app asked for target repository and whether the change should be a new script or a CI/CD workflow update."
+  },
+  {
+    "title": "Default repository can be configured in Slack",
+    "at": "2026-05-20T01:25:32+10:00",
+    "source": "https://app.slack.com/client/T0B189AAPDL/D0B4RRDG01L",
+    "text": "The GitHub Slack app guidance says you can run @GitHub settings in the same channel/DM to set a default repository used when prompts do not explicitly include owner/repo."
   }
 ]

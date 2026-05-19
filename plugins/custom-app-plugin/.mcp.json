@@ -1,0 +1,11 @@
+{
+  "mcpServers": {
+    "custom-app-server": {
+      "command": "[TODO: command]",
+      "args": [
+        "[TODO: arg1]"
+      ],
+      "env": {}
+    }
+  }
+}

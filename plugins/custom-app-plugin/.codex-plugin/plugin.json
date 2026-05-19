@@ -1,0 +1,49 @@
+{
+  "name": "custom-app-plugin",
+  "version": "0.1.0",
+  "description": "[TODO: Brief plugin description]",
+  "author": {
+    "name": "[TODO: Author Name]",
+    "email": "[TODO: author@example.com]",
+    "url": "[TODO: https://example.com]"
+  },
+  "homepage": "[TODO: https://docs.example.com/custom-app-plugin]",
+  "repository": "[TODO: https://github.com/example/custom-app-plugin]",
+  "license": "[TODO: MIT]",
+  "keywords": [
+    "custom",
+    "app",
+    "productivity"
+  ],
+  "skills": "./skills/",
+  "hooks": "./hooks.json",
+  "mcpServers": "./.mcp.json",
+  "apps": "./.app.json",
+  "interface": {
+    "displayName": "Custom App Plugin",
+    "shortDescription": "[TODO: One-line subtitle for your app]",
+    "longDescription": "[TODO: Explain what your app does and who it helps]",
+    "developerName": "[TODO: Your Team Name]",
+    "category": "Productivity",
+    "capabilities": [
+      "Interactive",
+      "Write"
+    ],
+    "websiteURL": "[TODO: https://example.com]",
+    "privacyPolicyURL": "[TODO: https://example.com/privacy]",
+    "termsOfServiceURL": "[TODO: https://example.com/terms]",
+    "defaultPrompt": [
+      "[TODO: Prompt idea 1]",
+      "[TODO: Prompt idea 2]",
+      "[TODO: Prompt idea 3]"
+    ],
+    "brandColor": "#3B82F6",
+    "composerIcon": "./assets/icon.png",
+    "logo": "./assets/logo.png",
+    "screenshots": [
+      "./assets/screenshot1.png",
+      "./assets/screenshot2.png",
+      "./assets/screenshot3.png"
+    ]
+  }
+}

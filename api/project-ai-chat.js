@@ -1,6 +1,7 @@
 const fs = require("fs");
 const path = require("path");
 const { tokenize } = require("../scripts/build-project-knowledge");
+const { getFeatureFlags } = require("./_feature-flags");
 
 const KNOWLEDGE_FILE = path.join(process.cwd(), "ai-data", "project-knowledge.json");
 
@@ -117,6 +118,13 @@ function buildAnswer(question, topSentences, topMatches) {
 }
 
 module.exports = async function handler(req, res) {
+  const flags = getFeatureFlags();
+  if (!flags.projectAiChatEnabled) {
+    return res.status(404).json({
+      error: "Feature not enabled."
+    });
+  }
+
   if (req.method !== "GET" && req.method !== "POST") {
     return res.status(405).json({ error: "Method not allowed. Use GET or POST." });
   }
