@@ -6,6 +6,8 @@ if (!canAccessFinance) {
   document.body.innerHTML = "<main class='app-shell'><section class='panel'><h2>Access Denied</h2><p>You do not have permission to access the Finance page.</p></section></main>";
   throw new Error("No finance access");
 }
+const canViewPayables = canAccessFinance;
+const canEditPayables = auth.can("editSpending") || auth.can("editPayslips") || auth.can("accessControlPanel");
 
 const KEYS = {
   income: "transport_crm_truck_income",
@@ -270,6 +272,62 @@ function readPayablesData() {
 
 function savePayablesData() {
   localStorage.setItem(PAYABLES_KEY, JSON.stringify(state.payables));
+}
+
+function ensurePayablesPanel() {
+  if (document.getElementById("payablesPanel")) return;
+  const payPanel = document.getElementById("payPanel");
+  if (!payPanel) return;
+  payPanel.insertAdjacentHTML("beforebegin", `
+    <section class="panel" id="payablesPanel">
+      <div class="panel-head">
+        <h2>Things To Be Paid</h2>
+      </div>
+      <p class="muted">Track upcoming payments and mark them paid when done.</p>
+      <form id="payablesForm" class="form-grid">
+        <input type="hidden" id="payableId" />
+        <label>Thing To Pay
+          <input id="payableTitle" type="text" placeholder="Fuel invoice, toll account, rego..." required />
+        </label>
+        <label>Amount (AUD)
+          <input id="payableAmount" type="number" min="0" step="0.01" placeholder="0.00" />
+        </label>
+        <label>Due Date
+          <input id="payableDueDate" type="date" />
+        </label>
+        <label>Status
+          <select id="payableStatus" required>
+            <option value="To Pay">To Pay</option>
+            <option value="In Progress">In Progress</option>
+            <option value="Paid">Paid</option>
+          </select>
+        </label>
+        <label class="full">Notes
+          <input id="payableNotes" type="text" placeholder="Optional notes" />
+        </label>
+        <div class="actions full">
+          <button class="btn" type="submit">Save Item</button>
+          <button id="cancelPayableEdit" class="btn btn-muted" type="button">Cancel Edit</button>
+        </div>
+      </form>
+      <form class="form-grid" onsubmit="return false;">
+        <label class="full">Search Things To Be Paid
+          <input id="payablesSearch" type="text" placeholder="Thing, status, notes..." />
+        </label>
+        <div class="actions full">
+          <button id="clearPayablesFilters" class="btn btn-outline" type="button">Clear Filters</button>
+        </div>
+      </form>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr><th>Thing</th><th>Amount</th><th>Due Date</th><th>Status</th><th>Notes</th><th>Actions</th></tr>
+          </thead>
+          <tbody id="payablesTableBody"></tbody>
+        </table>
+      </div>
+    </section>
+  `);
 }
 
 function saveData(key, data) {
@@ -1840,14 +1898,17 @@ function drawExpense() {
 }
 
 function drawPayables() {
+  ensurePayablesPanel();
   const panel = document.getElementById("payablesPanel");
-  if (!auth.can("viewPayslips")) {
+  if (!panel) return;
+  if (!canViewPayables) {
     panel.style.display = "none";
     return;
   }
 
   panel.style.display = "block";
   const tbody = document.getElementById("payablesTableBody");
+  if (!tbody) return;
   const query = (document.getElementById("payablesSearch")?.value || "").trim().toLowerCase();
   const filtered = state.payables.filter((item) => {
     if (!query) return true;
@@ -1872,7 +1933,7 @@ function drawPayables() {
       return a.title.localeCompare(b.title);
     })
     .map((item) => {
-      const actions = auth.can("editPayslips")
+      const actions = canEditPayables
         ? `<div class='table-actions'>
             <button data-action='toggle-payable' data-id='${item.id}'>${item.status === "Paid" ? "Mark To Pay" : "Mark Paid"}</button>
             <button data-action='edit-payable' data-id='${item.id}'>Edit</button>
@@ -1924,6 +1985,7 @@ function refresh() {
 }
 
 function applyAccess() {
+  ensurePayablesPanel();
   document.getElementById("currentUserChip").textContent = `User: ${auth.user.username}`;
   if (!auth.can("accessControlPanel")) document.getElementById("controlPanelLink").style.display = "none";
   if (!auth.can("viewReports")) {
@@ -1952,15 +2014,21 @@ function applyAccess() {
     document.getElementById("exportExpense").style.display = "none";
   }
 
-  if (!auth.can("editPayslips")) {
+  if (!canEditPayables) {
     const payablesForm = document.getElementById("payablesForm");
-    Array.from(payablesForm.elements).forEach((el) => { if (el.type !== "hidden") el.disabled = true; });
-    document.getElementById("cancelPayableEdit").style.display = "none";
+    if (payablesForm) Array.from(payablesForm.elements).forEach((el) => { if (el.type !== "hidden") el.disabled = true; });
+    const cancelPayableEdit = document.getElementById("cancelPayableEdit");
+    if (cancelPayableEdit) cancelPayableEdit.style.display = "none";
+  }
+
+  if (!auth.can("editPayslips")) {
     const form = document.getElementById("payForm");
     Array.from(form.elements).forEach((el) => { if (el.type !== "hidden") el.disabled = true; });
     document.getElementById("exportPay").style.display = "none";
   }
 }
+
+ensurePayablesPanel();
 
 document.getElementById("logoutBtn").addEventListener("click", () => {
   window.OPXAuth.logout();
@@ -2013,27 +2081,30 @@ document.getElementById("expenseForm").addEventListener("submit", (e) => {
   refresh();
 });
 
-document.getElementById("payablesForm").addEventListener("submit", (e) => {
-  e.preventDefault();
-  if (!auth.can("editPayslips")) return;
+const payablesForm = document.getElementById("payablesForm");
+if (payablesForm) {
+  payablesForm.addEventListener("submit", (e) => {
+    e.preventDefault();
+    if (!canEditPayables) return;
 
-  const id = document.getElementById("payableId").value;
-  const payload = {
-    id: id || uid(),
-    title: document.getElementById("payableTitle").value.trim(),
-    amount: toNumber(document.getElementById("payableAmount").value),
-    dueDate: document.getElementById("payableDueDate").value,
-    status: document.getElementById("payableStatus").value,
-    notes: document.getElementById("payableNotes").value.trim()
-  };
+    const id = document.getElementById("payableId").value;
+    const payload = {
+      id: id || uid(),
+      title: document.getElementById("payableTitle").value.trim(),
+      amount: toNumber(document.getElementById("payableAmount").value),
+      dueDate: document.getElementById("payableDueDate").value,
+      status: document.getElementById("payableStatus").value,
+      notes: document.getElementById("payableNotes").value.trim()
+    };
 
-  state.payables = id ? state.payables.map((x) => x.id === id ? payload : x) : [...state.payables, payload];
-  savePayablesData();
-  e.target.reset();
-  document.getElementById("payableId").value = "";
-  document.getElementById("payableStatus").value = "To Pay";
-  refresh();
-});
+    state.payables = id ? state.payables.map((x) => x.id === id ? payload : x) : [...state.payables, payload];
+    savePayablesData();
+    e.target.reset();
+    document.getElementById("payableId").value = "";
+    document.getElementById("payableStatus").value = "To Pay";
+    refresh();
+  });
+}
 
 document.getElementById("payForm").addEventListener("submit", (e) => {
   e.preventDefault();
@@ -2076,11 +2147,14 @@ document.getElementById("cancelExpenseEdit").addEventListener("click", () => {
   document.getElementById("expenseId").value = "";
 });
 
-document.getElementById("cancelPayableEdit").addEventListener("click", () => {
-  document.getElementById("payablesForm").reset();
-  document.getElementById("payableId").value = "";
-  document.getElementById("payableStatus").value = "To Pay";
-});
+const cancelPayableEdit = document.getElementById("cancelPayableEdit");
+if (cancelPayableEdit) {
+  cancelPayableEdit.addEventListener("click", () => {
+    document.getElementById("payablesForm").reset();
+    document.getElementById("payableId").value = "";
+    document.getElementById("payableStatus").value = "To Pay";
+  });
+}
 
 document.getElementById("cancelPayEdit").addEventListener("click", () => {
   document.getElementById("payForm").reset();
@@ -2114,8 +2188,11 @@ document.getElementById("incomeSearch").addEventListener("input", scheduleFinanc
 document.getElementById("incomeSearch").addEventListener("search", scheduleFinanceRefresh);
 document.getElementById("expenseSearch").addEventListener("input", scheduleFinanceRefresh);
 document.getElementById("expenseSearch").addEventListener("search", scheduleFinanceRefresh);
-document.getElementById("payablesSearch").addEventListener("input", scheduleFinanceRefresh);
-document.getElementById("payablesSearch").addEventListener("search", scheduleFinanceRefresh);
+const payablesSearch = document.getElementById("payablesSearch");
+if (payablesSearch) {
+  payablesSearch.addEventListener("input", scheduleFinanceRefresh);
+  payablesSearch.addEventListener("search", scheduleFinanceRefresh);
+}
 document.getElementById("paySearch").addEventListener("input", scheduleFinanceRefresh);
 document.getElementById("paySearch").addEventListener("search", scheduleFinanceRefresh);
 document.getElementById("clearIncomeFilters").addEventListener("click", () => {
@@ -2126,10 +2203,14 @@ document.getElementById("clearExpenseFilters").addEventListener("click", () => {
   document.getElementById("expenseSearch").value = "";
   refresh();
 });
-document.getElementById("clearPayablesFilters").addEventListener("click", () => {
-  document.getElementById("payablesSearch").value = "";
-  refresh();
-});
+const clearPayablesFilters = document.getElementById("clearPayablesFilters");
+if (clearPayablesFilters) {
+  clearPayablesFilters.addEventListener("click", () => {
+    const search = document.getElementById("payablesSearch");
+    if (search) search.value = "";
+    refresh();
+  });
+}
 document.getElementById("clearPayFilters").addEventListener("click", () => {
   document.getElementById("paySearch").value = "";
   refresh();
@@ -2182,7 +2263,7 @@ document.body.addEventListener("click", (e) => {
     return;
   }
 
-  if (action === "edit-payable" && auth.can("editPayslips")) {
+  if (action === "edit-payable" && canEditPayables) {
     const item = state.payables.find((x) => x.id === id);
     if (!item) return;
     document.getElementById("payableId").value = item.id;
@@ -2194,14 +2275,14 @@ document.body.addEventListener("click", (e) => {
     return;
   }
 
-  if (action === "delete-payable" && auth.can("editPayslips")) {
+  if (action === "delete-payable" && canEditPayables) {
     state.payables = state.payables.filter((x) => x.id !== id);
     savePayablesData();
     refresh();
     return;
   }
 
-  if (action === "toggle-payable" && auth.can("editPayslips")) {
+  if (action === "toggle-payable" && canEditPayables) {
     state.payables = state.payables.map((item) => {
       if (item.id !== id) return item;
       const nextStatus = item.status === "Paid" ? "To Pay" : "Paid";
