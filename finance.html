@@ -251,7 +251,152 @@
   <script src="./supabase-client.js?v=20260413g"></script>
   <script src="./seed-data.js?v=20260413g"></script>
   <script src="./auth.js?v=20260513a"></script>
-  <script src="./finance.js?v=20260521b"></script>
+  <script src="./finance.js?v=20260508d"></script>
+  <script>
+    (function initPayablesPanel() {
+      if (window.__opxPayablesInit) return;
+      window.__opxPayablesInit = true;
+
+      const LIST_KEY = "transport_crm_payables_list";
+      const panel = document.getElementById("payablesPanel");
+      if (!panel) return;
+
+      const form = document.getElementById("payablesForm");
+      const searchInput = document.getElementById("payablesSearch");
+      const clearBtn = document.getElementById("clearPayablesFilters");
+      const cancelBtn = document.getElementById("cancelPayableEdit");
+      const tableBody = document.getElementById("payablesTableBody");
+
+      if (!form || !searchInput || !clearBtn || !cancelBtn || !tableBody) return;
+
+      function safeRead() {
+        try {
+          const parsed = JSON.parse(localStorage.getItem(LIST_KEY) || "[]");
+          return Array.isArray(parsed) ? parsed : [];
+        } catch {
+          return [];
+        }
+      }
+
+      function safeWrite(rows) {
+        localStorage.setItem(LIST_KEY, JSON.stringify(rows));
+      }
+
+      function uid() {
+        if (typeof crypto !== "undefined" && crypto.randomUUID) return crypto.randomUUID();
+        return `${Date.now()}${Math.random().toString(16).slice(2, 10)}`;
+      }
+
+      function toAmount(value) {
+        const num = Number(String(value || "").replace(",", "").trim());
+        return Number.isFinite(num) ? num : 0;
+      }
+
+      function money(value) {
+        return `$${toAmount(value).toFixed(2)}`;
+      }
+
+      function render() {
+        const rows = safeRead();
+        const q = (searchInput.value || "").trim().toLowerCase();
+        const filtered = rows.filter((row) => {
+          if (!q) return true;
+          const hay = `${row.title || ""} ${row.status || ""} ${row.dueDate || ""} ${row.notes || ""}`.toLowerCase();
+          return hay.includes(q);
+        });
+
+        if (!filtered.length) {
+          tableBody.innerHTML = `<tr><td colspan="6" class="empty">${q ? "No payment items match your search." : "No payment items added yet."}</td></tr>`;
+          return;
+        }
+
+        filtered.sort((a, b) => {
+          const aDate = a.dueDate || "9999-12-31";
+          const bDate = b.dueDate || "9999-12-31";
+          if (aDate !== bDate) return aDate.localeCompare(bDate);
+          return String(a.title || "").localeCompare(String(b.title || ""));
+        });
+
+        tableBody.innerHTML = filtered.map((row) => `
+          <tr>
+            <td>${row.title || "-"}</td>
+            <td>${row.amount ? money(row.amount) : "-"}</td>
+            <td>${row.dueDate || "-"}</td>
+            <td>${row.status || "To Pay"}</td>
+            <td>${row.notes || "-"}</td>
+            <td>
+              <div class="table-actions">
+                <button type="button" data-action="edit-payable" data-id="${row.id}">Edit</button>
+                <button type="button" data-action="delete-payable" data-id="${row.id}">Delete</button>
+              </div>
+            </td>
+          </tr>
+        `).join("");
+      }
+
+      form.addEventListener("submit", (e) => {
+        e.preventDefault();
+        const rows = safeRead();
+        const id = document.getElementById("payableId").value || uid();
+        const payload = {
+          id,
+          title: document.getElementById("payableTitle").value.trim(),
+          amount: toAmount(document.getElementById("payableAmount").value),
+          dueDate: document.getElementById("payableDueDate").value,
+          status: document.getElementById("payableStatus").value,
+          notes: document.getElementById("payableNotes").value.trim()
+        };
+
+        const next = rows.some((item) => item.id === id)
+          ? rows.map((item) => (item.id === id ? payload : item))
+          : [...rows, payload];
+        safeWrite(next);
+        form.reset();
+        document.getElementById("payableId").value = "";
+        document.getElementById("payableStatus").value = "To Pay";
+        render();
+      });
+
+      cancelBtn.addEventListener("click", () => {
+        form.reset();
+        document.getElementById("payableId").value = "";
+        document.getElementById("payableStatus").value = "To Pay";
+      });
+
+      clearBtn.addEventListener("click", () => {
+        searchInput.value = "";
+        render();
+      });
+
+      searchInput.addEventListener("input", render);
+
+      tableBody.addEventListener("click", (e) => {
+        const btn = e.target.closest("button[data-action][data-id]");
+        if (!btn) return;
+        const { action, id } = btn.dataset;
+        const rows = safeRead();
+        const item = rows.find((x) => x.id === id);
+        if (!item) return;
+
+        if (action === "edit-payable") {
+          document.getElementById("payableId").value = item.id;
+          document.getElementById("payableTitle").value = item.title || "";
+          document.getElementById("payableAmount").value = item.amount || "";
+          document.getElementById("payableDueDate").value = item.dueDate || "";
+          document.getElementById("payableStatus").value = item.status || "To Pay";
+          document.getElementById("payableNotes").value = item.notes || "";
+          return;
+        }
+
+        if (action === "delete-payable") {
+          safeWrite(rows.filter((x) => x.id !== id));
+          render();
+        }
+      });
+
+      render();
+    })();
+  </script>
   <script src="./emergency-fill.js?v=20260413g"></script>
 </body>
 </html>
