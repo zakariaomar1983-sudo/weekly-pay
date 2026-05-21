@@ -16,6 +16,7 @@ const FINANCE_SYNC_STATUS_KEY = "transport_crm_finance_sync_status";
 const FINANCE_SYNC_RETRY_DELAYS_MS = [2000, 5000, 10000, 30000];
 const DRIVERS_KEY = "transport_crm_drivers";
 const ROSTER_KEY = "transport_crm_roster";
+const PAYABLES_KEY = "transport_crm_payables_list";
 const TABLE_BY_KEY = {
   [KEYS.income]: "truck_income",
   [KEYS.expense]: "truck_expense",
@@ -32,6 +33,7 @@ function applyFinanceResetFromUrl() {
     const params = new URLSearchParams(window.location.search || "");
     if (params.get("resetFinance") !== "1") return;
     Object.values(KEYS).forEach((key) => localStorage.removeItem(key));
+    localStorage.removeItem(PAYABLES_KEY);
   } catch {
     // ignore
   }
@@ -43,6 +45,7 @@ const state = {
   income: readData(KEYS.income),
   expense: readData(KEYS.expense),
   pay: readData(KEYS.pay),
+  payables: readPayablesData(),
   payslipEmailConfigured: false
 };
 const sendingPayEmails = new Set();
@@ -229,6 +232,44 @@ function readDriversData() {
   } catch {
     return [];
   }
+}
+
+function readPayablesData() {
+  try {
+    const parsed = JSON.parse(localStorage.getItem(PAYABLES_KEY) || "[]");
+    const rows = ensureUuidRows(Array.isArray(parsed) ? parsed : [], PAYABLES_KEY);
+    let changed = false;
+    const normalized = rows.map((row) => {
+      const next = {
+        id: row.id,
+        title: String(row.title || row.item || "").trim(),
+        amount: toNumber(row.amount ?? 0),
+        dueDate: String(row.dueDate || row.due_date || "").trim(),
+        status: String(row.status || "To Pay").trim() || "To Pay",
+        notes: String(row.notes || "").trim()
+      };
+      if (
+        next.title !== String(row.title || "") ||
+        next.amount !== toNumber(row.amount ?? 0) ||
+        next.dueDate !== String(row.dueDate || "") ||
+        next.status !== String(row.status || "To Pay") ||
+        next.notes !== String(row.notes || "")
+      ) {
+        changed = true;
+      }
+      return next;
+    });
+    if (changed) {
+      localStorage.setItem(PAYABLES_KEY, JSON.stringify(normalized));
+    }
+    return normalized;
+  } catch {
+    return [];
+  }
+}
+
+function savePayablesData() {
+  localStorage.setItem(PAYABLES_KEY, JSON.stringify(state.payables));
 }
 
 function saveData(key, data) {
@@ -1798,6 +1839,51 @@ function drawExpense() {
     .join("");
 }
 
+function drawPayables() {
+  const panel = document.getElementById("payablesPanel");
+  if (!auth.can("viewPayslips")) {
+    panel.style.display = "none";
+    return;
+  }
+
+  panel.style.display = "block";
+  const tbody = document.getElementById("payablesTableBody");
+  const query = (document.getElementById("payablesSearch")?.value || "").trim().toLowerCase();
+  const filtered = state.payables.filter((item) => {
+    if (!query) return true;
+    const hay = `${item.title} ${item.status} ${item.dueDate || ""} ${item.notes || ""}`.toLowerCase();
+    return hay.includes(query);
+  });
+
+  if (!filtered.length) {
+    tbody.innerHTML = `<tr><td colspan='6' class='empty'>${query ? "No payment items match your search." : "No payment items added yet."}</td></tr>`;
+    return;
+  }
+
+  const statusOrder = { "To Pay": 0, "In Progress": 1, Paid: 2 };
+  tbody.innerHTML = filtered
+    .sort((a, b) => {
+      const aStatus = statusOrder[a.status] ?? 9;
+      const bStatus = statusOrder[b.status] ?? 9;
+      if (aStatus !== bStatus) return aStatus - bStatus;
+      if ((a.dueDate || "") !== (b.dueDate || "")) {
+        return (a.dueDate || "9999-12-31").localeCompare(b.dueDate || "9999-12-31");
+      }
+      return a.title.localeCompare(b.title);
+    })
+    .map((item) => {
+      const actions = auth.can("editPayslips")
+        ? `<div class='table-actions'>
+            <button data-action='toggle-payable' data-id='${item.id}'>${item.status === "Paid" ? "Mark To Pay" : "Mark Paid"}</button>
+            <button data-action='edit-payable' data-id='${item.id}'>Edit</button>
+            <button data-action='delete-payable' data-id='${item.id}'>Delete</button>
+          </div>`
+        : "<span class='muted'>View only</span>";
+      return `<tr><td>${item.title}</td><td>${item.amount ? money(item.amount) : "-"}</td><td>${item.dueDate || "-"}</td><td>${item.status || "To Pay"}</td><td>${item.notes || "-"}</td><td>${actions}</td></tr>`;
+    })
+    .join("");
+}
+
 function drawPay() {
   const panel = document.getElementById("payPanel");
   if (!auth.can("viewPayslips")) {
@@ -1833,6 +1919,7 @@ function refresh() {
   drawWeeklySummary();
   drawIncome();
   drawExpense();
+  drawPayables();
   drawPay();
 }
 
@@ -1866,6 +1953,9 @@ function applyAccess() {
   }
 
   if (!auth.can("editPayslips")) {
+    const payablesForm = document.getElementById("payablesForm");
+    Array.from(payablesForm.elements).forEach((el) => { if (el.type !== "hidden") el.disabled = true; });
+    document.getElementById("cancelPayableEdit").style.display = "none";
     const form = document.getElementById("payForm");
     Array.from(form.elements).forEach((el) => { if (el.type !== "hidden") el.disabled = true; });
     document.getElementById("exportPay").style.display = "none";
@@ -1923,6 +2013,28 @@ document.getElementById("expenseForm").addEventListener("submit", (e) => {
   refresh();
 });
 
+document.getElementById("payablesForm").addEventListener("submit", (e) => {
+  e.preventDefault();
+  if (!auth.can("editPayslips")) return;
+
+  const id = document.getElementById("payableId").value;
+  const payload = {
+    id: id || uid(),
+    title: document.getElementById("payableTitle").value.trim(),
+    amount: toNumber(document.getElementById("payableAmount").value),
+    dueDate: document.getElementById("payableDueDate").value,
+    status: document.getElementById("payableStatus").value,
+    notes: document.getElementById("payableNotes").value.trim()
+  };
+
+  state.payables = id ? state.payables.map((x) => x.id === id ? payload : x) : [...state.payables, payload];
+  savePayablesData();
+  e.target.reset();
+  document.getElementById("payableId").value = "";
+  document.getElementById("payableStatus").value = "To Pay";
+  refresh();
+});
+
 document.getElementById("payForm").addEventListener("submit", (e) => {
   e.preventDefault();
   if (!auth.can("editPayslips")) return;
@@ -1964,6 +2076,12 @@ document.getElementById("cancelExpenseEdit").addEventListener("click", () => {
   document.getElementById("expenseId").value = "";
 });
 
+document.getElementById("cancelPayableEdit").addEventListener("click", () => {
+  document.getElementById("payablesForm").reset();
+  document.getElementById("payableId").value = "";
+  document.getElementById("payableStatus").value = "To Pay";
+});
+
 document.getElementById("cancelPayEdit").addEventListener("click", () => {
   document.getElementById("payForm").reset();
   document.getElementById("payId").value = "";
@@ -1996,6 +2114,8 @@ document.getElementById("incomeSearch").addEventListener("input", scheduleFinanc
 document.getElementById("incomeSearch").addEventListener("search", scheduleFinanceRefresh);
 document.getElementById("expenseSearch").addEventListener("input", scheduleFinanceRefresh);
 document.getElementById("expenseSearch").addEventListener("search", scheduleFinanceRefresh);
+document.getElementById("payablesSearch").addEventListener("input", scheduleFinanceRefresh);
+document.getElementById("payablesSearch").addEventListener("search", scheduleFinanceRefresh);
 document.getElementById("paySearch").addEventListener("input", scheduleFinanceRefresh);
 document.getElementById("paySearch").addEventListener("search", scheduleFinanceRefresh);
 document.getElementById("clearIncomeFilters").addEventListener("click", () => {
@@ -2004,6 +2124,10 @@ document.getElementById("clearIncomeFilters").addEventListener("click", () => {
 });
 document.getElementById("clearExpenseFilters").addEventListener("click", () => {
   document.getElementById("expenseSearch").value = "";
+  refresh();
+});
+document.getElementById("clearPayablesFilters").addEventListener("click", () => {
+  document.getElementById("payablesSearch").value = "";
   refresh();
 });
 document.getElementById("clearPayFilters").addEventListener("click", () => {
@@ -2054,6 +2178,36 @@ document.body.addEventListener("click", (e) => {
   if (action === "delete-expense" && auth.can("editSpending")) {
     state.expense = state.expense.filter((x) => x.id !== id);
     saveData(KEYS.expense, state.expense);
+    refresh();
+    return;
+  }
+
+  if (action === "edit-payable" && auth.can("editPayslips")) {
+    const item = state.payables.find((x) => x.id === id);
+    if (!item) return;
+    document.getElementById("payableId").value = item.id;
+    document.getElementById("payableTitle").value = item.title;
+    document.getElementById("payableAmount").value = item.amount || "";
+    document.getElementById("payableDueDate").value = item.dueDate || "";
+    document.getElementById("payableStatus").value = item.status || "To Pay";
+    document.getElementById("payableNotes").value = item.notes || "";
+    return;
+  }
+
+  if (action === "delete-payable" && auth.can("editPayslips")) {
+    state.payables = state.payables.filter((x) => x.id !== id);
+    savePayablesData();
+    refresh();
+    return;
+  }
+
+  if (action === "toggle-payable" && auth.can("editPayslips")) {
+    state.payables = state.payables.map((item) => {
+      if (item.id !== id) return item;
+      const nextStatus = item.status === "Paid" ? "To Pay" : "Paid";
+      return { ...item, status: nextStatus };
+    });
+    savePayablesData();
     refresh();
     return;
   }
@@ -2141,7 +2295,8 @@ window.addEventListener("storage", (event) => {
   if (event.key === KEYS.income) state.income = readData(KEYS.income);
   if (event.key === KEYS.expense) state.expense = readData(KEYS.expense);
   if (event.key === KEYS.pay) state.pay = readData(KEYS.pay);
-  if (event.key === DRIVERS_KEY || event.key === ROSTER_KEY || event.key === KEYS.income || event.key === KEYS.expense || event.key === KEYS.pay) {
+  if (event.key === PAYABLES_KEY) state.payables = readPayablesData();
+  if (event.key === DRIVERS_KEY || event.key === ROSTER_KEY || event.key === KEYS.income || event.key === KEYS.expense || event.key === KEYS.pay || event.key === PAYABLES_KEY) {
     const source = financeSourceForKey(event.key);
     const message = FINANCE_SOURCE_BY_KEY[event.key]
       ? `${source} updated in another tab.`

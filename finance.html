@@ -138,6 +138,55 @@
       </div>
     </section>
 
+    <section class="panel" id="payablesPanel">
+      <div class="panel-head">
+        <h2>Things To Be Paid</h2>
+      </div>
+      <p class="muted">Track upcoming payments and mark them paid when done.</p>
+      <form id="payablesForm" class="form-grid">
+        <input type="hidden" id="payableId" />
+        <label>Thing To Pay
+          <input id="payableTitle" type="text" placeholder="Fuel invoice, toll account, rego..." required />
+        </label>
+        <label>Amount (AUD)
+          <input id="payableAmount" type="number" min="0" step="0.01" placeholder="0.00" />
+        </label>
+        <label>Due Date
+          <input id="payableDueDate" type="date" />
+        </label>
+        <label>Status
+          <select id="payableStatus" required>
+            <option value="To Pay">To Pay</option>
+            <option value="In Progress">In Progress</option>
+            <option value="Paid">Paid</option>
+          </select>
+        </label>
+        <label class="full">Notes
+          <input id="payableNotes" type="text" placeholder="Optional notes" />
+        </label>
+        <div class="actions full">
+          <button class="btn" type="submit">Save Item</button>
+          <button id="cancelPayableEdit" class="btn btn-muted" type="button">Cancel Edit</button>
+        </div>
+      </form>
+      <form class="form-grid" onsubmit="return false;">
+        <label class="full">Search Things To Be Paid
+          <input id="payablesSearch" type="text" placeholder="Thing, status, notes..." />
+        </label>
+        <div class="actions full">
+          <button id="clearPayablesFilters" class="btn btn-outline" type="button">Clear Filters</button>
+        </div>
+      </form>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr><th>Thing</th><th>Amount</th><th>Due Date</th><th>Status</th><th>Notes</th><th>Actions</th></tr>
+          </thead>
+          <tbody id="payablesTableBody"></tbody>
+        </table>
+      </div>
+    </section>
+
     <section class="panel" id="payPanel">
       <div class="panel-head">
         <h2>Driver Pay (Payslip)</h2>
