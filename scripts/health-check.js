@@ -24,7 +24,10 @@ const checks = [
   { path: "/api/weekly-report-cron?health=1", expected: [200] },
   { path: "/api/whatsapp-receipts-webhook", expected: [200] },
   { path: "/api/roster-ack?health=1", expected: [200] },
-  { path: "/api/whatsapp-receipts-media", expected: [200] }
+  { path: "/api/whatsapp-receipts-media", expected: [200] },
+  // AI endpoints should exist in production; they may return 409 if knowledge is not trained yet.
+  { path: "/api/project-ai-context?q=weekly%20report", expected: [200, 409] },
+  { path: "/api/project-ai-chat?q=weekly%20report", expected: [200, 409] }
 ];
 
 function sleep(ms) {
