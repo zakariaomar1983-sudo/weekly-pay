@@ -9,3 +9,6 @@ npm-debug.log*
 Weekly CRM/.npm-cache/
 node_modules/.package-lock.json
 ai-data/project-knowledge.json
+
+.vercel
+.env*.local
