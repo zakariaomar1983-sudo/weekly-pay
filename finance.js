@@ -178,6 +178,21 @@ function toNumber(value) {
 const money = (value) => `$${toNumber(value).toFixed(2)}`;
 const NIGHT_DROP_DEFAULT_RATE = 90;
 const PAYROLL_LAG_WEEKS = 1;
+const ALLIED_PAYSLIP_HEADER_ALIASES = {
+  driver: ["driver", "driver name", "name"],
+  truckNumber: ["truck_number", "truck number", "truck"],
+  payPeriod: ["pay_period", "pay period", "period"],
+  daysWorked: ["days_worked", "days worked", "days"],
+  dailyRate: ["daily_rate", "daily rate", "rate"],
+  nightRunDrops: ["night_run_drops", "night run drops", "night drops"],
+  dropRate: ["drop_rate", "drop rate"],
+  nightRunPay: ["night_run_pay", "night run pay"],
+  driverBonus: ["driver_bonus", "driver bonus", "bonus"],
+  deductions: ["deductions", "deduction"],
+  paymentDate: ["payment_date", "payment date", "paid date"],
+  autoPay: ["auto_pay", "auto pay"],
+  autoPayRef: ["auto_pay_ref", "auto pay ref", "auto pay reference"]
+};
 const DAILY_RATE_BY_TRUCK_NUMBER = {
   "881": 330,
   "853": 330,
@@ -636,6 +651,245 @@ function downloadCsv(filename, rows) {
   a.download = filename;
   a.click();
   URL.revokeObjectURL(url);
+}
+
+function normalizeCsvHeader(value) {
+  return String(value || "")
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, " ")
+    .trim();
+}
+
+function parseCsvText(text) {
+  const rows = [];
+  let row = [];
+  let current = "";
+  let inQuotes = false;
+
+  for (let i = 0; i < text.length; i += 1) {
+    const char = text[i];
+    const next = text[i + 1];
+
+    if (char === '"') {
+      if (inQuotes && next === '"') {
+        current += '"';
+        i += 1;
+      } else {
+        inQuotes = !inQuotes;
+      }
+      continue;
+    }
+
+    if (char === "," && !inQuotes) {
+      row.push(current);
+      current = "";
+      continue;
+    }
+
+    if ((char === "\n" || char === "\r") && !inQuotes) {
+      if (char === "\r" && next === "\n") i += 1;
+      row.push(current);
+      rows.push(row);
+      row = [];
+      current = "";
+      continue;
+    }
+
+    current += char;
+  }
+
+  row.push(current);
+  rows.push(row);
+
+  return rows
+    .map((cells) => cells.map((cell) => String(cell || "").trim()))
+    .filter((cells) => cells.some((cell) => cell !== ""));
+}
+
+function parseAutoPayValue(value) {
+  const normalized = String(value || "").trim().toLowerCase();
+  return ["yes", "y", "true", "1", "auto"].includes(normalized) ? "Yes" : "No";
+}
+
+function toIsoDateKey(value) {
+  const parsed = parseDateKey(value);
+  return parsed ? formatDateKey(parsed) : "";
+}
+
+function payImportKey(row) {
+  return `${normalizeDriverName(row.driver)}__${String(row.payPeriod || "").trim().toLowerCase()}`;
+}
+
+function parseAlliedPayslipRowsFromCsv(csvText) {
+  const matrix = parseCsvText(csvText || "");
+  if (matrix.length < 2) {
+    return { rows: [], error: "CSV is empty or missing data rows." };
+  }
+
+  const headers = matrix[0].map(normalizeCsvHeader);
+  const getIndex = (aliases) => {
+    for (const alias of aliases) {
+      const index = headers.indexOf(normalizeCsvHeader(alias));
+      if (index >= 0) return index;
+    }
+    return -1;
+  };
+
+  const indexes = {
+    driver: getIndex(ALLIED_PAYSLIP_HEADER_ALIASES.driver),
+    truckNumber: getIndex(ALLIED_PAYSLIP_HEADER_ALIASES.truckNumber),
+    payPeriod: getIndex(ALLIED_PAYSLIP_HEADER_ALIASES.payPeriod),
+    daysWorked: getIndex(ALLIED_PAYSLIP_HEADER_ALIASES.daysWorked),
+    dailyRate: getIndex(ALLIED_PAYSLIP_HEADER_ALIASES.dailyRate),
+    nightRunDrops: getIndex(ALLIED_PAYSLIP_HEADER_ALIASES.nightRunDrops),
+    dropRate: getIndex(ALLIED_PAYSLIP_HEADER_ALIASES.dropRate),
+    nightRunPay: getIndex(ALLIED_PAYSLIP_HEADER_ALIASES.nightRunPay),
+    driverBonus: getIndex(ALLIED_PAYSLIP_HEADER_ALIASES.driverBonus),
+    deductions: getIndex(ALLIED_PAYSLIP_HEADER_ALIASES.deductions),
+    paymentDate: getIndex(ALLIED_PAYSLIP_HEADER_ALIASES.paymentDate),
+    autoPay: getIndex(ALLIED_PAYSLIP_HEADER_ALIASES.autoPay),
+    autoPayRef: getIndex(ALLIED_PAYSLIP_HEADER_ALIASES.autoPayRef)
+  };
+
+  if (indexes.driver < 0 || indexes.payPeriod < 0) {
+    return {
+      rows: [],
+      error: "CSV must include at least Driver and Pay Period columns."
+    };
+  }
+
+  const getCell = (cells, index) => {
+    if (index < 0 || index >= cells.length) return "";
+    return String(cells[index] || "").trim();
+  };
+
+  const importedRows = [];
+  let skippedCount = 0;
+
+  for (let i = 1; i < matrix.length; i += 1) {
+    const cells = matrix[i];
+    const driver = getCell(cells, indexes.driver);
+    const payPeriod = getCell(cells, indexes.payPeriod);
+    if (!driver || !payPeriod) {
+      skippedCount += 1;
+      continue;
+    }
+
+    const truckNumber = getCell(cells, indexes.truckNumber);
+    const daysWorked = toNumber(getCell(cells, indexes.daysWorked));
+    const dailyRate = toNumber(getCell(cells, indexes.dailyRate));
+    const nightRunDrops = toNumber(getCell(cells, indexes.nightRunDrops));
+    const dropRate = toNumber(getCell(cells, indexes.dropRate)) || NIGHT_DROP_DEFAULT_RATE;
+    const importedNightRunPay = toNumber(getCell(cells, indexes.nightRunPay));
+    const nightRunPay = importedNightRunPay || (nightRunDrops * dropRate);
+    const driverBonus = toNumber(getCell(cells, indexes.driverBonus));
+    const deductions = toNumber(getCell(cells, indexes.deductions));
+    const paymentDate = toIsoDateKey(getCell(cells, indexes.paymentDate));
+    const autoPay = parseAutoPayValue(getCell(cells, indexes.autoPay));
+    const autoPayRef = getCell(cells, indexes.autoPayRef);
+
+    importedRows.push({
+      driver,
+      truckNumber,
+      payPeriod,
+      daysWorked,
+      dailyRate,
+      nightRunDrops,
+      dropRate,
+      nightRunPay,
+      driverBonus,
+      deductions,
+      paymentDate,
+      autoPay,
+      autoPayRef
+    });
+  }
+
+  return { rows: importedRows, skippedCount };
+}
+
+function importAlliedPayslipRows(rows) {
+  if (!rows.length) return { inserted: 0, updated: 0 };
+
+  const merged = [...state.pay];
+  const indexByKey = new Map();
+  merged.forEach((row, idx) => {
+    indexByKey.set(payImportKey(row), idx);
+  });
+
+  let inserted = 0;
+  let updated = 0;
+
+  rows.forEach((row) => {
+    const key = payImportKey(row);
+    if (!key.startsWith("__")) {
+      const existingIndex = indexByKey.get(key);
+      const normalizedRow = {
+        id: existingIndex != null ? merged[existingIndex].id : uid(),
+        driver: row.driver,
+        truckNumber: row.truckNumber,
+        payPeriod: row.payPeriod,
+        daysWorked: row.daysWorked,
+        dailyRate: row.dailyRate,
+        nightRunDrops: row.nightRunDrops,
+        dropRate: row.dropRate || NIGHT_DROP_DEFAULT_RATE,
+        nightRunPay: row.nightRunPay,
+        driverBonus: row.driverBonus,
+        deductions: row.deductions,
+        paymentDate: row.paymentDate || "",
+        autoPay: row.autoPay || "No",
+        autoPayRef: row.autoPayRef || ""
+      };
+
+      if (existingIndex != null) {
+        merged[existingIndex] = normalizedRow;
+        updated += 1;
+      } else {
+        merged.push(normalizedRow);
+        indexByKey.set(key, merged.length - 1);
+        inserted += 1;
+      }
+    }
+  });
+
+  state.pay = dedupePayRows(merged);
+  saveData(KEYS.pay, state.pay);
+  return { inserted, updated };
+}
+
+async function importAlliedPayslipFile(file) {
+  if (!file) return;
+  if (!auth.can("editPayslips")) return;
+
+  setPayGenerationStatus("Importing Allied payslip CSV...");
+  try {
+    const csvText = await file.text();
+    const parsed = parseAlliedPayslipRowsFromCsv(csvText);
+    if (parsed.error) {
+      setPayGenerationStatus(parsed.error, "error-text");
+      alert(parsed.error);
+      return;
+    }
+    if (!parsed.rows.length) {
+      const emptyMessage = "No valid payslip rows found in this CSV.";
+      setPayGenerationStatus(emptyMessage, "error-text");
+      alert(emptyMessage);
+      return;
+    }
+
+    const { inserted, updated } = importAlliedPayslipRows(parsed.rows);
+    refresh();
+
+    const skippedNote = parsed.skippedCount ? ` Skipped ${parsed.skippedCount} incomplete row${parsed.skippedCount === 1 ? "" : "s"}.` : "";
+    const message = `Allied payslip import complete. Added ${inserted} and updated ${updated} payslip row${(inserted + updated) === 1 ? "" : "s"}.${skippedNote}`;
+    setPayGenerationStatus(message);
+    alert(message);
+  } catch (error) {
+    const message = String(error?.message || error || "Allied payslip import failed.");
+    setPayGenerationStatus(message, "error-text");
+    alert(message);
+  }
 }
 
 function netPay(item) {
@@ -2025,6 +2279,8 @@ function applyAccess() {
     const form = document.getElementById("payForm");
     Array.from(form.elements).forEach((el) => { if (el.type !== "hidden") el.disabled = true; });
     document.getElementById("exportPay").style.display = "none";
+    const importPayBtn = document.getElementById("importAlliedPayslipBtn");
+    if (importPayBtn) importPayBtn.style.display = "none";
   }
 }
 
@@ -2182,6 +2438,21 @@ document.getElementById("exportPay").addEventListener("click", () => {
 document.getElementById("generatePayFromRoster").addEventListener("click", () => {
   void generatePayFromRosterWeek();
 });
+const importAlliedPayslipBtn = document.getElementById("importAlliedPayslipBtn");
+const alliedPayslipFileInput = document.getElementById("alliedPayslipFileInput");
+if (importAlliedPayslipBtn && alliedPayslipFileInput) {
+  importAlliedPayslipBtn.addEventListener("click", () => {
+    if (!auth.can("editPayslips")) return;
+    alliedPayslipFileInput.value = "";
+    alliedPayslipFileInput.click();
+  });
+
+  alliedPayslipFileInput.addEventListener("change", () => {
+    const file = alliedPayslipFileInput.files?.[0];
+    if (!file) return;
+    void importAlliedPayslipFile(file);
+  });
+}
 document.getElementById("payRosterWeekStart").addEventListener("change", syncPayDateToRosterWeek);
 
 document.getElementById("incomeSearch").addEventListener("input", scheduleFinanceRefresh);
