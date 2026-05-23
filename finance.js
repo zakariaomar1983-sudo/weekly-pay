@@ -902,6 +902,29 @@ function netPay(item) {
   return daysWorked * dailyRate + nightRunPay + driverBonus - toNumber(item.deductions || 0);
 }
 
+function normalizeTruckNumber(value) {
+  return String(value || "").trim().toUpperCase();
+}
+
+function isAlliedPayslipRow(item) {
+  const truck = normalizeTruckNumber(item?.truckNumber);
+  if (truck && Object.prototype.hasOwnProperty.call(DAILY_RATE_BY_TRUCK_NUMBER, truck)) return true;
+  const period = String(item?.payPeriod || "").trim().toUpperCase();
+  return /^\d{2}[A-Z]{3}\s*-\s*\d{2}[A-Z]{3}$/.test(period);
+}
+
+function linkedTruckIncomeForAlliedPayslip(item) {
+  if (!isAlliedPayslipRow(item)) return null;
+  const payWeek = weekKey(item.paymentDate || "");
+  const truck = normalizeTruckNumber(item.truckNumber);
+  if (!payWeek || !truck) return 0;
+  return state.income.reduce((sum, row) => {
+    if (normalizeTruckNumber(row.truckNumber) !== truck) return sum;
+    if (weekKey(row.incomeDate || "") !== payWeek) return sum;
+    return sum + toNumber(row.amount);
+  }, 0);
+}
+
 function normalizeDriverName(value) {
   return String(value || "")
     .trim()
@@ -2218,13 +2241,17 @@ function drawPay() {
   });
 
   if (!filtered.length) {
-    tbody.innerHTML = `<tr><td colspan='15' class='empty'>${query ? "No driver pay records match your search." : "No driver pay records for the selected week. Use search to find older payslips."}</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan='16' class='empty'>${query ? "No driver pay records match your search." : "No driver pay records for the selected week. Use search to find older payslips."}</td></tr>`;
     return;
   }
 
   tbody.innerHTML = filtered
     .sort((a, b) => a.paymentDate < b.paymentDate ? 1 : -1)
-    .map((item) => `<tr><td>${item.driver}</td><td>${item.truckNumber || "-"}</td><td>${item.payPeriod}</td><td>${item.daysWorked ?? item.hoursWorked ?? 0}</td><td>${money(item.dailyRate ?? item.hourlyRate ?? 0)}</td><td>${item.nightRunDrops ?? 0}</td><td>${money(item.dropRate ?? NIGHT_DROP_DEFAULT_RATE)}</td><td>${money((Number(item.nightRunDrops ?? 0) * NIGHT_DROP_DEFAULT_RATE))}</td><td>${money(item.driverBonus ?? 0)}</td><td>${money(item.deductions)}</td><td>${money(netPay(item))}</td><td>${item.paymentDate}</td><td>${item.autoPay ?? "No"}</td><td>${item.autoPayRef || "-"}</td><td>${renderPayActions(item)}</td></tr>`)
+    .map((item) => {
+      const linkedIncome = linkedTruckIncomeForAlliedPayslip(item);
+      const linkedIncomeText = linkedIncome == null ? "-" : money(linkedIncome);
+      return `<tr><td>${item.driver}</td><td>${item.truckNumber || "-"}</td><td>${item.payPeriod}</td><td>${item.daysWorked ?? item.hoursWorked ?? 0}</td><td>${money(item.dailyRate ?? item.hourlyRate ?? 0)}</td><td>${item.nightRunDrops ?? 0}</td><td>${money(item.dropRate ?? NIGHT_DROP_DEFAULT_RATE)}</td><td>${money((Number(item.nightRunDrops ?? 0) * NIGHT_DROP_DEFAULT_RATE))}</td><td>${money(item.driverBonus ?? 0)}</td><td>${money(item.deductions)}</td><td>${money(netPay(item))}</td><td>${linkedIncomeText}</td><td>${item.paymentDate}</td><td>${item.autoPay ?? "No"}</td><td>${item.autoPayRef || "-"}</td><td>${renderPayActions(item)}</td></tr>`;
+    })
     .join("");
 }
 

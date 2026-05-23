@@ -202,7 +202,7 @@
         </div>
         <p id="payGenerationStatus" class="data-status full muted">Driver Pay uses completed roster shifts from the selected week.</p>
       </form>
-      <p class="muted">Driver Pay shows the selected week by default. Use Search Driver Pay History to find older payslips.</p>
+      <p class="muted">Driver Pay shows the selected week by default. Truck Income is linked only for Allied payslip rows.</p>
       <form id="payForm" class="form-grid">
         <input type="hidden" id="payId" />
         <label>Driver Name<input id="payDriver" type="text" list="payDriverOptions" required /></label>
@@ -240,7 +240,7 @@
       <div class="table-wrap">
         <table>
           <thead>
-            <tr><th>Driver</th><th>Truck #</th><th>Period</th><th>Days</th><th>Daily Rate</th><th>Night Drops</th><th>Drop Rate</th><th>Night Run Pay</th><th>Bonus</th><th>Deductions</th><th>Net Pay</th><th>Payment Date</th><th>Auto Pay</th><th>Auto Ref</th><th>Actions</th></tr>
+            <tr><th>Driver</th><th>Truck #</th><th>Period</th><th>Days</th><th>Daily Rate</th><th>Night Drops</th><th>Drop Rate</th><th>Night Run Pay</th><th>Bonus</th><th>Deductions</th><th>Net Pay</th><th>Truck Income (Allied)</th><th>Payment Date</th><th>Auto Pay</th><th>Auto Ref</th><th>Actions</th></tr>
           </thead>
           <tbody id="payTableBody"></tbody>
         </table>
@@ -253,7 +253,7 @@
   <script src="./supabase-client.js?v=20260413g"></script>
   <script src="./seed-data.js?v=20260413g"></script>
   <script src="./auth.js?v=20260513a"></script>
-  <script src="./finance.js?v=20260522a"></script>
+  <script src="./finance.js?v=20260523b"></script>
   <script>
     (function initPayablesPanel() {
       if (window.__opxPayablesInit) return;
