@@ -359,9 +359,9 @@ function isSupabaseReady() {
 function fromDbIncome(row) {
   return {
     id: row.id,
-    incomeDate: row.income_date || "",
-    truckNumber: row.truck_number || "",
-    jobRef: row.job_ref || "",
+    incomeDate: row.income_date || row.incomeDate || row.date || "",
+    truckNumber: row.truck_number || row.truckNumber || "",
+    jobRef: row.job_ref || row.jobRef || "",
     client: row.client || "",
     amount: Number(row.amount || 0),
     status: row.status || "",
@@ -372,8 +372,9 @@ function fromDbIncome(row) {
 function fromDbExpense(row) {
   return {
     id: row.id,
-    date: row.expense_date || "",
-    truckNumber: row.truck_number || "",
+    date: row.expense_date || row.expenseDate || row.date || "",
+    expenseDate: row.expense_date || row.expenseDate || row.date || "",
+    truckNumber: row.truck_number || row.truckNumber || "",
     category: row.category || "",
     amount: Number(row.amount || 0),
     vendor: row.vendor || "",
@@ -385,26 +386,29 @@ function fromDbPay(row) {
   return {
     id: row.id,
     driver: row.driver || "",
-    truckNumber: row.truck_number || "",
-    payPeriod: row.pay_period || "",
-    daysWorked: Number(row.days_worked || 0),
-    dailyRate: Number(row.daily_rate || 0),
-    nightRunDrops: Number(row.night_run_drops || 0),
-    driverBonus: Number(row.driver_bonus || 0),
+    truckNumber: row.truck_number || row.truckNumber || "",
+    payPeriod: row.pay_period || row.payPeriod || "",
+    daysWorked: Number(row.days_worked ?? row.daysWorked ?? 0),
+    dailyRate: Number(row.daily_rate ?? row.dailyRate ?? 0),
+    nightRunDrops: Number(row.night_run_drops ?? row.nightRunDrops ?? 0),
+    driverBonus: Number(row.driver_bonus ?? row.driverBonus ?? 0),
     deductions: Number(row.deductions || 0),
-    paymentDate: row.payment_date || ""
+    paymentDate: row.payment_date || row.paymentDate || "",
+    periodStart: row.period_start || row.periodStart || "",
+    periodEnd: row.period_end || row.periodEnd || ""
   };
 }
 
 function fromDbRoster(row) {
-  const runType = String(row.run_type || "").trim().toLowerCase();
+  const runType = String(row.run_type || row.runType || "").trim().toLowerCase();
+  const explicitNightRun = row.night_run ?? row.nightRun;
   return {
     id: row.id,
-    driverName: row.driver_name || "",
-    truckNumber: row.truck_number || "",
-    nightRun: runType === "night run" || runType === "night run +",
-    shiftDate: row.shift_date || "",
-    shiftTime: row.shift_time || "",
+    driverName: row.driver_name || row.driverName || row.driver || "",
+    truckNumber: row.truck_number || row.truckNumber || "",
+    nightRun: Boolean(explicitNightRun) || runType === "night run" || runType === "night run +" || runType.includes("night"),
+    shiftDate: row.shift_date || row.shiftDate || row.date || "",
+    shiftTime: row.shift_time || row.shiftTime || "",
     route: row.route || "",
     status: row.status || "Scheduled"
   };
@@ -413,7 +417,7 @@ function fromDbRoster(row) {
 function fromDbDriver(row) {
   return {
     id: row.id,
-    name: row.name || "",
+    name: row.name || row.driver_name || row.driverName || "",
     status: row.status || ""
   };
 }
@@ -421,7 +425,8 @@ function fromDbDriver(row) {
 function fromDbTruck(row) {
   return {
     id: row.id,
-    truckNumber: row.truck_number || "",
+    truckNumber: row.truck_number || row.truckNumber || "",
+    assignedDriver: row.assigned_driver || row.assignedDriver || "",
     status: row.status || ""
   };
 }
@@ -596,7 +601,8 @@ function collectDriverReportRows(data, selectedRosterWeekKey) {
   const names = Array.from(new Set([...drivers, ...rows.map((row) => String(row.driverName || "").trim()).filter(Boolean)])).sort();
   const primaryTrucks = primaryTruckMap(rows, data.trucks);
   return names.map((name) => {
-    const driverRows = rows.filter((row) => String(row.driverName || "").trim() === name);
+    const normalizedName = name.toLowerCase();
+    const driverRows = rows.filter((row) => String(row.driverName || "").trim().toLowerCase() === normalizedName);
     return {
       driver: name,
       plannedShifts: driverRows.filter((row) => !isAwayRosterStatus(row.status)).length,
@@ -1092,11 +1098,15 @@ function applyAccess() {
   }
 }
 
+function financeDateOf(row) {
+  return row.incomeDate || row.expenseDate || row.date || row.paymentDate || row.periodStart || row.periodEnd || "";
+}
+
 function refreshReports({ preserveInputs = true } = {}) {
   const data = currentData();
   const latestFinanceWeek = latestWeekStart(
     [...data.income, ...data.expense, ...data.pay],
-    (row) => row.incomeDate || row.expenseDate || row.paymentDate || row.periodStart || row.periodEnd,
+    (row) => financeDateOf(row),
     4
   );
   const latestRosterWeek = preferredRosterWeekStart(data.roster);
