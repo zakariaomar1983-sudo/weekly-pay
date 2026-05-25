@@ -1392,6 +1392,95 @@ function removeDriverFromRosterPool(driverName, { removeShifts = false } = {}) {
   return { removed: true, remaining: next.length };
 }
 
+function isRequiredDriverName(driverName) {
+  const target = normalizeDriverNameKey(driverName);
+  return REQUIRED_DRIVER_NAMES.some((name) => normalizeDriverNameKey(name) === target);
+}
+
+function removeDriverAcknowledgements(driverName) {
+  const target = normalizeDriverNameKey(driverName);
+  const store = readRosterAcknowledgements();
+  let changed = false;
+  Object.entries(store).forEach(([key, value]) => {
+    const normalized = normalizeAcknowledgementEntry(value);
+    if (!normalized) return;
+    if (normalizeDriverNameKey(normalized.driverName) !== target) return;
+    delete store[key];
+    changed = true;
+  });
+  if (changed) {
+    writeRosterAcknowledgements(store);
+  }
+}
+
+function notifyDriversUpdated() {
+  const updatedAt = String(Date.now());
+  localStorage.setItem(DRIVERS_UPDATED_KEY, updatedAt);
+  window.dispatchEvent(new CustomEvent("opx:drivers-updated", { detail: { updatedAt } }));
+  try {
+    driversChannel?.postMessage({ type: "drivers-updated", updatedAt });
+  } catch {
+    // no-op
+  }
+}
+
+async function deleteDriverRecord(driverName, { removeShifts = false } = {}) {
+  const name = canonicalDriverName(driverName);
+  if (!name) return { deleted: false, reason: "invalid" };
+  if (isRequiredDriverName(name)) return { deleted: false, reason: "required-driver" };
+
+  const nameKey = normalizeDriverNameKey(name);
+  const allDrivers = normalizeDriverRecords(readArray(DRIVERS_KEY));
+  const toDelete = allDrivers.filter((row) => normalizeDriverNameKey(row.name) === nameKey);
+  if (!toDelete.length) return { deleted: false, reason: "missing" };
+
+  const remainingDrivers = allDrivers.filter((row) => normalizeDriverNameKey(row.name) !== nameKey);
+  localStorage.setItem(DRIVERS_KEY, JSON.stringify(remainingDrivers));
+
+  const contacts = readContacts();
+  let contactsChanged = false;
+  toDelete.forEach((row) => {
+    if (!row?.id) return;
+    if (Object.prototype.hasOwnProperty.call(contacts, row.id)) {
+      delete contacts[row.id];
+      contactsChanged = true;
+    }
+  });
+  if (contactsChanged) {
+    localStorage.setItem(CONTACT_KEY, JSON.stringify(contacts));
+  }
+
+  const pool = readRosterDriverPoolNames();
+  if (pool.length) {
+    writeRosterDriverPoolNames(pool.filter((item) => normalizeDriverNameKey(item) !== nameKey));
+  }
+
+  removeDriverAcknowledgements(name);
+
+  if (removeShifts) {
+    const beforeCount = state.roster.length;
+    state.roster = state.roster.filter((row) => normalizeDriverNameKey(row.driverName) !== nameKey);
+    if (state.roster.length !== beforeCount) {
+      saveData();
+    }
+  }
+
+  notifyDriversUpdated();
+
+  if (useSupabase) {
+    const idsToDelete = toDelete.map((row) => row.id).filter(Boolean);
+    if (idsToDelete.length) {
+      const { error } = await supabase.from(DRIVERS_TABLE).delete().in("id", idsToDelete);
+      if (error) {
+        console.error("Supabase delete failed for drivers:", error.message);
+        return { deleted: false, reason: "remote-delete-failed", message: error.message };
+      }
+    }
+  }
+
+  return { deleted: true, deletedCount: toDelete.length };
+}
+
 function getRosterDriverPoolNamesForView() {
   const available = getAvailableDriverRecords().map((item) => String(item.name || "").trim()).filter(Boolean);
   const selected = readRosterDriverPoolNames();
@@ -2583,7 +2672,7 @@ function drawWeekTable() {
       const adminActions = item.isTemplate
         ? "<span class='muted'>Template</span>"
         : auth.can("editRoster")
-        ? `<div class='table-actions'><button data-action='edit' data-id='${item.id}'>Edit</button><button data-action='delete' data-id='${item.id}'>Delete</button></div>`
+        ? `<div class='table-actions'><button data-action='edit' data-id='${item.id}'>Edit</button><button data-action='delete' data-id='${item.id}'>Delete Shift</button><button data-action='delete-driver-record' data-driver-name='${escapeHtml(item.driverName)}'>Delete Driver</button></div>`
         : "<span class='muted'>View only</span>";
       rows.push(`<tr class='${rowClass}'>
         <td>${rowIndex === 0 ? DAY_NAMES[idx] : ""}</td>
@@ -3101,22 +3190,59 @@ document.body.addEventListener("click", (e) => {
     if (!auth.can("editRoster")) return;
     const driverName = button.dataset.driverName || "";
     if (!driverName) return;
-    if (!confirm(`Delete ${driverName} from the roster driver list?`)) return;
+    if (!confirm(`Delete ${driverName} from the Drivers list?`)) return;
     const removeShifts = confirm(`Also delete all saved shifts for ${driverName} in every week?`);
-    const result = removeDriverFromRosterPool(driverName, { removeShifts });
-    if (!result.removed) {
-      if (result.reason === "last-driver") {
-        alert("At least one driver must stay in the roster list.");
+    void (async () => {
+      const result = await deleteDriverRecord(driverName, { removeShifts });
+      if (!result.deleted) {
+        if (result.reason === "required-driver") {
+          alert(`${driverName} is a required driver and cannot be deleted.`);
+        } else if (result.reason === "remote-delete-failed") {
+          alert(`Deleted locally, but cloud delete failed: ${result.message || "Unknown error"}`);
+        } else if (result.reason === "missing") {
+          alert(`${driverName} was not found in the Drivers list.`);
+        }
+        refresh();
+        return;
       }
-      return;
-    }
-    setDispatchStatus(
-      removeShifts
-        ? `${driverName} deleted from roster list and all saved shifts were removed.`
-        : `${driverName} deleted from roster list.`,
-      "warning-text"
-    );
-    refresh();
+      setDispatchStatus(
+        removeShifts
+          ? `${driverName} deleted from Drivers and all saved shifts were removed.`
+          : `${driverName} deleted from Drivers.`,
+        "warning-text"
+      );
+      refresh();
+    })();
+    return;
+  }
+
+  if (action === "delete-driver-record") {
+    if (!auth.can("editRoster")) return;
+    const driverName = button.dataset.driverName || "";
+    if (!driverName) return;
+    if (!confirm(`Delete ${driverName} from the Drivers list?`)) return;
+    const removeShifts = confirm(`Also delete all saved shifts for ${driverName} in every week?`);
+    void (async () => {
+      const result = await deleteDriverRecord(driverName, { removeShifts });
+      if (!result.deleted) {
+        if (result.reason === "required-driver") {
+          alert(`${driverName} is a required driver and cannot be deleted.`);
+        } else if (result.reason === "remote-delete-failed") {
+          alert(`Deleted locally, but cloud delete failed: ${result.message || "Unknown error"}`);
+        } else if (result.reason === "missing") {
+          alert(`${driverName} was not found in the Drivers list.`);
+        }
+        refresh();
+        return;
+      }
+      setDispatchStatus(
+        removeShifts
+          ? `${driverName} deleted from Drivers and all saved shifts were removed.`
+          : `${driverName} deleted from Drivers.`,
+        "warning-text"
+      );
+      refresh();
+    })();
     return;
   }
 
