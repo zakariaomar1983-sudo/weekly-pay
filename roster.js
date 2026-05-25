@@ -2272,6 +2272,7 @@ function drawWhatsAppDispatch() {
             <button type="button" class="contact-link contact-link-viewed" data-action="ack-week-driver" data-driver-name="${escapeHtml(driverName)}" data-status="viewed">Mark Viewed</button>
             <button type="button" class="contact-link contact-link-confirmed" data-action="ack-week-driver" data-driver-name="${escapeHtml(driverName)}" data-status="confirmed">Mark Confirmed</button>
           </div>
+          ${auth.can("editRoster") ? `<div class="contact-actions"><button type="button" class="contact-link contact-link-danger" data-action="delete-driver-record" data-driver-name="${escapeHtml(driverName)}">Delete Driver</button></div>` : ""}
           <span class="muted">${escapeHtml(message.split("\n").slice(0, 2).join(" "))}</span>
         </div>
       </article>
