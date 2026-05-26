@@ -592,7 +592,8 @@
       "viewPayslips",
       "editPayslips",
       "viewStats",
-      "editLogs"
+      "editLogs",
+      "backupRestore"
     ].forEach((key) => {
       managerPerms[key] = true;
     });
@@ -631,7 +632,8 @@
       "editDrivers",
       "viewTrucks",
       "viewRoster",
-      "editRoster"
+      "editRoster",
+      "viewTruckIncome"
     ].forEach((key) => {
       dispatcherPerms[key] = true;
     });
@@ -1340,7 +1342,7 @@
 
   function createRole(input) {
     const name = String(input?.name || "").trim();
-    if (!name) return null;
+    if (!name) return { ok: false, message: "Role name is required." };
 
     const roles = getRoles();
     const payload = {
@@ -1361,13 +1363,15 @@
       details: { permissions: payload.permissions }
     });
     scheduleAuthSync();
-    return payload;
+    return { ok: true, role: payload };
   }
 
   function updateRole(roleId, input) {
     const roles = getRoles();
     const role = roles.find((r) => r.id === roleId);
-    if (!role || IMMUTABLE_ROLE_IDS.has(role.id) || role.system) return null;
+    if (!role || IMMUTABLE_ROLE_IDS.has(role.id) || role.system) {
+      return { ok: false, message: "System role cannot be updated." };
+    }
 
     const before = {
       name: role.name,
@@ -1393,7 +1397,7 @@
       }
     });
     scheduleAuthSync();
-    return role;
+    return { ok: true, role };
   }
 
   function deleteRole(roleId) {
@@ -1565,6 +1569,10 @@
     const user = users.find((u) => u.id === userId);
     if (!user) return { ok: false, message: "User not found." };
 
+    if (isProtectedOwnerUser(user)) {
+      return { ok: false, message: "Zakaria Omar is the protected owner admin and cannot be modified." };
+    }
+
     const before = {
       username: user.username,
       roleId: user.roleId,
@@ -1577,12 +1585,10 @@
     const duplicate = users.some((u) => u.id !== userId && u.username.toLowerCase() === username.toLowerCase());
     if (duplicate) return { ok: false, message: "Username already exists." };
 
-    const protectedOwner = isProtectedOwnerUser(user);
-
-    user.username = protectedOwner ? user.username : username;
+    user.username = username;
     if (input?.password) user.password = String(input.password);
-    user.roleId = protectedOwner ? SYSTEM_ROLE_IDS.admin : String(input?.roleId || user.roleId);
-    user.active = protectedOwner ? true : Boolean(input?.active);
+    user.roleId = String(input?.roleId || user.roleId);
+    user.active = Boolean(input?.active);
 
     setUsers(users);
     recordAuditEvent({
