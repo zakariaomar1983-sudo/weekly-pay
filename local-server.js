@@ -5,7 +5,8 @@ const os = require("os");
 const querystring = require("querystring");
 const { URL } = require("url");
 
-const root = process.cwd();
+const root = path.resolve(process.cwd());
+const apiRoot = path.join(root, "api");
 const port = 4173;
 const host = "0.0.0.0";
 
@@ -42,12 +43,21 @@ function getLanUrls(listenPort = port) {
   return urls;
 }
 
+function isPathInside(base, candidate) {
+  const relative = path.relative(base, candidate);
+  return relative === "" || (!relative.startsWith("..") && !path.isAbsolute(relative));
+}
+
+function containsUnsafePathCharacters(value) {
+  return value.includes("\0") || value.includes("\\");
+}
+
 function getApiFile(urlPathname) {
-  const relative = urlPathname.replace(/^\/api\/?/, "");
-  if (!relative) return "";
-  const normalized = path.normalize(relative).replace(/^(\.\.(\/|\\|$))+/, "");
-  if (!normalized || normalized.includes("..")) return "";
-  return path.join(root, "api", `${normalized}.js`);
+  const relativePath = urlPathname.replace(/^\/api\/?/, "").replace(/^\/+/, "");
+  if (!relativePath || containsUnsafePathCharacters(relativePath)) return "";
+
+  const full = path.resolve(apiRoot, `${relativePath}.js`);
+  return isPathInside(apiRoot, full) ? full : "";
 }
 
 function parseRequestBody(req) {
@@ -195,20 +205,34 @@ async function handleApiRequest(req, res, pathname, searchParams) {
   }
 }
 
+function getStaticFilePath(urlPath) {
+  const relativePath = urlPath === "/" ? "index.html" : urlPath.replace(/^\/+/, "");
+  if (!relativePath || containsUnsafePathCharacters(relativePath)) return "";
+
+  const full = path.resolve(root, relativePath);
+  return isPathInside(root, full) ? full : "";
+}
+
 function createLocalServer() {
   return http.createServer(async (req, res) => {
     const parsedUrl = new URL(req.url || "/", `http://${req.headers.host || "localhost"}`);
-    const urlPath = decodeURIComponent(parsedUrl.pathname);
+    let urlPath;
+
+    try {
+      urlPath = decodeURIComponent(parsedUrl.pathname);
+    } catch {
+      send(res, 400, "Bad Request");
+      return;
+    }
 
     if (urlPath.startsWith("/api/")) {
       await handleApiRequest(req, res, urlPath, parsedUrl.searchParams);
       return;
     }
 
-    const rel = urlPath === "/" ? "/index.html" : urlPath;
-    const full = path.normalize(path.join(root, rel));
+    const full = getStaticFilePath(urlPath);
 
-    if (!full.startsWith(root)) {
+    if (!full) {
       send(res, 403, "Forbidden");
       return;
     }
@@ -220,8 +244,18 @@ function createLocalServer() {
       }
       const ext = path.extname(full).toLowerCase();
       const type = mime[ext] || "application/octet-stream";
+      const stream = fs.createReadStream(full);
+
+      stream.on("error", () => {
+        if (!res.headersSent) {
+          send(res, 500, "Could not read file.");
+          return;
+        }
+        res.destroy();
+      });
+
       res.writeHead(200, { "Content-Type": type });
-      fs.createReadStream(full).pipe(res);
+      stream.pipe(res);
     });
   });
 }
