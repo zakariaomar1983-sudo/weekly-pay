@@ -6,6 +6,10 @@ if (!auth.can("accessCRM") || !auth.can("viewTrucks")) {
   throw new Error("No trucks access");
 }
 
+// Signal that the dedicated Trucks page script is active, so fallback helpers
+// from emergency-fill.js don't bind duplicate event handlers.
+window.__opxTrucksPageBooted = true;
+
 const KEY = "transport_crm_trucks";
 const TRUCK_ATTACHMENTS_KEY = "transport_crm_truck_attachments";
 const TRUCKS_SYNC_STATUS_KEY = "transport_crm_trucks_sync_status";
@@ -24,6 +28,7 @@ const useSupabase = Boolean(window.OPXSupabase?.isReady && trucksSupabaseClient)
 const REGO_NOTIFY_KEY = "transport_crm_rego_notify_state";
 const REGO_ALERT_WINDOW_DAYS = 30;
 const TRUCK_DEFAULTS_BY_NUMBER = new Map([
+  ["376", { registration: "", model: "", capacity: 0, serviceDueDate: "", regoExpiryDate: "", status: "Available", notes: "" }],
   ["840", { registration: "XW46EK", model: "ISUZU FVL  1400", capacity: 8, serviceDueDate: "2026-04-10", regoExpiryDate: "2026-04-29", status: "Available", notes: "" }],
   ["881", { registration: "XW91GW", model: "MITSO FUSO FIGHTER 10.0", capacity: 12, serviceDueDate: "2026-04-11", regoExpiryDate: "2027-04-11", status: "Available", notes: "" }],
   ["855", { registration: "XW64YE", model: "Hino GD184R-Q3", capacity: 12, serviceDueDate: "2026-04-24", regoExpiryDate: "2026-04-26", status: "Available", notes: "" }],
@@ -32,7 +37,8 @@ const TRUCK_DEFAULTS_BY_NUMBER = new Map([
   ["620", { registration: "1KF3MA", model: "MITSUBISHI FUSO FIGHTER 6.0", capacity: 6, serviceDueDate: "2026-04-30", regoExpiryDate: "2026-09-18", status: "Available", notes: "" }],
   ["841", { registration: "XV90EH", model: "HINO", capacity: 8, serviceDueDate: "2026-07-01", regoExpiryDate: "2026-08-11", status: "Available", notes: "" }]
 ]);
-const REQUIRED_TRUCK_NUMBERS = ["853"];
+const REQUIRED_TRUCK_NUMBERS = ["853", "376"];
+const EXCLUDED_TRUCK_NUMBERS = new Set(["330"]);
 const state = { trucks: readData() };
 let truckAttachmentStore = readTruckAttachmentStore();
 let truckSyncTimerId = 0;
@@ -239,10 +245,11 @@ function readData() {
     const repaired = fillMissingTruckDefaults(repairSparseTruckRows(withUuid));
     const withRequired = ensureRequiredTrucks(repaired);
     const withReferenced = ensureReferencedTrucks(withRequired.rows);
-    if (withRequired.changed || withReferenced.changed) {
-      localStorage.setItem(KEY, JSON.stringify(withReferenced.rows));
+    const withoutExcluded = withReferenced.rows.filter((row) => !isExcludedTruckNumber(row?.truckNumber));
+    if (withRequired.changed || withReferenced.changed || withoutExcluded.length !== withReferenced.rows.length) {
+      localStorage.setItem(KEY, JSON.stringify(withoutExcluded));
     }
-    return withReferenced.rows;
+    return withoutExcluded;
   } catch {
     return [];
   }
@@ -319,7 +326,7 @@ function ensureRequiredTrucks(rows) {
 
   REQUIRED_TRUCK_NUMBERS.forEach((truckNumber) => {
     const number = String(truckNumber || "").trim();
-    if (!number || byTruckNumber.has(number)) return;
+    if (!number || isExcludedTruckNumber(number) || byTruckNumber.has(number)) return;
     const defaults = TRUCK_DEFAULTS_BY_NUMBER.get(number) || {};
     list.push(normalizeTruckRecord({
       id: newId(),
@@ -351,6 +358,10 @@ function normalizeTruckNumberKey(value) {
   return String(value || "").trim().toUpperCase();
 }
 
+function isExcludedTruckNumber(value) {
+  return EXCLUDED_TRUCK_NUMBERS.has(normalizeTruckNumberKey(value));
+}
+
 function collectReferencedTruckNumbers() {
   const numbers = new Set();
   TRUCK_SOURCE_STORAGE_KEYS.forEach((key) => {
@@ -377,7 +388,7 @@ function ensureReferencedTrucks(rows) {
   const referenced = collectReferencedTruckNumbers();
 
   referenced.forEach((number) => {
-    if (!number || byTruckNumber.has(number)) return;
+    if (!number || isExcludedTruckNumber(number) || byTruckNumber.has(number)) return;
     const defaults = TRUCK_DEFAULTS_BY_NUMBER.get(number) || {};
     list.push(normalizeTruckRecord({
       id: newId(),
@@ -714,7 +725,7 @@ async function hydrateTrucksFromSupabase() {
   state.trucks = data.map((row) => {
     const remote = fromDbTruck(row);
     return mergeTruckRecords(remote, localById.get(remote.id));
-  });
+  }).filter((row) => !isExcludedTruckNumber(row?.truckNumber));
   state.trucks = ensureReferencedTrucks(
     ensureRequiredTrucks(fillMissingTruckDefaults(repairSparseTruckRows(state.trucks))).rows
   ).rows;
@@ -1024,6 +1035,11 @@ document.getElementById("trucksForm").addEventListener("submit", (e) => {
     status: document.getElementById("truckStatus").value,
     notes: document.getElementById("truckNotes").value.trim()
   };
+
+  if (isExcludedTruckNumber(payload.truckNumber)) {
+    updateInfoBar("Truck 330 is excluded and cannot be added.");
+    return;
+  }
 
   state.trucks = id ? state.trucks.map((t) => t.id === id ? payload : t) : [...state.trucks, payload];
   saveData();

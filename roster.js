@@ -64,7 +64,7 @@ const FALLBACK_DRIVERS = [
   { id: "fallback-driver-7", name: "Samatar Yusuf", status: "Active" }
 ];
 const FALLBACK_TRUCKS = [
-  { id: "fallback-truck-1", truckNumber: "330", status: "Available" },
+  { id: "fallback-truck-1", truckNumber: "376", status: "Available" },
   { id: "fallback-truck-2", truckNumber: "840", status: "Available" },
   { id: "fallback-truck-3", truckNumber: "881", status: "Available" },
   { id: "fallback-truck-4", truckNumber: "855", status: "Available" },
@@ -73,6 +73,8 @@ const FALLBACK_TRUCKS = [
   { id: "fallback-truck-7", truckNumber: "620", status: "Available" },
   { id: "fallback-truck-8", truckNumber: "841", status: "Available" }
 ];
+const EXCLUDED_TRUCK_NUMBERS = new Set(["330"]);
+const REQUIRED_ROSTER_TRUCK_NUMBERS = ["376"];
 const PRIMARY_TRUCK_BY_DRIVER = new Map([
   ["Abdirizak Ahmed", "853"],
   ["Imran Abdella", "881"],
@@ -544,6 +546,14 @@ function canonicalDriverName(value) {
   return LEGACY_DRIVER_NAME_ALIASES.get(normalizeDriverNameKey(trimmed)) || trimmed;
 }
 
+function normalizeTruckNumberKey(value) {
+  return String(value || "").trim().toUpperCase();
+}
+
+function isExcludedTruckNumber(value) {
+  return EXCLUDED_TRUCK_NUMBERS.has(normalizeTruckNumberKey(value));
+}
+
 function isAutoTemplateBlockedDriver(driverName) {
   return AUTO_TEMPLATE_BLOCKED_DRIVERS.has(normalizeDriverNameKey(driverName));
 }
@@ -609,12 +619,15 @@ function normalizeRosterRow(item) {
   const configuredTruck = getConfiguredPrimaryTruckForDriver(driverName);
   const away = isAwayStatus(item?.status);
   const unpackedRoute = unpackRouteValue(item?.route || "");
+  const normalizedTruckNumber = String(item?.truckNumber || "").trim();
   return normalizeRosterPayload({
     ...item,
     route: unpackedRoute.route || String(item?.route || "").trim(),
     startLocation: item?.startLocation || unpackedRoute.startLocation || "",
     driverName,
-    truckNumber: aliasChanged && !away ? (configuredTruck || String(item?.truckNumber || "").trim()) : String(item?.truckNumber || "").trim()
+    truckNumber: isExcludedTruckNumber(normalizedTruckNumber)
+      ? ""
+      : (aliasChanged && !away ? (configuredTruck || normalizedTruckNumber) : normalizedTruckNumber)
   });
 }
 
@@ -1451,6 +1464,7 @@ function getActiveTrucks() {
   const rows = readArray(TRUCKS_KEY);
   const source = rows.length ? rows : FALLBACK_TRUCKS;
   return source
+    .filter((item) => !isExcludedTruckNumber(item?.truckNumber))
     .filter((item) => String(item.status || "").toLowerCase() !== "under repair")
     .sort((a, b) => String(a.truckNumber || "").localeCompare(String(b.truckNumber || "")));
 }
@@ -1469,6 +1483,56 @@ function ensureRosterReferenceFallbacks() {
   if (!trucks.length) {
     localStorage.setItem(TRUCKS_KEY, JSON.stringify(FALLBACK_TRUCKS));
   }
+}
+
+function ensureRequiredTrucksInRosterStore() {
+  const currentTrucks = readArray(TRUCKS_KEY);
+  const source = currentTrucks.length ? currentTrucks : FALLBACK_TRUCKS;
+  const existingNumbers = new Set(
+    source
+      .map((item) => normalizeTruckNumberKey(item?.truckNumber))
+      .filter(Boolean)
+  );
+  let changed = false;
+  const next = [...source];
+
+  REQUIRED_ROSTER_TRUCK_NUMBERS.forEach((truckNumber) => {
+    const number = normalizeTruckNumberKey(truckNumber);
+    if (!number || isExcludedTruckNumber(number) || existingNumbers.has(number)) return;
+    next.push({
+      id: `required-truck-${number.toLowerCase()}`,
+      truckNumber: number,
+      status: "Available"
+    });
+    changed = true;
+  });
+
+  if (changed || !currentTrucks.length) {
+    localStorage.setItem(TRUCKS_KEY, JSON.stringify(next));
+  }
+}
+
+function purgeExcludedTrucksFromRoster() {
+  let changed = false;
+  state.roster = state.roster.map((row) => {
+    if (!isExcludedTruckNumber(row?.truckNumber)) return row;
+    changed = true;
+    return {
+      ...row,
+      truckNumber: ""
+    };
+  });
+  if (changed) {
+    saveData();
+  }
+}
+
+function purgeExcludedTrucksFromTruckStore() {
+  const currentTrucks = readArray(TRUCKS_KEY);
+  if (!Array.isArray(currentTrucks) || !currentTrucks.length) return;
+  const filteredTrucks = currentTrucks.filter((item) => !isExcludedTruckNumber(item?.truckNumber));
+  if (filteredTrucks.length === currentTrucks.length) return;
+  localStorage.setItem(TRUCKS_KEY, JSON.stringify(filteredTrucks));
 }
 
 function getConfiguredPrimaryTruckForDriver(driverName) {
@@ -1586,8 +1650,11 @@ function setSelectOptions(selectId, values, placeholder, currentValue = "") {
   if (!select) return;
 
   const uniqueValues = [...new Set(values.map((value) => String(value || "").trim()).filter(Boolean))];
-  if (currentValue && !uniqueValues.includes(currentValue)) {
-    uniqueValues.unshift(currentValue);
+  const safeCurrentValue = selectId === "truckNumber" && isExcludedTruckNumber(currentValue)
+    ? ""
+    : currentValue;
+  if (safeCurrentValue && !uniqueValues.includes(safeCurrentValue)) {
+    uniqueValues.unshift(safeCurrentValue);
   }
 
   select.innerHTML = [
@@ -1595,7 +1662,7 @@ function setSelectOptions(selectId, values, placeholder, currentValue = "") {
     ...uniqueValues.map((value) => `<option value="${escapeHtml(value)}">${escapeHtml(value)}</option>`)
   ].join("");
 
-  select.value = currentValue || "";
+  select.value = safeCurrentValue || "";
 }
 
 function populateRosterPickers(selectedDriver = "", selectedTruck = "", options = {}) {
@@ -1608,7 +1675,7 @@ function populateRosterPickers(selectedDriver = "", selectedTruck = "", options 
   const matchedTruck = getMatchedTruckForDriver(selectedDriver);
   const placeholder = shiftDate ? "Select available truck" : "Select truck";
 
-  let nextTruck = selectedTruck;
+  let nextTruck = isExcludedTruckNumber(selectedTruck) ? "" : selectedTruck;
   if (options.preferMatched) {
     nextTruck = availableTruckNumbers.includes(matchedTruck) ? matchedTruck : (availableTruckNumbers[0] || "");
   } else if (!nextTruck || !availableTruckNumbers.includes(nextTruck)) {
@@ -1616,7 +1683,7 @@ function populateRosterPickers(selectedDriver = "", selectedTruck = "", options 
   }
 
   if (options.preserveSelectedTruck && selectedTruck) {
-    nextTruck = selectedTruck;
+    nextTruck = isExcludedTruckNumber(selectedTruck) ? "" : selectedTruck;
   }
 
   setSelectOptions("truckNumber", availableTruckNumbers, placeholder, nextTruck);
@@ -3146,8 +3213,11 @@ document.body.addEventListener("drop", (event) => {
 
 applyAccess();
 ensureRosterReferenceFallbacks();
+ensureRequiredTrucksInRosterStore();
 purgeExcludedDriversFromDriverStore();
 purgeExcludedDriversFromRoster();
+purgeExcludedTrucksFromTruckStore();
+purgeExcludedTrucksFromRoster();
 ensureDriverInRosterPool("Soleh Sungkar");
 const todayMonday = mondayOf(todayKey());
 if (todayMonday) {
