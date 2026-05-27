@@ -35,6 +35,17 @@ h2 {
   font-family: "Space Grotesk", "Segoe UI", sans-serif;
 }
 
+h1 {
+  font-size: clamp(1.45rem, 1.1rem + 1.5vw, 2.05rem);
+  line-height: 1.18;
+  letter-spacing: -0.01em;
+}
+
+h2 {
+  font-size: clamp(1.08rem, 0.95rem + 0.65vw, 1.35rem);
+  line-height: 1.25;
+}
+
 .app-shell {
   max-width: 1200px;
   margin: 2rem auto 4rem;
@@ -47,6 +58,10 @@ h2 {
   gap: 1rem;
   align-items: flex-start;
   margin-bottom: 1.25rem;
+}
+
+.topbar > div > p {
+  margin-top: 0.28rem;
 }
 
 .topbar-actions {
@@ -228,7 +243,7 @@ h2 {
 .stats-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-  gap: 0.8rem;
+  gap: 0.9rem;
   margin-bottom: 1rem;
 }
 
@@ -303,7 +318,7 @@ h2 {
 .attention-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-  gap: 0.8rem;
+  gap: 0.9rem;
 }
 
 .attention-card {
@@ -364,7 +379,7 @@ h2 {
 .quick-actions-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-  gap: 0.8rem;
+  gap: 0.9rem;
 }
 
 .search-empty {
@@ -389,7 +404,7 @@ h2 {
 .charts-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
-  gap: 0.8rem;
+  gap: 0.9rem;
 }
 
 .chart-card {
@@ -632,19 +647,28 @@ h2 {
   background: var(--panel);
   border: 1px solid var(--line);
   border-radius: 14px;
-  padding: 1rem;
+  padding: 1.05rem;
   box-shadow: var(--shadow);
-  margin-bottom: 1rem;
+  margin-bottom: 1.05rem;
 }
 
 .panel-head {
-  margin-bottom: 0.85rem;
+  margin-bottom: 0.9rem;
+}
+
+.panel-head h2,
+.panel-head h3 {
+  margin-bottom: 0.32rem;
+}
+
+.panel-head p {
+  margin: 0.15rem 0 0;
 }
 
 .form-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-  gap: 0.7rem;
+  gap: 0.75rem;
   margin-bottom: 0.9rem;
 }
 
@@ -702,10 +726,28 @@ textarea:focus-visible {
   background: var(--brand);
   color: var(--brand-ink);
   font-weight: 700;
+  min-height: 40px;
+  transition: transform 0.12s ease, filter 0.12s ease, box-shadow 0.12s ease;
 }
 
 .btn:hover {
   filter: brightness(1.04);
+}
+
+.btn:active {
+  transform: translateY(1px);
+}
+
+.btn:focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--focus) 35%, transparent);
+  outline-offset: 1px;
+}
+
+.btn[disabled],
+.table-actions button[disabled] {
+  cursor: not-allowed;
+  opacity: 0.5;
+  filter: none;
 }
 
 .btn-muted {
@@ -726,6 +768,7 @@ textarea:focus-visible {
 
 .table-wrap {
   overflow-x: auto;
+  border-radius: 12px;
 }
 
 table {
@@ -743,9 +786,18 @@ td {
   vertical-align: top;
 }
 
+tbody tr:hover td {
+  background: #f8fbf9;
+}
+
+tbody tr:nth-child(even) td {
+  background: rgba(248, 251, 249, 0.72);
+}
+
 th {
   color: var(--subtle);
   font-size: 0.8rem;
+  font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.04em;
 }
@@ -770,8 +822,15 @@ th {
   border: 1px solid var(--line);
   background: white;
   border-radius: 8px;
-  padding: 0.3rem 0.55rem;
+  padding: 0.38rem 0.62rem;
+  min-height: 34px;
   cursor: pointer;
+}
+
+.table-actions button:focus-visible,
+.contact-link:focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--focus) 30%, transparent);
+  outline-offset: 1px;
 }
 
 .status-pill {
@@ -1868,9 +1927,22 @@ tr.row-rego-soon td {
 }
 
 @media (max-width: 768px) {
+  .app-shell {
+    margin: 1rem auto 2rem;
+    padding: 0 0.75rem;
+  }
+
+  .panel {
+    padding: 0.8rem;
+  }
+
   .topbar {
     flex-direction: column;
     align-items: stretch;
+  }
+
+  h1 {
+    font-size: 1.35rem;
   }
 
   .topbar-actions {
@@ -1884,6 +1956,19 @@ tr.row-rego-soon td {
 
   .btn-danger {
     width: 100%;
+  }
+
+  .actions .btn {
+    width: 100%;
+  }
+
+  table {
+    min-width: 640px;
+  }
+
+  th,
+  td {
+    padding: 0.5rem;
   }
 
   .rule-pill {
