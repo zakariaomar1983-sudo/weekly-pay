@@ -241,6 +241,34 @@
     </section>
   </main>
 
+  <script>
+    (function enforceRosterTruckOptions() {
+      function patchTruckSelect() {
+        const select = document.getElementById("truckNumber");
+        if (!select) return;
+
+        Array.from(select.options).forEach((option) => {
+          if (String(option.value || "").trim() === "330") option.remove();
+        });
+
+        const has376 = Array.from(select.options).some((option) => String(option.value || "").trim() === "376");
+        if (!has376) {
+          const option = document.createElement("option");
+          option.value = "376";
+          option.textContent = "376";
+          select.insertBefore(option, select.options[1] || null);
+        }
+      }
+
+      if (document.readyState === "loading") {
+        document.addEventListener("DOMContentLoaded", patchTruckSelect, { once: true });
+      } else {
+        patchTruckSelect();
+      }
+      window.addEventListener("load", patchTruckSelect);
+    })();
+  </script>
+
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="./supabase-config.js?v=20260413g"></script>
   <script src="./supabase-client.js?v=20260413g"></script>
