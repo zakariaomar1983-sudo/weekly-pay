@@ -10,6 +10,7 @@
   --danger: #c43f3f;
   --muted: #6d7a81;
   --shadow: 0 10px 28px rgba(15, 35, 30, 0.09);
+  --focus: #2a8f73;
 }
 
 * {
@@ -20,6 +21,8 @@ body {
   margin: 0;
   font-family: "Manrope", "Segoe UI", sans-serif;
   color: var(--ink);
+  line-height: 1.45;
+  -webkit-font-smoothing: antialiased;
   background:
     radial-gradient(circle at 12% 8%, #d8ead8 0, transparent 30%),
     radial-gradient(circle at 88% 20%, #f2d8cb 0, transparent 35%),
@@ -50,6 +53,7 @@ h2 {
   display: flex;
   gap: 0.5rem;
   align-items: center;
+  flex-wrap: wrap;
 }
 
 .user-chip {
@@ -666,6 +670,14 @@ textarea {
   border-radius: 10px;
   padding: 0.55rem 0.65rem;
   background: #fff;
+}
+
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--focus) 30%, transparent);
+  outline-offset: 1px;
+  border-color: var(--focus);
 }
 
 .full {
