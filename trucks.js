@@ -1,4 +1,4 @@
-﻿const auth = window.OPXAuth?.requireAuth("./login.html");
+const auth = window.OPXAuth?.requireAuth("./login.html");
 if (!auth) throw new Error("Authentication required");
 
 if (!auth.can("accessCRM") || !auth.can("viewTrucks")) {
@@ -1183,4 +1183,3 @@ window.addEventListener("online", () => {
   }
   updateTrucksQueueBanner();
 });
-
