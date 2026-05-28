@@ -237,9 +237,9 @@ function readDriversData() {
 function readThingsToPayData() {
   try {
     const parsed = JSON.parse(localStorage.getItem(THINGS_TO_PAY_KEY) || "[]");
-    const rows = ensureUuidRows(Array.isArray(parsed) ? parsed : []);
+    const rows = ensureUuidRows(Array.isArray(parsed) ? parsed : [], THINGS_TO_PAY_KEY);
     return rows.map((row) => ({
-      id: row.id || uid(),
+      id: row.id,
       dueDate: String(row.dueDate || row.date || "").trim(),
       item: String(row.item || row.title || "").trim(),
       amount: toNumber(row.amount ?? 0),
@@ -1990,6 +1990,30 @@ document.getElementById("expenseForm").addEventListener("submit", (e) => {
   refresh();
 });
 
+document.getElementById("thingsToPayForm").addEventListener("submit", (e) => {
+  e.preventDefault();
+  if (!auth.can("editSpending")) return;
+
+  const id = document.getElementById("thingsToPayId").value;
+  const payload = {
+    id: id || uid(),
+    dueDate: document.getElementById("thingsToPayDueDate").value,
+    item: document.getElementById("thingsToPayItem").value.trim(),
+    amount: Number(document.getElementById("thingsToPayAmount").value),
+    payTo: document.getElementById("thingsToPayPayTo").value.trim(),
+    status: document.getElementById("thingsToPayStatus").value === "Paid" ? "Paid" : "Pending",
+    notes: document.getElementById("thingsToPayNotes").value.trim()
+  };
+
+  const next = id
+    ? state.thingsToPay.map((x) => x.id === id ? payload : x)
+    : [...state.thingsToPay, payload];
+  saveThingsToPayData(next);
+  e.target.reset();
+  document.getElementById("thingsToPayId").value = "";
+  refresh();
+});
+
 document.getElementById("payForm").addEventListener("submit", (e) => {
   e.preventDefault();
   if (!auth.can("editPayslips")) return;
@@ -2031,6 +2055,11 @@ document.getElementById("cancelExpenseEdit").addEventListener("click", () => {
   document.getElementById("expenseId").value = "";
 });
 
+document.getElementById("cancelThingsToPayEdit").addEventListener("click", () => {
+  document.getElementById("thingsToPayForm").reset();
+  document.getElementById("thingsToPayId").value = "";
+});
+
 document.getElementById("cancelPayEdit").addEventListener("click", () => {
   document.getElementById("payForm").reset();
   document.getElementById("payId").value = "";
@@ -2048,6 +2077,11 @@ document.getElementById("exportExpense").addEventListener("click", () => {
   downloadCsv("truck_expense.csv", state.expense);
 });
 
+document.getElementById("exportThingsToPay").addEventListener("click", () => {
+  if (!auth.can("editSpending")) return;
+  downloadCsv("things_to_pay.csv", state.thingsToPay);
+});
+
 document.getElementById("exportPay").addEventListener("click", () => {
   if (!auth.can("editPayslips")) return;
   const rows = state.pay.map((item) => ({ ...item, netPay: netPay(item).toFixed(2) }));
@@ -2063,6 +2097,8 @@ document.getElementById("incomeSearch").addEventListener("input", scheduleFinanc
 document.getElementById("incomeSearch").addEventListener("search", scheduleFinanceRefresh);
 document.getElementById("expenseSearch").addEventListener("input", scheduleFinanceRefresh);
 document.getElementById("expenseSearch").addEventListener("search", scheduleFinanceRefresh);
+document.getElementById("thingsToPaySearch").addEventListener("input", scheduleFinanceRefresh);
+document.getElementById("thingsToPaySearch").addEventListener("search", scheduleFinanceRefresh);
 document.getElementById("paySearch").addEventListener("input", scheduleFinanceRefresh);
 document.getElementById("paySearch").addEventListener("search", scheduleFinanceRefresh);
 document.getElementById("clearIncomeFilters").addEventListener("click", () => {
@@ -2071,6 +2107,10 @@ document.getElementById("clearIncomeFilters").addEventListener("click", () => {
 });
 document.getElementById("clearExpenseFilters").addEventListener("click", () => {
   document.getElementById("expenseSearch").value = "";
+  refresh();
+});
+document.getElementById("clearThingsToPayFilters").addEventListener("click", () => {
+  document.getElementById("thingsToPaySearch").value = "";
   refresh();
 });
 document.getElementById("clearPayFilters").addEventListener("click", () => {
@@ -2121,6 +2161,26 @@ document.body.addEventListener("click", (e) => {
   if (action === "delete-expense" && auth.can("editSpending")) {
     state.expense = state.expense.filter((x) => x.id !== id);
     saveData(KEYS.expense, state.expense);
+    refresh();
+    return;
+  }
+
+  if (action === "edit-things-to-pay" && auth.can("editSpending")) {
+    const item = state.thingsToPay.find((x) => x.id === id);
+    if (!item) return;
+    document.getElementById("thingsToPayId").value = item.id;
+    document.getElementById("thingsToPayDueDate").value = item.dueDate || "";
+    document.getElementById("thingsToPayItem").value = item.item || "";
+    document.getElementById("thingsToPayAmount").value = item.amount ?? 0;
+    document.getElementById("thingsToPayPayTo").value = item.payTo || "";
+    document.getElementById("thingsToPayStatus").value = item.status === "Paid" ? "Paid" : "Pending";
+    document.getElementById("thingsToPayNotes").value = item.notes || "";
+    return;
+  }
+
+  if (action === "delete-things-to-pay" && auth.can("editSpending")) {
+    state.thingsToPay = state.thingsToPay.filter((x) => x.id !== id);
+    saveThingsToPayData(state.thingsToPay);
     refresh();
     return;
   }
@@ -2208,12 +2268,15 @@ window.addEventListener("storage", (event) => {
   if (event.key === KEYS.income) state.income = readData(KEYS.income);
   if (event.key === KEYS.expense) state.expense = readData(KEYS.expense);
   if (event.key === KEYS.pay) state.pay = readData(KEYS.pay);
-  if (event.key === DRIVERS_KEY || event.key === ROSTER_KEY || event.key === KEYS.income || event.key === KEYS.expense || event.key === KEYS.pay) {
+  if (event.key === THINGS_TO_PAY_KEY) state.thingsToPay = readThingsToPayData();
+  if (event.key === DRIVERS_KEY || event.key === ROSTER_KEY || event.key === KEYS.income || event.key === KEYS.expense || event.key === KEYS.pay || event.key === THINGS_TO_PAY_KEY) {
     const source = financeSourceForKey(event.key);
-    const message = FINANCE_SOURCE_BY_KEY[event.key]
+    const message = event.key === THINGS_TO_PAY_KEY
+      ? "Things To Pay updated in another tab."
+      : FINANCE_SOURCE_BY_KEY[event.key]
       ? `${source} updated in another tab.`
       : "Finance data updated in another tab.";
-    setFinanceSyncStatus(message, "neutral", { source: FINANCE_SOURCE_BY_KEY[event.key] ? source : "Finance" });
+    setFinanceSyncStatus(message, "neutral", { source: FINANCE_SOURCE_BY_KEY[event.key] ? source : event.key === THINGS_TO_PAY_KEY ? "Things To Pay" : "Finance" });
     refresh();
   }
 });
