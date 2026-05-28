@@ -1199,42 +1199,40 @@ function normalizeRosterRow(row) {
 }
 
 function dedupeRosterRowsForPay(rows) {
-  const latestByDriverDate = new Map();
-  rows.forEach((row) => {
+  const bestByDriverDate = new Map();
+
+  function rosterRowRank(row) {
+    const completed = normalizeRosterStatus(row.status) === "completed" ? 1 : 0;
+    const hasTruck = String(row.truckNumber || "").trim() ? 1 : 0;
+    const hasNightRun = row.nightRun ? 1 : 0;
+    const hasShiftTime = String(row.shiftTime || "").trim() ? 1 : 0;
+    const hasRoute = String(row.route || "").trim() ? 1 : 0;
+    return (completed * 100) + (hasTruck * 10) + (hasNightRun * 4) + (hasShiftTime * 2) + hasRoute;
+  }
+
+  rows.forEach((row, index) => {
     const driverName = String(row.driverName || "").trim();
     const shiftDate = String(row.shiftDate || "").trim();
     if (!driverName || !shiftDate) return;
     const key = `${driverName}__${shiftDate}`;
-    const existing = latestByDriverDate.get(key);
+    const existing = bestByDriverDate.get(key);
     if (!existing) {
-      latestByDriverDate.set(key, row);
+      bestByDriverDate.set(key, { row, rank: rosterRowRank(row), index });
       return;
     }
 
-    const existingCompleted = normalizeRosterStatus(existing.status) === "completed";
-    const nextCompleted = normalizeRosterStatus(row.status) === "completed";
-    if (nextCompleted && !existingCompleted) {
-      latestByDriverDate.set(key, row);
-      return;
+    const nextRank = rosterRowRank(row);
+    const shouldReplace = nextRank > existing.rank || (nextRank === existing.rank && index > existing.index);
+    if (shouldReplace) {
+      bestByDriverDate.set(key, { row, rank: nextRank, index });
     }
-
-    if (String(row.truckNumber || "").trim() && !String(existing.truckNumber || "").trim()) {
-      latestByDriverDate.set(key, row);
-      return;
-    }
-
-    if (row.nightRun && !existing.nightRun) {
-      latestByDriverDate.set(key, row);
-      return;
-    }
-
-    latestByDriverDate.set(key, row);
   });
+
   return rows.filter((row) => {
     const driverName = String(row.driverName || "").trim();
     const shiftDate = String(row.shiftDate || "").trim();
     if (!driverName || !shiftDate) return true;
-    return latestByDriverDate.get(`${driverName}__${shiftDate}`) === row;
+    return bestByDriverDate.get(`${driverName}__${shiftDate}`)?.row === row;
   });
 }
 
@@ -1349,9 +1347,9 @@ async function getRosterRowsForPay() {
     const { data, error } = await supabase.from("roster").select("*");
     if (!error && Array.isArray(data)) {
       const remoteRows = dedupeRosterRowsForPay(data.map(rosterRowFromDb));
-      // Prefer shared roster rows whenever Supabase returns data.
-      // Mixing local + remote can revive stale local shifts and overcount pay days.
-      return remoteRows.length ? remoteRows : localRows;
+      // Merge remote + local so latest unsynced local roster edits are still available for pay generation.
+      // Local rows are appended last to win ties in dedupe.
+      return dedupeRosterRowsForPay([...remoteRows, ...localRows]);
     }
     if (error) {
       console.error("Supabase load failed for roster pay sync:", error.message);
@@ -1412,8 +1410,8 @@ function dedupePayRows(rows) {
   });
 }
 
-function buildPayRowsFromRoster(rows, payWeekKey) {
-  const sourceWeekKey = sourceRosterWeekKeyFromPayWeek(payWeekKey) || payWeekKey;
+function buildPayRowsFromRoster(rows, payWeekKey, sourceWeekKeyOverride = "") {
+  const sourceWeekKey = sourceWeekKeyOverride || sourceRosterWeekKeyFromPayWeek(payWeekKey) || payWeekKey;
   const payPeriod = payPeriodFromPayWeekKey(payWeekKey);
   const paymentDate = paymentDateFromWeekKey(payWeekKey);
   const existingByDriverPeriod = new Map(
@@ -1478,7 +1476,21 @@ async function generatePayFromRosterWeek() {
 
   try {
     const rosterRows = await getRosterRowsForPay();
-    let result = buildPayRowsFromRoster(rosterRows, payWeekKey);
+    const sourceCandidates = Array.from(new Set([
+      sourceRosterWeekKeyFromPayWeek(payWeekKey) || payWeekKey,
+      payWeekKey
+    ].filter(Boolean)));
+
+    let result = buildPayRowsFromRoster(rosterRows, payWeekKey, sourceCandidates[0] || "");
+    if (!result.generatedRows.length) {
+      for (const candidate of sourceCandidates.slice(1)) {
+        const alternative = buildPayRowsFromRoster(rosterRows, payWeekKey, candidate);
+        if (alternative.generatedRows.length) {
+          result = alternative;
+          break;
+        }
+      }
+    }
 
     if (!result.generatedRows.length) {
       const fallbackWeekKey = latestRosterWeekKey(rosterRows, true);
