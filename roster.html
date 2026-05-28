@@ -274,9 +274,10 @@
   <script src="./supabase-client.js?v=20260413g"></script>
   <script src="./seed-data.js?v=20260507b"></script>
   <script src="./auth.js?v=20260513a"></script>
-  <script src="./roster.js?v=20260518c"></script>
+  <script src="./roster.js?v=20260528a"></script>
   <script>
     (function rosterQuickAddRecovery() {
+      if (window.__OPX_ROSTER_MAIN_LOADED) return;
       const DRIVERS_KEY = "transport_crm_drivers";
       const DRIVER_POOL_KEY = "transport_crm_roster_driver_pool";
       const DRIVER_UPDATED_KEY = "transport_crm_drivers_updated_at";

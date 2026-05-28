@@ -1438,8 +1438,8 @@ function drawRosterDriverPoolManager() {
   addBtn.disabled = !canAddTyped;
 
   chipsWrap.innerHTML = includedNames.map((name) => `
-    <button type="button" class="contact-link contact-link-neutral" data-action="remove-roster-driver" data-driver-name="${escapeHtml(name)}" title="Remove ${escapeHtml(name)} from this roster">
-      ${escapeHtml(name)} &times;
+    <button type="button" class="contact-link contact-link-neutral" data-action="delete-roster-driver" data-driver-name="${escapeHtml(name)}" title="Delete ${escapeHtml(name)} from this roster">
+      Delete ${escapeHtml(name)}
     </button>
   `).join("");
 
