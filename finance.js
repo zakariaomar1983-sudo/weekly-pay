@@ -16,6 +16,7 @@ const FINANCE_SYNC_STATUS_KEY = "transport_crm_finance_sync_status";
 const FINANCE_SYNC_RETRY_DELAYS_MS = [2000, 5000, 10000, 30000];
 const DRIVERS_KEY = "transport_crm_drivers";
 const ROSTER_KEY = "transport_crm_roster";
+const THINGS_TO_PAY_KEY = "transport_crm_things_to_pay";
 const TABLE_BY_KEY = {
   [KEYS.income]: "truck_income",
   [KEYS.expense]: "truck_expense",
@@ -32,6 +33,7 @@ function applyFinanceResetFromUrl() {
     const params = new URLSearchParams(window.location.search || "");
     if (params.get("resetFinance") !== "1") return;
     Object.values(KEYS).forEach((key) => localStorage.removeItem(key));
+    localStorage.removeItem(THINGS_TO_PAY_KEY);
   } catch {
     // ignore
   }
@@ -43,6 +45,7 @@ const state = {
   income: readData(KEYS.income),
   expense: readData(KEYS.expense),
   pay: readData(KEYS.pay),
+  thingsToPay: readThingsToPayData(),
   payslipEmailConfigured: false
 };
 const sendingPayEmails = new Set();
@@ -231,6 +234,24 @@ function readDriversData() {
   }
 }
 
+function readThingsToPayData() {
+  try {
+    const parsed = JSON.parse(localStorage.getItem(THINGS_TO_PAY_KEY) || "[]");
+    const rows = ensureUuidRows(Array.isArray(parsed) ? parsed : []);
+    return rows.map((row) => ({
+      id: row.id || uid(),
+      dueDate: String(row.dueDate || row.date || "").trim(),
+      item: String(row.item || row.title || "").trim(),
+      amount: toNumber(row.amount ?? 0),
+      payTo: String(row.payTo || row.vendor || "").trim(),
+      status: String(row.status || "Pending").trim() === "Paid" ? "Paid" : "Pending",
+      notes: String(row.notes || "").trim()
+    }));
+  } catch {
+    return [];
+  }
+}
+
 function saveData(key, data) {
   financeLocalEditAt.set(key, Date.now());
   localStorage.setItem(key, JSON.stringify(data));
@@ -242,6 +263,12 @@ function saveData(key, data) {
   } else {
     setFinanceSyncStatus(`${source} saved on this device only.`, "local", { source });
   }
+}
+
+function saveThingsToPayData(rows) {
+  state.thingsToPay = Array.isArray(rows) ? rows : [];
+  localStorage.setItem(THINGS_TO_PAY_KEY, JSON.stringify(state.thingsToPay));
+  setFinanceSyncStatus("Things To Pay saved on this device.", "local", { source: "Things To Pay" });
 }
 
 function scheduleFinanceSync(key, data, delay = 300) {
@@ -1798,6 +1825,39 @@ function drawExpense() {
     .join("");
 }
 
+function drawThingsToPay() {
+  const panel = document.getElementById("thingsToPayPanel");
+  if (!panel) return;
+  if (!auth.can("viewSpending")) {
+    panel.style.display = "none";
+    return;
+  }
+
+  panel.style.display = "block";
+  const tbody = document.getElementById("thingsToPayTableBody");
+  const query = (document.getElementById("thingsToPaySearch")?.value || "").trim().toLowerCase();
+  const filtered = state.thingsToPay.filter((item) => {
+    if (!query) return true;
+    const hay = `${item.dueDate || ""} ${item.item || ""} ${item.payTo || ""} ${item.status || ""} ${item.notes || ""}`.toLowerCase();
+    return hay.includes(query);
+  });
+
+  if (!filtered.length) {
+    tbody.innerHTML = `<tr><td colspan='7' class='empty'>${query ? "No Things To Pay records match your search." : "No Things To Pay records yet."}</td></tr>`;
+    return;
+  }
+
+  tbody.innerHTML = filtered
+    .sort((a, b) => {
+      const aPending = String(a.status || "").toLowerCase() === "pending" ? 0 : 1;
+      const bPending = String(b.status || "").toLowerCase() === "pending" ? 0 : 1;
+      if (aPending !== bPending) return aPending - bPending;
+      return String(a.dueDate || "").localeCompare(String(b.dueDate || ""));
+    })
+    .map((item) => `<tr><td>${item.dueDate || "-"}</td><td>${item.item || "-"}</td><td>${money(item.amount)}</td><td>${item.payTo || "-"}</td><td>${item.status || "Pending"}</td><td>${item.notes || "-"}</td><td>${auth.can("editSpending") ? `<div class='table-actions'><button data-action='edit-things-to-pay' data-id='${item.id}'>Edit</button><button data-action='delete-things-to-pay' data-id='${item.id}'>Delete</button></div>` : "<span class='muted'>View only</span>"}</td></tr>`)
+    .join("");
+}
+
 function drawPay() {
   const panel = document.getElementById("payPanel");
   if (!auth.can("viewPayslips")) {
@@ -1833,6 +1893,7 @@ function refresh() {
   drawWeeklySummary();
   drawIncome();
   drawExpense();
+  drawThingsToPay();
   drawPay();
 }
 
@@ -1863,6 +1924,12 @@ function applyAccess() {
     const form = document.getElementById("expenseForm");
     Array.from(form.elements).forEach((el) => { if (el.type !== "hidden") el.disabled = true; });
     document.getElementById("exportExpense").style.display = "none";
+    const thingsForm = document.getElementById("thingsToPayForm");
+    if (thingsForm) {
+      Array.from(thingsForm.elements).forEach((el) => { if (el.type !== "hidden") el.disabled = true; });
+    }
+    const exportThingsBtn = document.getElementById("exportThingsToPay");
+    if (exportThingsBtn) exportThingsBtn.style.display = "none";
   }
 
   if (!auth.can("editPayslips")) {
