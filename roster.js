@@ -92,10 +92,8 @@ const LEGACY_DRIVER_NAME_ALIASES = new Map([
   [normalizeDriverNameKey("Mohammed Siyad"), "Muhammed A H Siyad"],
   [normalizeDriverNameKey("Muhamed Siyad"), "Muhammed A H Siyad"]
 ]);
-const REQUIRED_DRIVER_NAMES = ["Soleh Sungkar", "Faaid Warsame"];
-const REQUIRED_WEEK_VIEW_ROWS = [
-  { driverName: "Soleh Sungkar", truckNumber: "840" }
-];
+const REQUIRED_DRIVER_NAMES = [];
+const REQUIRED_WEEK_VIEW_ROWS = [];
 const ROSTER_EXCLUDED_DRIVER_NAMES = new Set([
   normalizeDriverNameKey("Muhammed A H Siyad")
 ]);
@@ -1320,13 +1318,6 @@ function getAvailableDriverRecords() {
       .filter((item) => item.name);
   }
 
-  const byName = new Map(filtered.map((item) => [item.name.toLowerCase(), item]));
-  REQUIRED_DRIVER_NAMES.forEach((name) => {
-    if (!byName.has(name.toLowerCase())) {
-      filtered.push({ id: `required-${name.toLowerCase().replace(/\s+/g, "-")}`, name, status: "Active" });
-    }
-  });
-
   return filtered.sort((a, b) => String(a.name || "").localeCompare(String(b.name || "")));
 }
 
@@ -1334,15 +1325,7 @@ function getActiveDrivers() {
   const available = getAvailableDriverRecords();
   const selectedNames = readRosterDriverPoolNames();
   if (!selectedNames.length) return available;
-
-  const requiredNames = [
-    ...REQUIRED_DRIVER_NAMES,
-    ...REQUIRED_WEEK_VIEW_ROWS.map((item) => item?.driverName || "")
-  ]
-    .map((name) => canonicalDriverName(name))
-    .filter(Boolean);
   const selectedKeys = new Set(selectedNames.map((name) => normalizeDriverNameKey(name)));
-  requiredNames.forEach((name) => selectedKeys.add(normalizeDriverNameKey(name)));
   const filtered = available.filter((item) => selectedKeys.has(normalizeDriverNameKey(item.name)));
   return filtered.length ? filtered : available;
 }

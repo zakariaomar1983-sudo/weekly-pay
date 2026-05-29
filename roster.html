@@ -79,7 +79,7 @@
         <label>Truck Number
           <select id="truckNumber" class="roster-pick-select" required>
             <option value="">Select truck</option>
-            <option value="330">330</option>
+            <option value="376">376</option>
             <option value="620">620</option>
             <option value="672">672</option>
             <option value="840">840</option>
@@ -274,7 +274,7 @@
   <script src="./supabase-client.js?v=20260413g"></script>
   <script src="./seed-data.js?v=20260507b"></script>
   <script src="./auth.js?v=20260513a"></script>
-  <script src="./roster.js?v=20260529a"></script>
+  <script src="./roster.js?v=20260530a"></script>
   <script>
     (function rosterQuickAddRecovery() {
       if (window.__OPX_ROSTER_MAIN_LOADED) return;
@@ -486,7 +486,7 @@
         { name: "Soleh Sungkar", truck: "840" },
         { name: "Suhen Omar", truck: "620" }
       ];
-      const REQUIRED_DRIVER_NAMES = ["Soleh Sungkar"];
+      const REQUIRED_DRIVER_NAMES = [];
       const EXCLUDED_DRIVER_NAMES = new Set([
         normalizeDriverNameKey("Muhammed A H Siyad")
       ]);

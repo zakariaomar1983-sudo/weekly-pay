@@ -7,11 +7,14 @@ if (!auth.can("accessCRM") || !auth.can("viewDrivers")) {
 }
 
 const KEY = "transport_crm_drivers";
+const TRUCKS_KEY = "transport_crm_trucks";
 const LEGACY_CONTACT_KEY = "transport_crm_driver_contacts";
 const DRIVER_ATTACHMENTS_KEY = "transport_crm_driver_attachments";
 const DRIVERS_SYNC_STATUS_KEY = "transport_crm_drivers_sync_status";
 const DRIVERS_UPDATED_KEY = "transport_crm_drivers_updated_at";
 const DRIVERS_TABLE = "drivers";
+const REMOVED_TRUCK_NUMBERS = new Set(["330"]);
+const REQUIRED_TRUCK_NUMBERS = ["376"];
 const EXCLUDED_DRIVER_NAMES = new Set([
   normalizeDriverNameKey("Muhammed A H Siyad")
 ]);
@@ -22,6 +25,9 @@ const DRIVER_ATTACHMENT_MAX_BYTES = 1.5 * 1024 * 1024;
 const driversSupabase = window.OPXSupabase?.client || null;
 const useSupabase = Boolean(window.OPXSupabase?.isReady && driversSupabase);
 const legacyContacts = readLegacyContacts();
+
+sanitizeTruckStore();
+
 const state = { drivers: readData() };
 let driverAttachmentStore = readDriverAttachmentStore();
 let driverSyncTimerId = 0;
@@ -31,6 +37,53 @@ let driverRetryAttempt = 0;
 let driverSyncInFlight = false;
 let driverSyncQueued = false;
 const driversChannel = typeof BroadcastChannel !== "undefined" ? new BroadcastChannel("opx-drivers") : null;
+
+function sanitizeTruckStore() {
+  let parsed;
+  try {
+    parsed = JSON.parse(localStorage.getItem(TRUCKS_KEY) || "[]");
+  } catch {
+    return;
+  }
+  if (!Array.isArray(parsed)) return;
+
+  let changed = false;
+  const normalized = parsed
+    .map((row) => {
+      const source = row && typeof row === "object" ? { ...row } : {};
+      const truckNumber = String(source.truckNumber ?? source.truck_number ?? "").trim();
+      if (truckNumber !== String(source.truckNumber ?? "").trim()) {
+        source.truckNumber = truckNumber;
+        changed = true;
+      }
+      if (Object.prototype.hasOwnProperty.call(source, "truck_number")) {
+        delete source.truck_number;
+        changed = true;
+      }
+      return source;
+    })
+    .filter((row) => {
+      const truckNumber = String(row.truckNumber || "").trim();
+      if (!truckNumber) return true;
+      if (REMOVED_TRUCK_NUMBERS.has(truckNumber)) {
+        changed = true;
+        return false;
+      }
+      return true;
+    });
+
+  const existing = new Set(normalized.map((row) => String(row.truckNumber || "").trim()).filter(Boolean));
+  REQUIRED_TRUCK_NUMBERS.forEach((truckNumber) => {
+    const clean = String(truckNumber || "").trim();
+    if (!clean || REMOVED_TRUCK_NUMBERS.has(clean) || existing.has(clean)) return;
+    normalized.push({ id: `required-truck-${clean}`, truckNumber: clean, status: "Available" });
+    changed = true;
+  });
+
+  if (changed) {
+    localStorage.setItem(TRUCKS_KEY, JSON.stringify(normalized));
+  }
+}
 
 function formatDriversSyncTime(value = Date.now()) {
   return new Date(value).toLocaleTimeString("en-AU", { hour: "numeric", minute: "2-digit" });
