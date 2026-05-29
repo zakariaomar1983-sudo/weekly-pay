@@ -12,6 +12,7 @@ const ROSTER_ACK_KEY = "transport_crm_roster_ack";
 const ROSTER_WEEK_STATUS_KEY = "transport_crm_roster_week_status";
 const ROSTER_SYNC_STATUS_KEY = "transport_crm_roster_sync_status";
 const ROSTER_DRIVER_POOL_KEY = "transport_crm_roster_driver_pool";
+const ROSTER_TEMPLATE_BLOCKS_KEY = "transport_crm_roster_template_blocks";
 const DRIVERS_KEY = "transport_crm_drivers";
 const DRIVERS_UPDATED_KEY = "transport_crm_drivers_updated_at";
 const CONTACT_KEY = "transport_crm_driver_contacts";
@@ -544,6 +545,40 @@ function normalizeDriverNameKey(value) {
 function canonicalDriverName(value) {
   const trimmed = String(value || "").trim().replace(/\s+/g, " ");
   return LEGACY_DRIVER_NAME_ALIASES.get(normalizeDriverNameKey(trimmed)) || trimmed;
+}
+
+function templateBlockKey(driverName, shiftDate) {
+  const nameKey = normalizeDriverNameKey(canonicalDriverName(driverName));
+  const dateKey = String(shiftDate || "").trim();
+  if (!nameKey || !dateKey) return "";
+  return `${nameKey}__${dateKey}`;
+}
+
+function readTemplateBlocks() {
+  try {
+    const parsed = JSON.parse(localStorage.getItem(ROSTER_TEMPLATE_BLOCKS_KEY) || "[]");
+    if (!Array.isArray(parsed)) return new Set();
+    return new Set(parsed.map((value) => String(value || "").trim()).filter(Boolean));
+  } catch {
+    return new Set();
+  }
+}
+
+function writeTemplateBlocks(blocks) {
+  const values = Array.from(blocks || [])
+    .map((value) => String(value || "").trim())
+    .filter(Boolean);
+  localStorage.setItem(ROSTER_TEMPLATE_BLOCKS_KEY, JSON.stringify([...new Set(values)]));
+}
+
+function hideTemplateLine(driverName, shiftDate) {
+  const key = templateBlockKey(driverName, shiftDate);
+  if (!key) return false;
+  const blocks = readTemplateBlocks();
+  if (blocks.has(key)) return false;
+  blocks.add(key);
+  writeTemplateBlocks(blocks);
+  return true;
 }
 
 function normalizeTruckNumberKey(value) {
@@ -1591,6 +1626,7 @@ function buildWeekTemplateRows(weekKeys, actualWeekRows = []) {
   const hasDriverHistory = establishedDriverNames.size > 0;
   const existingDriverDates = new Set();
   const existingTruckDates = new Set();
+  const hiddenTemplateLines = readTemplateBlocks();
   const templateRows = [];
 
   uniqueActualRows.forEach((row) => {
@@ -1610,6 +1646,7 @@ function buildWeekTemplateRows(weekKeys, actualWeekRows = []) {
 
     weekKeys.slice(0, 5).forEach((shiftDate) => {
       if (existingDriverDates.has(`${driverName}__${shiftDate}`) || existingTruckDates.has(`${truckNumber}__${shiftDate}`)) return;
+      if (hiddenTemplateLines.has(templateBlockKey(driverName, shiftDate))) return;
       templateRows.push({
         id: `template-${shiftDate}-${driver.id || index}`,
         driverName,
@@ -2599,9 +2636,11 @@ function drawWeekTable() {
       const acknowledgementBadge = item.isTemplate ? "" : renderAcknowledgementBadge(item.driverName, weekKey, true);
       const rowActions = item.isTemplate ? "<span class='muted'>Week template</span>" : renderRosterContactButtons(item);
       const adminActions = item.isTemplate
-        ? "<span class='muted'>Template</span>"
+        ? auth.can("editRoster")
+          ? `<div class='table-actions'><button data-action='delete-line' data-template='1' data-id='${escapeHtml(item.id || "")}' data-driver-name='${escapeHtml(item.driverName || "")}' data-shift-date='${escapeHtml(item.shiftDate || "")}' data-shift-time='${escapeHtml(item.shiftTime || "")}' data-truck-number='${escapeHtml(item.truckNumber || "")}'>Delete Line</button></div>`
+          : "<span class='muted'>Template</span>"
         : auth.can("editRoster")
-        ? `<div class='table-actions'><button data-action='edit' data-id='${item.id}'>Edit</button><button data-action='delete' data-id='${item.id}'>Delete</button></div>`
+        ? `<div class='table-actions'><button data-action='edit' data-id='${item.id}'>Edit</button><button data-action='delete-line' data-id='${escapeHtml(item.id || "")}' data-driver-name='${escapeHtml(item.driverName || "")}' data-shift-date='${escapeHtml(item.shiftDate || "")}' data-shift-time='${escapeHtml(item.shiftTime || "")}' data-truck-number='${escapeHtml(item.truckNumber || "")}'>Delete Line</button></div>`
         : "<span class='muted'>View only</span>";
       rows.push(`<tr class='${rowClass}'>
         <td>${rowIndex === 0 ? DAY_NAMES[idx] : ""}</td>
@@ -3150,6 +3189,50 @@ document.body.addEventListener("click", (e) => {
   }
 
   if (!auth.can("editRoster")) return;
+
+  if (action === "delete-line") {
+    const isTemplate = button.dataset.template === "1";
+    const driverName = String(button.dataset.driverName || "").trim();
+    const shiftDate = String(button.dataset.shiftDate || "").trim();
+    const shiftTime = String(button.dataset.shiftTime || "").trim();
+    const truckNumber = String(button.dataset.truckNumber || "").trim();
+
+    if (!driverName || !shiftDate) return;
+
+    if (isTemplate) {
+      if (!confirm(`Delete template line for ${driverName} on ${shiftDate}?`)) return;
+      hideTemplateLine(driverName, shiftDate);
+      setDispatchStatus(`Template line removed for ${driverName} on ${shiftDate}.`, "warning-text");
+      refreshWeekView();
+      return;
+    }
+
+    if (!confirm(`Delete line for ${driverName} on ${shiftDate}?`)) return;
+    const before = state.roster.length;
+
+    if (id) {
+      state.roster = state.roster.filter((row) => row.id !== id);
+    } else {
+      const driverKey = normalizeDriverNameKey(driverName);
+      state.roster = state.roster.filter((row) => {
+        const sameDriver = normalizeDriverNameKey(row.driverName) === driverKey;
+        const sameDate = String(row.shiftDate || "").trim() === shiftDate;
+        const sameTime = !shiftTime || String(row.shiftTime || "").trim() === shiftTime;
+        const sameTruck = !truckNumber || String(row.truckNumber || "").trim() === truckNumber;
+        return !(sameDriver && sameDate && sameTime && sameTruck);
+      });
+    }
+
+    if (state.roster.length === before) {
+      setDispatchStatus("Could not find that line to delete.", "error-text");
+      return;
+    }
+
+    saveData();
+    setDispatchStatus(`Deleted line for ${driverName} on ${shiftDate}.`, "warning-text");
+    refreshWeekView();
+    return;
+  }
 
   if (action === "edit") {
     if (item) setForm(item);
