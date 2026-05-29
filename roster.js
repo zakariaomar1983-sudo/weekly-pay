@@ -64,7 +64,7 @@ const FALLBACK_DRIVERS = [
   { id: "fallback-driver-7", name: "Samatar Yusuf", status: "Active" }
 ];
 const FALLBACK_TRUCKS = [
-  { id: "fallback-truck-1", truckNumber: "330", status: "Available" },
+  { id: "fallback-truck-1", truckNumber: "376", status: "Available" },
   { id: "fallback-truck-2", truckNumber: "840", status: "Available" },
   { id: "fallback-truck-3", truckNumber: "881", status: "Available" },
   { id: "fallback-truck-4", truckNumber: "855", status: "Available" },
@@ -73,6 +73,8 @@ const FALLBACK_TRUCKS = [
   { id: "fallback-truck-7", truckNumber: "620", status: "Available" },
   { id: "fallback-truck-8", truckNumber: "841", status: "Available" }
 ];
+const EXCLUDED_TRUCK_NUMBERS = new Set(["330"]);
+const REQUIRED_TRUCK_NUMBERS = ["376"];
 const PRIMARY_TRUCK_BY_DRIVER = new Map([
   ["Abdirizak Ahmed", "853"],
   ["Faaid Warsame", "620"],
@@ -1495,9 +1497,23 @@ function takeDriverOffSelectedWeek(driverName, { removeFromRosterList = false } 
 function getActiveTrucks() {
   const rows = readArray(TRUCKS_KEY);
   const source = rows.length ? rows : FALLBACK_TRUCKS;
-  return source
-    .filter((item) => String(item.status || "").toLowerCase() !== "under repair")
-    .sort((a, b) => String(a.truckNumber || "").localeCompare(String(b.truckNumber || "")));
+  const normalized = source
+    .map((item) => ({
+      ...item,
+      truckNumber: String(item?.truckNumber || "").trim()
+    }))
+    .filter((item) => item.truckNumber)
+    .filter((item) => !EXCLUDED_TRUCK_NUMBERS.has(item.truckNumber))
+    .filter((item) => String(item.status || "").toLowerCase() !== "under repair");
+
+  const existing = new Set(normalized.map((item) => item.truckNumber));
+  REQUIRED_TRUCK_NUMBERS.forEach((truckNumber) => {
+    const clean = String(truckNumber || "").trim();
+    if (!clean || EXCLUDED_TRUCK_NUMBERS.has(clean) || existing.has(clean)) return;
+    normalized.push({ id: `required-truck-${clean}`, truckNumber: clean, status: "Available" });
+  });
+
+  return normalized.sort((a, b) => String(a.truckNumber || "").localeCompare(String(b.truckNumber || "")));
 }
 
 function ensureRosterReferenceFallbacks() {
