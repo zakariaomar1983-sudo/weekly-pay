@@ -41,7 +41,7 @@
         <label>Search
           <input id="logsSearch" type="text" placeholder="Driver, truck, reference, description..." />
         </label>
-        <label>Status
+        <label class="select-field">Status
           <select id="logsFilterStatus">
             <option value="">All</option>
             <option value="Open">Open</option>
@@ -58,7 +58,7 @@
       <form id="logForm" class="form-grid">
         <input type="hidden" id="logId" />
         <label>Log Date<input id="logDate" type="date" required /></label>
-        <label>Log Type
+        <label class="select-field">Log Type
           <select id="logType" required>
             <option value="Operations">Operations</option>
             <option value="Incident">Incident</option>
@@ -70,7 +70,7 @@
         <label>Driver<input id="logDriver" type="text" placeholder="Driver name" /></label>
         <label>Truck Number<input id="logTruck" type="text" placeholder="Truck 12" /></label>
         <label>Reference<input id="logReference" type="text" placeholder="Job #, Contract #, Invoice #" /></label>
-        <label>Status
+        <label class="select-field">Status
           <select id="logStatus" required>
             <option value="Open">Open</option>
             <option value="Done">Done</option>

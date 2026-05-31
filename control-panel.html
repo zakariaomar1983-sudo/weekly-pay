@@ -78,13 +78,13 @@
         <input type="hidden" id="userId" />
         <label>Username<input id="userName" type="text" required /></label>
         <label>Password<input id="userPassword" type="password" placeholder="Required for new user" /></label>
-        <label>Role
+        <label class="select-field">Role
           <select id="userRole" required>
             <option value="role_manager">Ops Manager</option>
             <option value="role_viewer">GM</option>
           </select>
         </label>
-        <label>Status
+        <label class="select-field">Status
           <select id="userActive" required>
             <option value="true">Active</option>
             <option value="false">Inactive</option>
@@ -114,7 +114,7 @@
         <label>Search
           <input id="auditSearch" type="text" placeholder="Staff name, role, action, summary..." />
         </label>
-        <label>Action
+        <label class="select-field">Action
           <select id="auditActionFilter">
             <option value="">All</option>
             <option value="login">Login</option>

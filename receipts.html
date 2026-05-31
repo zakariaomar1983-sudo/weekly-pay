@@ -84,7 +84,7 @@
         <label>Sender Name<input id="receiptSenderName" type="text" placeholder="Driver or team member" /></label>
         <label>Sender Phone<input id="receiptSenderPhone" type="text" placeholder="614xxxxxxxx" /></label>
         <label>Received At<input id="receiptReceivedAt" type="datetime-local" /></label>
-        <label>Message Type
+        <label class="select-field">Message Type
           <select id="receiptMessageType">
             <option value="image">Image</option>
             <option value="document">Document</option>
@@ -97,7 +97,7 @@
         <label>Amount (AUD)<input id="receiptAmount" type="number" min="0" step="0.01" placeholder="0.00" /></label>
         <label>GST (AUD)<input id="receiptGst" type="number" min="0" step="0.01" placeholder="0.00" /></label>
         <label>Receipt Date<input id="receiptDate" type="date" /></label>
-        <label>Category
+        <label class="select-field">Category
           <select id="receiptCategory">
             <option value="Fuel">Fuel</option>
             <option value="Repair">Repair</option>
@@ -111,7 +111,7 @@
           </select>
         </label>
         <label>Reference / Invoice #<input id="receiptReference" type="text" placeholder="Invoice, receipt, or WhatsApp ref" /></label>
-        <label>Status
+        <label class="select-field">Status
           <select id="receiptReviewStatus">
             <option value="Received">Received</option>
             <option value="Review Needed">Review Needed</option>
@@ -155,7 +155,7 @@
         <label class="full">Search Inbox
           <input id="receiptsSearch" type="search" placeholder="Supplier, truck, sender, amount, invoice, notes..." />
         </label>
-        <label>Status
+        <label class="select-field">Status
           <select id="receiptsStatusFilter">
             <option value="">All</option>
             <option value="Received">Received</option>

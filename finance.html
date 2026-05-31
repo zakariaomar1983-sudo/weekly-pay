@@ -69,7 +69,7 @@
         <label>Job Reference<input id="incomeJobRef" type="text" placeholder="Job # / PO #" required /></label>
         <label>Client<input id="incomeClient" type="text" required /></label>
         <label>Income Amount (AUD)<input id="incomeAmount" type="number" min="0" step="0.01" required /></label>
-        <label>Status
+        <label class="select-field">Status
           <select id="incomeStatus" required>
             <option value="Pending">Pending</option>
             <option value="Paid">Paid</option>
@@ -165,7 +165,7 @@
         <label>Driver Bonus (AUD)<input id="driverBonus" type="number" min="0" step="0.01" value="0" required /></label>
         <label>Deductions (AUD)<input id="deductions" type="number" min="0" step="0.01" value="0" required /></label>
         <label>Payment Date<input id="paymentDate" type="date" required /></label>
-        <label>Auto Pay
+        <label class="select-field">Auto Pay
           <select id="autoPay" required>
             <option value="No">No</option>
             <option value="Yes">Yes</option>
