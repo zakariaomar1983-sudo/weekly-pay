@@ -103,7 +103,9 @@ const WHATSAPP_DISPATCH_EXCLUDED_DRIVER_NAMES = new Set([
   normalizeDriverNameKey("Suhen Omar")
 ]);
 const ROSTER_EXCLUDED_DRIVER_NAMES = new Set([
-  normalizeDriverNameKey("Muhammed A H Siyad")
+  normalizeDriverNameKey("Muhammed A H Siyad"),
+  normalizeDriverNameKey("330"),
+  normalizeDriverNameKey("Driver 330")
 ]);
 const AUTO_TEMPLATE_BLOCKED_DRIVERS = new Set([
   normalizeDriverNameKey("Muhammed A H Siyad"),
