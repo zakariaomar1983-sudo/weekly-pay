@@ -35,6 +35,9 @@ const TRUCK_DEFAULTS_BY_NUMBER = new Map([
 const REQUIRED_TRUCK_NUMBERS = ["853"];
 const state = { trucks: readData() };
 let truckAttachmentStore = readTruckAttachmentStore();
+let referencedTruckNumbersCache = new Set();
+let referencedTruckNumbersCacheReady = false;
+const truckSearchHaystackCache = new Map();
 let truckSyncTimerId = 0;
 let truckSearchTimerId = 0;
 let truckRetryTimerId = 0;
@@ -170,7 +173,23 @@ function formatSearchDate(value) {
 }
 
 function buildTruckSearchHaystack(item) {
-  return normalizeSearchValue([
+  const idKey = String(item?.id || "");
+  const signature = [
+    item.truckNumber,
+    item.registration,
+    item.model,
+    item.capacity,
+    item.serviceDueDate,
+    item.regoExpiryDate,
+    item.status,
+    item.notes || ""
+  ].join("|");
+  const cached = truckSearchHaystackCache.get(idKey);
+  if (cached && cached.signature === signature) {
+    return cached.haystack;
+  }
+
+  const haystack = normalizeSearchValue([
     item.truckNumber,
     item.registration,
     item.model,
@@ -182,6 +201,8 @@ function buildTruckSearchHaystack(item) {
     item.status,
     item.notes || ""
   ].join(" "));
+  truckSearchHaystackCache.set(idKey, { signature, haystack });
+  return haystack;
 }
 
 function getFilteredTrucks(query = normalizeSearchValue(document.getElementById("trucksSearch")?.value || "")) {
@@ -191,11 +212,20 @@ function getFilteredTrucks(query = normalizeSearchValue(document.getElementById(
   });
 }
 
-function findBestTruckMatch(query) {
+function pruneTruckSearchHaystackCache() {
+  const activeIds = new Set(state.trucks.map((item) => String(item?.id || "")).filter(Boolean));
+  Array.from(truckSearchHaystackCache.keys()).forEach((idKey) => {
+    if (!activeIds.has(idKey)) {
+      truckSearchHaystackCache.delete(idKey);
+    }
+  });
+}
+
+function findBestTruckMatch(query, preFilteredRows = null) {
   const normalized = normalizeSearchValue(query);
   if (!normalized) return null;
 
-  const filtered = getFilteredTrucks(normalized);
+  const filtered = Array.isArray(preFilteredRows) ? preFilteredRows : getFilteredTrucks(normalized);
   if (!filtered.length) return null;
 
   const exact = filtered.find((item) => normalizeSearchValue(item.truckNumber) === normalized)
@@ -366,7 +396,20 @@ function collectReferencedTruckNumbers() {
   return numbers;
 }
 
-function ensureReferencedTrucks(rows) {
+function refreshReferencedTruckNumbers() {
+  referencedTruckNumbersCache = collectReferencedTruckNumbers();
+  referencedTruckNumbersCacheReady = true;
+  return referencedTruckNumbersCache;
+}
+
+function getReferencedTruckNumbers() {
+  if (!referencedTruckNumbersCacheReady) {
+    refreshReferencedTruckNumbers();
+  }
+  return referencedTruckNumbersCache;
+}
+
+function ensureReferencedTrucks(rows, referencedNumbers = getReferencedTruckNumbers()) {
   const list = Array.isArray(rows) ? [...rows] : [];
   const byTruckNumber = new Set(
     list
@@ -374,7 +417,7 @@ function ensureReferencedTrucks(rows) {
       .filter(Boolean)
   );
   let changed = false;
-  const referenced = collectReferencedTruckNumbers();
+  const referenced = referencedNumbers || new Set();
 
   referenced.forEach((number) => {
     if (!number || byTruckNumber.has(number)) return;
@@ -398,7 +441,7 @@ function ensureReferencedTrucks(rows) {
 
 function ensureRequiredTrucksInState({ persist = true, syncWhenOnline = false } = {}) {
   const required = ensureRequiredTrucks(fillMissingTruckDefaults(repairSparseTruckRows(state.trucks)));
-  const referenced = ensureReferencedTrucks(required.rows);
+  const referenced = ensureReferencedTrucks(required.rows, getReferencedTruckNumbers());
   if (!required.changed && !referenced.changed) return false;
   state.trucks = referenced.rows;
   if (persist) {
@@ -868,8 +911,12 @@ function toCsv(rows) {
 }
 
 function drawStats() {
-  const available = state.trucks.filter((t) => t.status === "Available").length;
-  const repair = state.trucks.filter((t) => t.status === "Under Repair").length;
+  let available = 0;
+  let repair = 0;
+  state.trucks.forEach((truck) => {
+    if (truck.status === "Available") available += 1;
+    if (truck.status === "Under Repair") repair += 1;
+  });
   const stats = [
     { label: "Total Trucks", value: String(state.trucks.length) },
     { label: "Available", value: String(available) },
@@ -886,10 +933,10 @@ function drawStats() {
   grid.innerHTML = stats.map((s) => `<article class='stat-card'><p>${s.label}</p><h3>${s.value}</h3></article>`).join("");
 }
 
-function drawTable() {
+function drawTable(filteredRows = null) {
   const tbody = document.getElementById("trucksTableBody");
   const query = normalizeSearchValue(document.getElementById("trucksSearch")?.value || "");
-  const filtered = getFilteredTrucks(query);
+  const filtered = Array.isArray(filteredRows) ? filteredRows : getFilteredTrucks(query);
 
   if (!filtered.length) {
     tbody.innerHTML = `<tr><td colspan='8' class='empty'>${state.trucks.length ? "No trucks match this search." : "No trucks yet."}</td></tr>`;
@@ -910,23 +957,30 @@ function drawTable() {
 function refresh() {
   ensureRequiredTrucksInState({ persist: true, syncWhenOnline: true });
   truckAttachmentStore = readTruckAttachmentStore();
+  pruneTruckSearchHaystackCache();
+  const query = normalizeSearchValue(document.getElementById("trucksSearch")?.value || "");
+  const filtered = getFilteredTrucks(query);
   drawStats();
   drawRegoAlerts();
-  drawTable();
-  updateInfoBar();
+  drawTable(filtered);
+  updateInfoBar("", { query, visibleCount: filtered.length });
   drawTruckAttachments();
 }
 
-function updateInfoBar(message = "") {
+function updateInfoBar(message = "", { query = null, visibleCount = null } = {}) {
   const info = document.getElementById("trucksInfo");
   const exportBtn = document.getElementById("exportTrucks");
-  const query = normalizeSearchValue(document.getElementById("trucksSearch")?.value || "");
-  const visibleCount = getFilteredTrucks(query).length;
+  const activeQuery = query == null
+    ? normalizeSearchValue(document.getElementById("trucksSearch")?.value || "")
+    : query;
+  const activeVisibleCount = visibleCount == null
+    ? getFilteredTrucks(activeQuery).length
+    : visibleCount;
 
   if (message) {
     info.textContent = message;
-  } else if (query) {
-    info.textContent = `${visibleCount} of ${state.trucks.length} truck record(s) match "${document.getElementById("trucksSearch").value.trim()}".`;
+  } else if (activeQuery) {
+    info.textContent = `${activeVisibleCount} of ${state.trucks.length} truck record(s) match "${document.getElementById("trucksSearch").value.trim()}".`;
   } else {
     info.textContent = state.trucks.length ? `${state.trucks.length} truck record(s) saved.` : "No trucks saved yet.";
   }
@@ -952,20 +1006,20 @@ function setForm(item) {
 
 function applyTruckSearch() {
   const query = normalizeSearchValue(document.getElementById("trucksSearch")?.value || "");
+  const filtered = getFilteredTrucks(query);
   if (!query) {
-    updateInfoBar();
+    updateInfoBar("", { query, visibleCount: filtered.length });
     return;
   }
 
-  const bestMatch = findBestTruckMatch(query);
+  const bestMatch = findBestTruckMatch(query, filtered);
   if (!bestMatch) {
     updateInfoBar(`No truck found for "${document.getElementById("trucksSearch").value.trim()}".`);
     return;
   }
 
   setForm(bestMatch);
-  const visibleCount = getFilteredTrucks(query).length;
-  updateInfoBar(`Loaded truck ${bestMatch.truckNumber} from search${visibleCount > 1 ? ` (${visibleCount} matches)` : ""}.`);
+  updateInfoBar(`Loaded truck ${bestMatch.truckNumber} from search${filtered.length > 1 ? ` (${filtered.length} matches)` : ""}.`);
 }
 
 function applyAccessControl() {
@@ -1159,6 +1213,15 @@ if (!useSupabase) {
 }
 
 window.addEventListener("storage", (event) => {
+  if (TRUCK_SOURCE_STORAGE_KEYS.includes(event.key || "")) {
+    refreshReferencedTruckNumbers();
+    const changed = ensureRequiredTrucksInState({ persist: true, syncWhenOnline: true });
+    if (changed) {
+      setTrucksSyncStatus("Truck list updated from related roster/finance records.", "neutral");
+      refresh();
+    }
+    return;
+  }
   if (event.key === TRUCK_ATTACHMENTS_KEY) {
     truckAttachmentStore = readTruckAttachmentStore();
     drawTruckAttachments();
