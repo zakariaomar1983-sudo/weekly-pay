@@ -64,7 +64,7 @@
       <p id="rosterQueueBanner" class="queue-banner queue-banner-pending" hidden></p>
       <form id="rosterForm" class="form-grid">
         <input type="hidden" id="rosterId" />
-        <label>Driver Name
+        <label class="select-field">Driver Name
           <select id="driverName" class="roster-pick-select" required>
             <option value="">Select driver</option>
             <option value="Abdirizak Ahmed">Abdirizak Ahmed</option>
@@ -76,7 +76,7 @@
             <option value="Suhen Omar">Suhen Omar</option>
           </select>
         </label>
-        <label>Truck Number
+        <label class="select-field">Truck Number
           <select id="truckNumber" class="roster-pick-select" required>
             <option value="">Select truck</option>
             <option value="330">330</option>
@@ -98,14 +98,14 @@
         </label>
         <label>Shift Date<input id="shiftDate" type="date" required /></label>
         <label>Shift Time<input id="shiftTime" type="text" placeholder="06:00 - 14:00" required /></label>
-        <label>Start Location
+        <label class="select-field">Start Location
           <select id="startLocation" required>
             <option value="LG, Altona to As- Directed">LG, Altona to As- Directed</option>
             <option value="Allied Express, Broadmeadows As-Directed">Allied Express, Broadmeadows As-Directed</option>
           </select>
         </label>
         <label>Route<input id="route" type="text" placeholder="As-Directed" required /></label>
-        <label>Status
+        <label class="select-field">Status
           <select id="rosterStatus" required>
             <option value="Scheduled">Scheduled</option>
             <option value="Training">Training</option>
@@ -154,7 +154,7 @@
         <label>Search
           <input id="rosterSearch" type="text" placeholder="Driver, truck, route, time..." />
         </label>
-        <label>Status
+        <label class="select-field">Status
           <select id="rosterFilterStatus">
             <option value="">All</option>
             <option value="Scheduled">Scheduled</option>
