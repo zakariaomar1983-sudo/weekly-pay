@@ -668,6 +668,42 @@ textarea {
   background: #fff;
 }
 
+/* Select wrapper should anchor any badges/errors */
+.select-field {
+  position: relative;
+}
+
+/* Native select */
+.select-field select {
+  width: 100%;
+  min-height: 44px;
+  padding: 10px 12px;
+  font-size: 36px;
+  line-height: 1.2;
+  border: 2px solid #2d7a63;
+  border-radius: 14px;
+  background: #fff;
+  color: #0b1f2a;
+  box-sizing: border-box;
+  appearance: none;
+}
+
+/* Keep focus style explicit */
+.select-field select:focus {
+  outline: none;
+  border-color: #1f6f59;
+  box-shadow: 0 0 0 2px rgba(31, 111, 89, 0.15);
+}
+
+/* Validation marker placement (fixes random red dot in field body) */
+.select-field .error-dot,
+.select-field .error-indicator {
+  position: absolute;
+  right: 10px;
+  top: 10px;
+  transform: none;
+}
+
 .full {
   grid-column: 1 / -1;
 }
