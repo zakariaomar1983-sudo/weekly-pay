@@ -1723,6 +1723,7 @@ function getAssignedTruckNumbersForDate(dateKey, excludeId = "") {
   return new Set(
     state.roster
       .filter((row) => row.shiftDate === dateKey && row.id !== excludeId)
+      .filter((row) => !isWeekViewExcludedDriverName(row?.driverName))
       .map((row) => String(row.truckNumber || "").trim())
       .filter(Boolean)
   );
@@ -2895,6 +2896,7 @@ document.getElementById("rosterForm").addEventListener("submit", (e) => {
 
     targetDates.forEach((shiftDate) => {
       const truckTakenByOther = state.roster.some((row) => {
+        if (isWeekViewExcludedDriverName(row?.driverName)) return false;
         if (row.shiftDate !== shiftDate) return false;
         if (row.truckNumber !== basePayload.truckNumber) return false;
         return !replacementKeys.has(`${row.driverName}__${row.shiftDate}`);

@@ -246,7 +246,7 @@
   <script src="./supabase-client.js?v=20260413g"></script>
   <script src="./seed-data.js?v=20260601a"></script>
   <script src="./auth.js?v=20260513a"></script>
-  <script src="./roster.js?v=20260601e"></script>
+  <script src="./roster.js?v=20260601f"></script>
   <script>
     (function rosterQuickAddRecovery() {
       const DRIVERS_KEY = "transport_crm_drivers";
@@ -1671,6 +1671,7 @@
             const taken = new Set(
               allRows
                 .filter((row) => row.id !== editId)
+                .filter((row) => !isWeekViewExcludedDriverName(row.driverName))
                 .filter((row) => !replacementKeys.has(`${row.driverName || ""}__${row.shiftDate || ""}`))
                 .map((row) => `${row.truckNumber || ""}__${row.shiftDate || ""}`)
             );
