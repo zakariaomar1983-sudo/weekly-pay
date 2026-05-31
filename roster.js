@@ -716,6 +716,7 @@ function normalizeRosterRow(item) {
   const normalizedTruckNumber = normalizeTruckNumberKey(item?.truckNumber || "");
   return normalizeRosterPayload({
     ...item,
+    id: String(item?.id || "").trim() || uid(),
     route: unpackedRoute.route || String(item?.route || "").trim(),
     startLocation: item?.startLocation || unpackedRoute.startLocation || "",
     driverName,
@@ -844,7 +845,7 @@ function fromDbRoster(row) {
   const unpackedRoute = unpackRouteValue(row.route || "");
   const normalizedTruckNumber = normalizeTruckNumberKey(row.truck_number || "");
   return {
-    id: row.id,
+    id: String(row.id || "").trim() || uid(),
     driverName: row.driver_name || "",
     truckNumber: (isAllowedTruckNumber(normalizedTruckNumber) ? normalizedTruckNumber : ""),
     nightRun: runType === "night run" || runType === "night run +",
@@ -2888,11 +2889,17 @@ document.getElementById("rosterForm").addEventListener("submit", (e) => {
       return;
     }
     const targetDates = batchDates.length ? batchDates : [basePayload.shiftDate];
+    const replacementKeys = new Set(targetDates.map((shiftDate) => `${basePayload.driverName}__${shiftDate}`));
     const createdRows = [];
     const skippedDates = [];
 
     targetDates.forEach((shiftDate) => {
-      if (basePayload.truckNumber && !isTruckAvailableForDate(basePayload.truckNumber, shiftDate)) {
+      const truckTakenByOther = state.roster.some((row) => {
+        if (row.shiftDate !== shiftDate) return false;
+        if (row.truckNumber !== basePayload.truckNumber) return false;
+        return !replacementKeys.has(`${row.driverName}__${row.shiftDate}`);
+      });
+      if (basePayload.truckNumber && truckTakenByOther) {
         skippedDates.push(shiftDate);
         return;
       }

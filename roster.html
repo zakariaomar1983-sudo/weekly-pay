@@ -246,7 +246,7 @@
   <script src="./supabase-client.js?v=20260413g"></script>
   <script src="./seed-data.js?v=20260601a"></script>
   <script src="./auth.js?v=20260513a"></script>
-  <script src="./roster.js?v=20260601d"></script>
+  <script src="./roster.js?v=20260601e"></script>
   <script>
     (function rosterQuickAddRecovery() {
       const DRIVERS_KEY = "transport_crm_drivers";
@@ -681,6 +681,7 @@
             const unpackedRoute = unpackRouteValue(item.route || "");
             return normalizePayload({
               ...item,
+              id: String(item.id || "").trim() || uid(),
               route: unpackedRoute.route || String(item.route || "").trim(),
               startLocation: item.startLocation || unpackedRoute.startLocation || "",
               driverName,
@@ -1632,6 +1633,7 @@
           document.getElementById("rosterForm")?.addEventListener("submit", async (event) => {
             event.preventDefault();
             const editId = document.getElementById("rosterId")?.value || "";
+            const isEditing = Boolean(editId);
             const statusValue = String(document.getElementById("rosterStatus")?.value || "Scheduled");
             const leaveStartValue = String(document.getElementById("leaveStartDate")?.value || "").trim();
             const returnValue = String(document.getElementById("returnDate")?.value || "").trim();
@@ -1664,10 +1666,16 @@
             const allRows = readRoster();
             const targetDates = payload.status === "Leave"
               ? getDateRangeKeys(leaveStartValue, returnValue)
-              : (getBatchDates(payload.shiftDate).length ? getBatchDates(payload.shiftDate) : [payload.shiftDate]);
-            const taken = new Set(allRows.filter((row) => row.id !== editId).map((row) => `${row.truckNumber || ""}__${row.shiftDate || ""}`));
-            const nextRows = editId
-              ? allRows.filter((row) => row.id !== editId && !(row.driverName === payload.driverName && row.shiftDate === payload.shiftDate))
+              : (!isEditing && getBatchDates(payload.shiftDate).length ? getBatchDates(payload.shiftDate) : [payload.shiftDate]);
+            const replacementKeys = new Set(targetDates.map((shiftDate) => `${payload.driverName}__${shiftDate}`));
+            const taken = new Set(
+              allRows
+                .filter((row) => row.id !== editId)
+                .filter((row) => !replacementKeys.has(`${row.driverName || ""}__${row.shiftDate || ""}`))
+                .map((row) => `${row.truckNumber || ""}__${row.shiftDate || ""}`)
+            );
+            const nextRows = isEditing
+              ? allRows.filter((row) => row.id !== editId && !replacementKeys.has(`${row.driverName || ""}__${row.shiftDate || ""}`))
               : allRows.filter((row) => !targetDates.some((shiftDate) => row.driverName === payload.driverName && row.shiftDate === shiftDate));
             const created = [];
 
