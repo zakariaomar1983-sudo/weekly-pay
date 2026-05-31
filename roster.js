@@ -92,9 +92,13 @@ const LEGACY_DRIVER_NAME_ALIASES = new Map([
   [normalizeDriverNameKey("Khalid Aden"), "Suhen Omar"],
   [normalizeDriverNameKey("Mohamed Siyad"), "Muhammed A H Siyad"],
   [normalizeDriverNameKey("Mohammed Siyad"), "Muhammed A H Siyad"],
-  [normalizeDriverNameKey("Muhamed Siyad"), "Muhammed A H Siyad"]
+  [normalizeDriverNameKey("Muhamed Siyad"), "Muhammed A H Siyad"],
+  [normalizeDriverNameKey("Soleh SungKkar"), "Soleh Sungkar"]
 ]);
 const REQUIRED_DRIVER_NAMES = ["Soleh Sungkar"];
+const WHATSAPP_DISPATCH_EXCLUDED_DRIVER_NAMES = new Set([
+  normalizeDriverNameKey("Suhen Omar")
+]);
 const ROSTER_EXCLUDED_DRIVER_NAMES = new Set([
   normalizeDriverNameKey("Muhammed A H Siyad")
 ]);
@@ -2254,7 +2258,8 @@ function drawWhatsAppDispatch() {
   const driverNames = [...new Set([
     ...getActiveDrivers().map((driver) => String(driver.name || "").trim()).filter(Boolean),
     ...weekRows.map((row) => String(row.driverName || "").trim()).filter(Boolean)
-  ])];
+  ])]
+    .filter((name) => !WHATSAPP_DISPATCH_EXCLUDED_DRIVER_NAMES.has(normalizeDriverNameKey(name)));
 
   if (!driverNames.length) {
     setMarkupIfChanged(container, "");
@@ -2317,7 +2322,8 @@ function buildAllDriversWeekSummary() {
   const driverNames = [...new Set([
     ...getActiveDrivers().map((driver) => String(driver.name || "").trim()).filter(Boolean),
     ...weekRows.map((row) => String(row.driverName || "").trim()).filter(Boolean)
-  ])];
+  ])]
+    .filter((name) => !WHATSAPP_DISPATCH_EXCLUDED_DRIVER_NAMES.has(normalizeDriverNameKey(name)));
   const messages = driverNames.map((driverName) => buildWeeklyDriverMessage(driverName, weekKeys, weekRows));
 
   return [
