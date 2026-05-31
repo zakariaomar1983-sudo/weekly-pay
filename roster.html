@@ -246,7 +246,7 @@
   <script src="./supabase-client.js?v=20260413g"></script>
   <script src="./seed-data.js?v=20260601a"></script>
   <script src="./auth.js?v=20260513a"></script>
-  <script src="./roster.js?v=20260601b"></script>
+  <script src="./roster.js?v=20260601c"></script>
   <script>
     (function rosterQuickAddRecovery() {
       const DRIVERS_KEY = "transport_crm_drivers";
@@ -981,8 +981,13 @@
         ].join("\n");
       }
 
+      function isDispatchExcludedDriverName(name) {
+        return String(name || "").trim().toLowerCase() === "suhen omar";
+      }
+
       function buildAllDriversWeekSummary(weekKey, weekKeys, mergedRows) {
-        const driverNames = [...new Set(activePairs().map((item) => item.name).concat(mergedRows.map((item) => item.driverName)).filter(Boolean))];
+        const driverNames = [...new Set(activePairs().map((item) => item.name).concat(mergedRows.map((item) => item.driverName)).filter(Boolean))]
+          .filter((name) => !isDispatchExcludedDriverName(name));
         return [
           `Onpoint Express Week View ${weekKey}`,
           "",
@@ -993,7 +998,8 @@
       function renderDispatchCards(weekKey, weekKeys, mergedRows) {
         const container = document.getElementById("rosterWhatsAppDispatch");
         if (!container) return;
-        const driverNames = [...new Set(activePairs().map((item) => item.name).concat(mergedRows.map((item) => item.driverName)).filter(Boolean))];
+        const driverNames = [...new Set(activePairs().map((item) => item.name).concat(mergedRows.map((item) => item.driverName)).filter(Boolean))]
+          .filter((name) => !isDispatchExcludedDriverName(name));
         if (!driverNames.length) {
           container.innerHTML = "";
           setDispatchStatus("No drivers are available for this week yet.");
