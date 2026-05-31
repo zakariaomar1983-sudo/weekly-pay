@@ -74,8 +74,10 @@ const FALLBACK_TRUCKS = [
   { id: "fallback-truck-7", truckNumber: "620", status: "Available" },
   { id: "fallback-truck-8", truckNumber: "841", status: "Available" }
 ];
+const FIXED_TRUCK_NUMBERS = ["853", "881", "840", "620", "841", "376", "855", "672"];
+const FIXED_TRUCK_NUMBER_SET = new Set(FIXED_TRUCK_NUMBERS.map((value) => String(value || "").trim().toUpperCase()));
 const EXCLUDED_TRUCK_NUMBERS = new Set(["330"]);
-const REQUIRED_ROSTER_TRUCK_NUMBERS = ["376"];
+const REQUIRED_ROSTER_TRUCK_NUMBERS = [...FIXED_TRUCK_NUMBERS];
 const PRIMARY_TRUCK_BY_DRIVER = new Map([
   ["Abdirizak Ahmed", "853"],
   ["Imran Abdella", "881"],
@@ -582,11 +584,57 @@ function hideTemplateLine(driverName, shiftDate) {
 }
 
 function normalizeTruckNumberKey(value) {
-  return String(value || "").trim().toUpperCase();
+  const normalized = String(value || "").trim().toUpperCase();
+  if (normalized === "330") return "376";
+  return normalized;
 }
 
 function isExcludedTruckNumber(value) {
   return EXCLUDED_TRUCK_NUMBERS.has(normalizeTruckNumberKey(value));
+}
+
+function isAllowedTruckNumber(value) {
+  return FIXED_TRUCK_NUMBER_SET.has(normalizeTruckNumberKey(value));
+}
+
+function normalizeTruckRecord(item = {}, fallbackId = "") {
+  const truckNumber = normalizeTruckNumberKey(item?.truckNumber ?? item?.truck_number);
+  return {
+    id: String(item?.id || fallbackId || uid()).trim(),
+    truckNumber,
+    registration: String(item?.registration || "").trim(),
+    model: String(item?.model || "").trim(),
+    capacity: Number(item?.capacity || 0),
+    serviceDueDate: String(item?.serviceDueDate || item?.service_due_date || "").trim(),
+    regoExpiryDate: String(item?.regoExpiryDate || item?.rego_expiry_date || "").trim(),
+    status: String(item?.status || "Available").trim() || "Available",
+    notes: String(item?.notes || "").trim()
+  };
+}
+
+function fallbackTruckForNumber(number) {
+  const normalizedNumber = normalizeTruckNumberKey(number);
+  const match = FALLBACK_TRUCKS.find((item) => normalizeTruckNumberKey(item?.truckNumber) === normalizedNumber);
+  return normalizeTruckRecord(match || { truckNumber: normalizedNumber, status: "Available" }, `fallback-fixed-truck-${normalizedNumber.toLowerCase()}`);
+}
+
+function restrictTrucksToFixedFleet(rows) {
+  const mapByTruckNumber = new Map();
+  (Array.isArray(rows) ? rows : []).forEach((item, index) => {
+    const normalized = normalizeTruckRecord(item, `legacy-truck-${index}`);
+    const number = normalizeTruckNumberKey(normalized.truckNumber);
+    if (!number || isExcludedTruckNumber(number) || !isAllowedTruckNumber(number)) return;
+    mapByTruckNumber.set(number, { ...normalized, truckNumber: number });
+  });
+
+  REQUIRED_ROSTER_TRUCK_NUMBERS.forEach((required) => {
+    const number = normalizeTruckNumberKey(required);
+    if (!number || mapByTruckNumber.has(number)) return;
+    mapByTruckNumber.set(number, fallbackTruckForNumber(number));
+  });
+
+  return Array.from(mapByTruckNumber.values())
+    .sort((a, b) => String(a.truckNumber || "").localeCompare(String(b.truckNumber || ""), undefined, { numeric: true, sensitivity: "base" }));
 }
 
 function isAutoTemplateBlockedDriver(driverName) {
@@ -654,13 +702,13 @@ function normalizeRosterRow(item) {
   const configuredTruck = getConfiguredPrimaryTruckForDriver(driverName);
   const away = isAwayStatus(item?.status);
   const unpackedRoute = unpackRouteValue(item?.route || "");
-  const normalizedTruckNumber = String(item?.truckNumber || "").trim();
+  const normalizedTruckNumber = normalizeTruckNumberKey(item?.truckNumber || "");
   return normalizeRosterPayload({
     ...item,
     route: unpackedRoute.route || String(item?.route || "").trim(),
     startLocation: item?.startLocation || unpackedRoute.startLocation || "",
     driverName,
-    truckNumber: isExcludedTruckNumber(normalizedTruckNumber)
+    truckNumber: (isExcludedTruckNumber(normalizedTruckNumber) || !isAllowedTruckNumber(normalizedTruckNumber))
       ? ""
       : (aliasChanged && !away ? (configuredTruck || normalizedTruckNumber) : normalizedTruckNumber)
   });
@@ -783,10 +831,11 @@ function toDbRoster(item) {
 function fromDbRoster(row) {
   const runType = String(row.run_type || "").trim().toLowerCase();
   const unpackedRoute = unpackRouteValue(row.route || "");
+  const normalizedTruckNumber = normalizeTruckNumberKey(row.truck_number || "");
   return {
     id: row.id,
     driverName: row.driver_name || "",
-    truckNumber: row.truck_number || "",
+    truckNumber: (isAllowedTruckNumber(normalizedTruckNumber) ? normalizedTruckNumber : ""),
     nightRun: runType === "night run" || runType === "night run +",
     shiftDate: row.shift_date || "",
     shiftTime: row.shift_time || "",
@@ -812,16 +861,12 @@ function fromDbDriver(row) {
 }
 
 function fromDbTruck(row) {
+  const normalized = normalizeTruckRecord(row, row?.id || "");
+  if (!isAllowedTruckNumber(normalized.truckNumber) || isExcludedTruckNumber(normalized.truckNumber)) {
+    return null;
+  }
   return {
-    id: row.id,
-    truckNumber: row.truck_number || "",
-    registration: row.registration || "",
-    model: row.model || "",
-    capacity: Number(row.capacity || 0),
-    serviceDueDate: row.service_due_date || "",
-    regoExpiryDate: row.rego_expiry_date || "",
-    status: row.status || "",
-    notes: row.notes || ""
+    ...normalized
   };
 }
 
@@ -1057,7 +1102,8 @@ async function hydrateRosterReferencesFromSupabase() {
         localStorage.setItem(TRUCKS_KEY, JSON.stringify(localTrucks));
       }
     } else {
-      localStorage.setItem(TRUCKS_KEY, JSON.stringify(trucksRes.data.map(fromDbTruck)));
+      const normalizedTrucks = restrictTrucksToFixedFleet(trucksRes.data.map(fromDbTruck).filter(Boolean));
+      localStorage.setItem(TRUCKS_KEY, JSON.stringify(normalizedTrucks));
     }
   } else if (trucksRes.error) {
     console.error("Supabase load failed for roster trucks:", trucksRes.error.message);
@@ -1498,8 +1544,9 @@ function takeDriverOffSelectedWeek(driverName, { removeFromRosterList = false } 
 function getActiveTrucks() {
   const rows = readArray(TRUCKS_KEY);
   const source = rows.length ? rows : FALLBACK_TRUCKS;
-  return source
+  return restrictTrucksToFixedFleet(source)
     .filter((item) => !isExcludedTruckNumber(item?.truckNumber))
+    .filter((item) => isAllowedTruckNumber(item?.truckNumber))
     .filter((item) => String(item.status || "").toLowerCase() !== "under repair")
     .sort((a, b) => String(a.truckNumber || "").localeCompare(String(b.truckNumber || "")));
 }
@@ -1523,26 +1570,8 @@ function ensureRosterReferenceFallbacks() {
 function ensureRequiredTrucksInRosterStore() {
   const currentTrucks = readArray(TRUCKS_KEY);
   const source = currentTrucks.length ? currentTrucks : FALLBACK_TRUCKS;
-  const existingNumbers = new Set(
-    source
-      .map((item) => normalizeTruckNumberKey(item?.truckNumber))
-      .filter(Boolean)
-  );
-  let changed = false;
-  const next = [...source];
-
-  REQUIRED_ROSTER_TRUCK_NUMBERS.forEach((truckNumber) => {
-    const number = normalizeTruckNumberKey(truckNumber);
-    if (!number || isExcludedTruckNumber(number) || existingNumbers.has(number)) return;
-    next.push({
-      id: `required-truck-${number.toLowerCase()}`,
-      truckNumber: number,
-      status: "Available"
-    });
-    changed = true;
-  });
-
-  if (changed || !currentTrucks.length) {
+  const next = restrictTrucksToFixedFleet(source);
+  if (JSON.stringify(next) !== JSON.stringify(currentTrucks)) {
     localStorage.setItem(TRUCKS_KEY, JSON.stringify(next));
   }
 }
@@ -1550,7 +1579,15 @@ function ensureRequiredTrucksInRosterStore() {
 function purgeExcludedTrucksFromRoster() {
   let changed = false;
   state.roster = state.roster.map((row) => {
-    if (!isExcludedTruckNumber(row?.truckNumber)) return row;
+    const normalizedTruckNumber = normalizeTruckNumberKey(row?.truckNumber || "");
+    if (normalizedTruckNumber && !isExcludedTruckNumber(normalizedTruckNumber) && isAllowedTruckNumber(normalizedTruckNumber)) {
+      if (normalizedTruckNumber === String(row?.truckNumber || "").trim()) return row;
+      changed = true;
+      return {
+        ...row,
+        truckNumber: normalizedTruckNumber
+      };
+    }
     changed = true;
     return {
       ...row,
@@ -1565,8 +1602,10 @@ function purgeExcludedTrucksFromRoster() {
 function purgeExcludedTrucksFromTruckStore() {
   const currentTrucks = readArray(TRUCKS_KEY);
   if (!Array.isArray(currentTrucks) || !currentTrucks.length) return;
-  const filteredTrucks = currentTrucks.filter((item) => !isExcludedTruckNumber(item?.truckNumber));
-  if (filteredTrucks.length === currentTrucks.length) return;
+  const filteredTrucks = restrictTrucksToFixedFleet(currentTrucks)
+    .filter((item) => !isExcludedTruckNumber(item?.truckNumber))
+    .filter((item) => isAllowedTruckNumber(item?.truckNumber));
+  if (JSON.stringify(filteredTrucks) === JSON.stringify(currentTrucks)) return;
   localStorage.setItem(TRUCKS_KEY, JSON.stringify(filteredTrucks));
 }
 
@@ -1687,9 +1726,10 @@ function setSelectOptions(selectId, values, placeholder, currentValue = "") {
   if (!select) return;
 
   const uniqueValues = [...new Set(values.map((value) => String(value || "").trim()).filter(Boolean))];
-  const safeCurrentValue = selectId === "truckNumber" && isExcludedTruckNumber(currentValue)
+  const normalizedCurrent = normalizeTruckNumberKey(currentValue || "");
+  const safeCurrentValue = selectId === "truckNumber" && (!isAllowedTruckNumber(normalizedCurrent) || isExcludedTruckNumber(normalizedCurrent))
     ? ""
-    : currentValue;
+    : (selectId === "truckNumber" ? normalizedCurrent : currentValue);
   if (safeCurrentValue && !uniqueValues.includes(safeCurrentValue)) {
     uniqueValues.unshift(safeCurrentValue);
   }
@@ -1712,7 +1752,9 @@ function populateRosterPickers(selectedDriver = "", selectedTruck = "", options 
   const matchedTruck = getMatchedTruckForDriver(selectedDriver);
   const placeholder = shiftDate ? "Select available truck" : "Select truck";
 
-  let nextTruck = isExcludedTruckNumber(selectedTruck) ? "" : selectedTruck;
+  let nextTruck = (isExcludedTruckNumber(selectedTruck) || !isAllowedTruckNumber(selectedTruck))
+    ? ""
+    : normalizeTruckNumberKey(selectedTruck);
   if (options.preferMatched) {
     nextTruck = availableTruckNumbers.includes(matchedTruck) ? matchedTruck : (availableTruckNumbers[0] || "");
   } else if (!nextTruck || !availableTruckNumbers.includes(nextTruck)) {
@@ -1720,7 +1762,9 @@ function populateRosterPickers(selectedDriver = "", selectedTruck = "", options 
   }
 
   if (options.preserveSelectedTruck && selectedTruck) {
-    nextTruck = isExcludedTruckNumber(selectedTruck) ? "" : selectedTruck;
+    nextTruck = (isExcludedTruckNumber(selectedTruck) || !isAllowedTruckNumber(selectedTruck))
+      ? ""
+      : normalizeTruckNumberKey(selectedTruck);
   }
 
   setSelectOptions("truckNumber", availableTruckNumbers, placeholder, nextTruck);
@@ -2767,7 +2811,7 @@ document.getElementById("rosterForm").addEventListener("submit", (e) => {
   const id = document.getElementById("rosterId").value;
   const basePayload = normalizeRosterPayload({
     driverName: document.getElementById("driverName").value.trim(),
-    truckNumber: document.getElementById("truckNumber").value.trim(),
+    truckNumber: normalizeTruckNumberKey(document.getElementById("truckNumber").value.trim()),
     nightRun: document.getElementById("rosterNightRun").checked,
     shiftDate: statusValue === "Leave" ? leaveStartDateValue : document.getElementById("shiftDate").value,
     shiftTime: document.getElementById("shiftTime").value.trim(),
@@ -2791,6 +2835,10 @@ document.getElementById("rosterForm").addEventListener("submit", (e) => {
   }
   if (!isAwayStatus(basePayload.status) && (!basePayload.truckNumber || !basePayload.shiftTime || !basePayload.startLocation || !basePayload.route)) {
     alert("Driver, truck, time, depot, and route are required for a real shift.");
+    return;
+  }
+  if (!isAwayStatus(basePayload.status) && !isAllowedTruckNumber(basePayload.truckNumber)) {
+    alert(`Only these trucks are allowed: ${FIXED_TRUCK_NUMBERS.join(", ")}.`);
     return;
   }
 
