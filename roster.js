@@ -96,6 +96,9 @@ const LEGACY_DRIVER_NAME_ALIASES = new Map([
   [normalizeDriverNameKey("Soleh SungKkar"), "Soleh Sungkar"]
 ]);
 const REQUIRED_DRIVER_NAMES = ["Soleh Sungkar"];
+const WEEK_VIEW_EXCLUDED_DRIVER_NAMES = new Set([
+  normalizeDriverNameKey("Suhen Omar")
+]);
 const WHATSAPP_DISPATCH_EXCLUDED_DRIVER_NAMES = new Set([
   normalizeDriverNameKey("Suhen Omar")
 ]);
@@ -551,6 +554,10 @@ function normalizeDriverNameKey(value) {
 function canonicalDriverName(value) {
   const trimmed = String(value || "").trim().replace(/\s+/g, " ");
   return LEGACY_DRIVER_NAME_ALIASES.get(normalizeDriverNameKey(trimmed)) || trimmed;
+}
+
+function isWeekViewExcludedDriverName(driverName) {
+  return WEEK_VIEW_EXCLUDED_DRIVER_NAMES.has(normalizeDriverNameKey(driverName));
 }
 
 function templateBlockKey(driverName, shiftDate) {
@@ -1342,7 +1349,9 @@ function getWeekContext() {
   const weekDates = getWeekDates(weekKey);
   const weekKeys = weekDates.map(dateToKey);
   const weekSet = new Set(weekKeys);
-  const actualWeekRows = state.roster.filter((r) => weekSet.has(r.shiftDate));
+  const actualWeekRows = state.roster
+    .filter((r) => weekSet.has(r.shiftDate))
+    .filter((row) => !isWeekViewExcludedDriverName(row?.driverName));
   const weekRows = [...actualWeekRows, ...buildWeekTemplateRows(weekKeys, actualWeekRows)];
 
   return { weekKey, weekDates, weekKeys, weekSet, weekRows, actualWeekRows };
@@ -2383,8 +2392,12 @@ function firstTruckForDriver(rows) {
 
 function buildDriverPlans(weekRows) {
   const activeDrivers = getActiveDrivers();
-  const activeDriverNames = activeDrivers.map((item) => item.name).filter(Boolean);
-  const namesFromRoster = [...new Set(weekRows.map((item) => item.driverName).filter(Boolean))];
+  const activeDriverNames = activeDrivers
+    .map((item) => item.name)
+    .filter(Boolean)
+    .filter((name) => !isWeekViewExcludedDriverName(name));
+  const namesFromRoster = [...new Set(weekRows.map((item) => item.driverName).filter(Boolean))]
+    .filter((name) => !isWeekViewExcludedDriverName(name));
   const combined = [...new Set([...activeDriverNames, ...namesFromRoster])].slice(0, TARGET_DRIVERS);
 
   while (combined.length < TARGET_DRIVERS) {

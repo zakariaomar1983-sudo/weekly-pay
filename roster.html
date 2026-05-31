@@ -246,7 +246,7 @@
   <script src="./supabase-client.js?v=20260413g"></script>
   <script src="./seed-data.js?v=20260601a"></script>
   <script src="./auth.js?v=20260513a"></script>
-  <script src="./roster.js?v=20260601c"></script>
+  <script src="./roster.js?v=20260601d"></script>
   <script>
     (function rosterQuickAddRecovery() {
       const DRIVERS_KEY = "transport_crm_drivers";
@@ -458,6 +458,9 @@
         { name: "Suhen Omar", truck: "620" }
       ];
       const REQUIRED_DRIVER_NAMES = ["Soleh Sungkar"];
+      const WEEK_VIEW_EXCLUDED_DRIVER_NAMES = new Set([
+        normalizeDriverNameKey("Suhen Omar")
+      ]);
       const EXCLUDED_DRIVER_NAMES = new Set([
         normalizeDriverNameKey("Muhammed A H Siyad")
       ]);
@@ -626,6 +629,10 @@
 
       function isAutoTemplateBlockedDriver(driverName) {
         return AUTO_TEMPLATE_BLOCKED_DRIVERS.has(normalizeDriverNameKey(driverName));
+      }
+
+      function isWeekViewExcludedDriverName(driverName) {
+        return WEEK_VIEW_EXCLUDED_DRIVER_NAMES.has(normalizeDriverNameKey(driverName));
       }
 
       function configuredTruckForDriver(driverName) {
@@ -982,7 +989,7 @@
       }
 
       function isDispatchExcludedDriverName(name) {
-        return String(name || "").trim().toLowerCase() === "suhen omar";
+        return isWeekViewExcludedDriverName(name);
       }
 
       function buildAllDriversWeekSummary(weekKey, weekKeys, mergedRows) {
@@ -1404,9 +1411,12 @@
         const weekSet = new Set(weekKeys);
         const query = String(document.getElementById("rosterSearch")?.value || "").trim().toLowerCase();
         const statusFilter = String(document.getElementById("rosterFilterStatus")?.value || "");
-        const actualRows = readRoster().filter((row) => weekSet.has(row.shiftDate));
-        const mergedRows = buildWeekRows(weekKeys, actualRows);
-        const pairs = activePairs();
+        const actualRows = readRoster()
+          .filter((row) => weekSet.has(row.shiftDate))
+          .filter((row) => !isWeekViewExcludedDriverName(row.driverName));
+        const mergedRows = buildWeekRows(weekKeys, actualRows)
+          .filter((row) => !isWeekViewExcludedDriverName(row.driverName));
+        const pairs = activePairs().filter((item) => !isWeekViewExcludedDriverName(item.name));
         weekStart.value = keyOf(monday);
 
         patchKeyedChildren(boardBody, pairs.map((item) => buildFallbackBoardRow(item, mergedRows, weekKeys)), "data-driver-key");
