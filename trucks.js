@@ -37,7 +37,9 @@ const TRUCK_DEFAULTS_BY_NUMBER = new Map([
   ["620", { registration: "1KF3MA", model: "MITSUBISHI FUSO FIGHTER 6.0", capacity: 6, serviceDueDate: "2026-04-30", regoExpiryDate: "2026-09-18", status: "Available", notes: "" }],
   ["841", { registration: "XV90EH", model: "HINO", capacity: 8, serviceDueDate: "2026-07-01", regoExpiryDate: "2026-08-11", status: "Available", notes: "" }]
 ]);
-const REQUIRED_TRUCK_NUMBERS = ["853", "376"];
+const FIXED_TRUCK_NUMBERS = ["853", "881", "840", "620", "841", "376", "855", "672"];
+const FIXED_TRUCK_NUMBER_SET = new Set(FIXED_TRUCK_NUMBERS.map((value) => String(value || "").trim().toUpperCase()));
+const REQUIRED_TRUCK_NUMBERS = [...FIXED_TRUCK_NUMBERS];
 const EXCLUDED_TRUCK_NUMBERS = new Set(["330"]);
 const state = { trucks: readData() };
 let truckAttachmentStore = readTruckAttachmentStore();
@@ -142,9 +144,10 @@ function normalizeSearchValue(value) {
 }
 
 function normalizeTruckRecord(row) {
+  const canonicalTruckNumber = normalizeTruckNumberKey(firstNonEmpty(row?.truckNumber, row?.truck_number));
   return {
     id: row.id,
-    truckNumber: String(row.truckNumber ?? "").trim(),
+    truckNumber: canonicalTruckNumber,
     registration: String(row.registration ?? "").trim(),
     model: String(row.model ?? "").trim(),
     capacity: Number(row.capacity || 0),
@@ -245,11 +248,11 @@ function readData() {
     const repaired = fillMissingTruckDefaults(repairSparseTruckRows(withUuid));
     const withRequired = ensureRequiredTrucks(repaired);
     const withReferenced = ensureReferencedTrucks(withRequired.rows);
-    const withoutExcluded = withReferenced.rows.filter((row) => !isExcludedTruckNumber(row?.truckNumber));
-    if (withRequired.changed || withReferenced.changed || withoutExcluded.length !== withReferenced.rows.length) {
-      localStorage.setItem(KEY, JSON.stringify(withoutExcluded));
+    const fixedFleet = restrictToFixedFleet(withReferenced.rows);
+    if (withRequired.changed || withReferenced.changed || JSON.stringify(fixedFleet) !== JSON.stringify(withReferenced.rows)) {
+      localStorage.setItem(KEY, JSON.stringify(fixedFleet));
     }
-    return withoutExcluded;
+    return fixedFleet;
   } catch {
     return [];
   }
@@ -355,11 +358,47 @@ function readStorageArray(key) {
 }
 
 function normalizeTruckNumberKey(value) {
-  return String(value || "").trim().toUpperCase();
+  const normalized = String(value || "").trim().toUpperCase();
+  if (normalized === "330") return "376";
+  return normalized;
 }
 
 function isExcludedTruckNumber(value) {
   return EXCLUDED_TRUCK_NUMBERS.has(normalizeTruckNumberKey(value));
+}
+
+function isAllowedTruckNumber(value) {
+  return FIXED_TRUCK_NUMBER_SET.has(normalizeTruckNumberKey(value));
+}
+
+function restrictToFixedFleet(rows) {
+  const mapByTruckNumber = new Map();
+  (Array.isArray(rows) ? rows : []).forEach((row) => {
+    const normalized = normalizeTruckRecord(row || {});
+    const number = normalizeTruckNumberKey(normalized.truckNumber);
+    if (!number || isExcludedTruckNumber(number) || !isAllowedTruckNumber(number)) return;
+    mapByTruckNumber.set(number, { ...normalized, truckNumber: number });
+  });
+
+  REQUIRED_TRUCK_NUMBERS.forEach((truckNumber) => {
+    const number = normalizeTruckNumberKey(truckNumber);
+    if (!number || mapByTruckNumber.has(number)) return;
+    const defaults = TRUCK_DEFAULTS_BY_NUMBER.get(number) || {};
+    mapByTruckNumber.set(number, normalizeTruckRecord({
+      id: newId(),
+      truckNumber: number,
+      registration: defaults.registration || "",
+      model: defaults.model || "",
+      capacity: Number(defaults.capacity || 0),
+      serviceDueDate: defaults.serviceDueDate || "",
+      regoExpiryDate: defaults.regoExpiryDate || "",
+      status: defaults.status || "Available",
+      notes: defaults.notes || ""
+    }));
+  });
+
+  return Array.from(mapByTruckNumber.values())
+    .sort((a, b) => String(a.truckNumber || "").localeCompare(String(b.truckNumber || ""), undefined, { numeric: true, sensitivity: "base" }));
 }
 
 function collectReferencedTruckNumbers() {
@@ -371,6 +410,7 @@ function collectReferencedTruckNumbers() {
       if (!number) return;
       if (!/[A-Z0-9]/.test(number)) return;
       if (number === "-" || number === "N/A") return;
+      if (!isAllowedTruckNumber(number)) return;
       numbers.add(number);
     });
   });
@@ -389,6 +429,7 @@ function ensureReferencedTrucks(rows) {
 
   referenced.forEach((number) => {
     if (!number || isExcludedTruckNumber(number) || byTruckNumber.has(number)) return;
+    if (!isAllowedTruckNumber(number)) return;
     const defaults = TRUCK_DEFAULTS_BY_NUMBER.get(number) || {};
     list.push(normalizeTruckRecord({
       id: newId(),
@@ -410,8 +451,10 @@ function ensureReferencedTrucks(rows) {
 function ensureRequiredTrucksInState({ persist = true, syncWhenOnline = false } = {}) {
   const required = ensureRequiredTrucks(fillMissingTruckDefaults(repairSparseTruckRows(state.trucks)));
   const referenced = ensureReferencedTrucks(required.rows);
-  if (!required.changed && !referenced.changed) return false;
-  state.trucks = referenced.rows;
+  const fixedFleet = restrictToFixedFleet(referenced.rows);
+  const changed = required.changed || referenced.changed || JSON.stringify(fixedFleet) !== JSON.stringify(state.trucks);
+  if (!changed) return false;
+  state.trucks = fixedFleet;
   if (persist) {
     localStorage.setItem(KEY, JSON.stringify(state.trucks));
   }
@@ -1024,9 +1067,10 @@ document.getElementById("trucksForm").addEventListener("submit", (e) => {
   if (!auth.can("editTrucks")) return;
 
   const id = document.getElementById("truckDetailsId").value;
+  const canonicalTruckNumber = normalizeTruckNumberKey(document.getElementById("truckDetailsNumber").value.trim());
   const payload = {
     id: id || uid(),
-    truckNumber: document.getElementById("truckDetailsNumber").value.trim(),
+    truckNumber: canonicalTruckNumber,
     registration: document.getElementById("truckRegistration").value.trim(),
     model: document.getElementById("truckModel").value.trim(),
     capacity: Number(document.getElementById("truckCapacity").value),
@@ -1038,6 +1082,10 @@ document.getElementById("trucksForm").addEventListener("submit", (e) => {
 
   if (isExcludedTruckNumber(payload.truckNumber)) {
     updateInfoBar("Truck 330 is excluded and cannot be added.");
+    return;
+  }
+  if (!isAllowedTruckNumber(payload.truckNumber)) {
+    updateInfoBar(`Only these trucks are allowed: ${FIXED_TRUCK_NUMBERS.join(", ")}.`);
     return;
   }
 
