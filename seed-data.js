@@ -19,6 +19,58 @@
       }
     });
 
+    (function migrateTruck330To376() {
+      const patchArray = (key) => {
+        try {
+          const parsed = JSON.parse(localStorage.getItem(key) || "[]");
+          if (!Array.isArray(parsed)) return;
+          const next = parsed.map((row) => {
+            if (!row || typeof row !== "object") return row;
+            const copy = { ...row };
+            if (String(copy.truckNumber || "").trim() === "330") copy.truckNumber = "376";
+            if (String(copy.truck_number || "").trim() === "330") copy.truck_number = "376";
+            return copy;
+          });
+          if (JSON.stringify(next) !== JSON.stringify(parsed)) {
+            localStorage.setItem(key, JSON.stringify(next));
+          }
+        } catch {
+          // ignore
+        }
+      };
+
+      patchArray("transport_crm_trucks");
+      patchArray("transport_crm_roster");
+      patchArray("transport_crm_truck_income");
+      patchArray("transport_crm_spending");
+      patchArray("transport_crm_payslips");
+
+      try {
+        const trucks = JSON.parse(localStorage.getItem("transport_crm_trucks") || "[]");
+        if (!Array.isArray(trucks)) return;
+        const without330 = trucks.filter((row) => String(row?.truckNumber || row?.truck_number || "").trim() !== "330");
+        const has376 = without330.some((row) => String(row?.truckNumber || row?.truck_number || "").trim() === "376");
+        if (!has376) {
+          without330.unshift({
+            id: "required-truck-376",
+            truckNumber: "376",
+            registration: "",
+            model: "",
+            capacity: 0,
+            serviceDueDate: "",
+            regoExpiryDate: "",
+            status: "Available",
+            notes: ""
+          });
+        }
+        if (JSON.stringify(without330) !== JSON.stringify(trucks)) {
+          localStorage.setItem("transport_crm_trucks", JSON.stringify(without330));
+        }
+      } catch {
+        // ignore
+      }
+    })();
+
   } catch (error) {
     console.error("Seed data load failed:", error);
   }
