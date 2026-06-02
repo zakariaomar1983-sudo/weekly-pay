@@ -11,14 +11,15 @@ const TRUCK_ATTACHMENTS_KEY = "transport_crm_truck_attachments";
 const TRUCKS_SYNC_STATUS_KEY = "transport_crm_trucks_sync_status";
 const TRUCKS_TABLE = "trucks";
 const TRUCK_SOURCE_STORAGE_KEYS = [
-  "transport_crm_roster",
-  "transport_crm_truck_income",
-  "transport_crm_spending",
-  "transport_crm_payslips"
+  "transport_crm_roster"
 ];
 const TRUCK_SYNC_RETRY_DELAYS_MS = [2000, 5000, 10000, 30000];
 const TRUCK_ATTACHMENT_LIMIT = 5;
 const TRUCK_ATTACHMENT_MAX_BYTES = 1.5 * 1024 * 1024;
+const AUTO_ADDED_TRUCK_NOTES = new Set([
+  "Auto-added from roster/finance records",
+  "Auto-added from active roster"
+]);
 const trucksSupabaseClient = window.OPXSupabase?.client || null;
 const useSupabase = Boolean(window.OPXSupabase?.isReady && trucksSupabaseClient);
 const REGO_NOTIFY_KEY = "transport_crm_rego_notify_state";
@@ -237,9 +238,10 @@ function readData() {
     const rows = Array.isArray(parsed) ? parsed : [];
     const withUuid = ensureUuidTrucks(rows);
     const repaired = fillMissingTruckDefaults(repairSparseTruckRows(withUuid));
-    const withRequired = ensureRequiredTrucks(repaired);
+    const pruned = pruneAutoAddedTrucks(repaired);
+    const withRequired = ensureRequiredTrucks(pruned.rows);
     const withReferenced = ensureReferencedTrucks(withRequired.rows);
-    if (withRequired.changed || withReferenced.changed) {
+    if (pruned.changed || withRequired.changed || withReferenced.changed) {
       localStorage.setItem(KEY, JSON.stringify(withReferenced.rows));
     }
     return withReferenced.rows;
@@ -256,6 +258,11 @@ function isSparseTruck(item) {
     && !String(item.regoExpiryDate || "").trim()
     && !String(item.status || "").trim()
     && Number(item.capacity || 0) === 0;
+}
+
+function isAutoAddedTruck(item) {
+  if (!item) return false;
+  return AUTO_ADDED_TRUCK_NOTES.has(String(item.notes || "").trim()) && isSparseTruck(item);
 }
 
 function repairSparseTruckRows(rows) {
@@ -356,6 +363,7 @@ function collectReferencedTruckNumbers() {
   TRUCK_SOURCE_STORAGE_KEYS.forEach((key) => {
     const rows = readStorageArray(key);
     rows.forEach((row) => {
+      if (key === "transport_crm_roster" && String(row?.status || "").trim().toLowerCase() === "leave") return;
       const number = normalizeTruckNumberKey(row?.truckNumber ?? row?.truck_number);
       if (!number) return;
       if (!/[A-Z0-9]/.test(number)) return;
@@ -364,6 +372,21 @@ function collectReferencedTruckNumbers() {
     });
   });
   return numbers;
+}
+
+function pruneAutoAddedTrucks(rows) {
+  const referenced = collectReferencedTruckNumbers();
+  let changed = false;
+  const filtered = (Array.isArray(rows) ? rows : []).filter((row) => {
+    if (!isAutoAddedTruck(row)) return true;
+    const number = normalizeTruckNumberKey(row?.truckNumber);
+    if (TRUCK_DEFAULTS_BY_NUMBER.has(number)) return true;
+    if (REQUIRED_TRUCK_NUMBERS.includes(number)) return true;
+    if (referenced.has(number)) return true;
+    changed = true;
+    return false;
+  });
+  return { rows: filtered, changed };
 }
 
 function ensureReferencedTrucks(rows) {
@@ -388,7 +411,7 @@ function ensureReferencedTrucks(rows) {
       serviceDueDate: defaults.serviceDueDate || "",
       regoExpiryDate: defaults.regoExpiryDate || "",
       status: defaults.status || "Available",
-      notes: defaults.notes || "Auto-added from roster/finance records"
+      notes: defaults.notes || "Auto-added from active roster"
     }));
     changed = true;
   });
@@ -397,9 +420,10 @@ function ensureReferencedTrucks(rows) {
 }
 
 function ensureRequiredTrucksInState({ persist = true, syncWhenOnline = false } = {}) {
-  const required = ensureRequiredTrucks(fillMissingTruckDefaults(repairSparseTruckRows(state.trucks)));
+  const pruned = pruneAutoAddedTrucks(fillMissingTruckDefaults(repairSparseTruckRows(state.trucks)));
+  const required = ensureRequiredTrucks(pruned.rows);
   const referenced = ensureReferencedTrucks(required.rows);
-  if (!required.changed && !referenced.changed) return false;
+  if (!pruned.changed && !required.changed && !referenced.changed) return false;
   state.trucks = referenced.rows;
   if (persist) {
     localStorage.setItem(KEY, JSON.stringify(state.trucks));
@@ -716,7 +740,9 @@ async function hydrateTrucksFromSupabase() {
     return mergeTruckRecords(remote, localById.get(remote.id));
   });
   state.trucks = ensureReferencedTrucks(
-    ensureRequiredTrucks(fillMissingTruckDefaults(repairSparseTruckRows(state.trucks))).rows
+    ensureRequiredTrucks(
+      pruneAutoAddedTrucks(fillMissingTruckDefaults(repairSparseTruckRows(state.trucks))).rows
+    ).rows
   ).rows;
   localStorage.setItem(KEY, JSON.stringify(state.trucks));
   setTrucksSyncStatus("Shared truck data loaded.", "live");
