@@ -90,27 +90,6 @@ function ensureTruckRows(rows) {
     changed = true;
   });
 
-  const referenceKeys = [storageKeys.roster, storageKeys.truckIncome, storageKeys.spending, storageKeys.payslips];
-  referenceKeys.forEach((key) => {
-    readArrayFromStorage(key).forEach((row) => {
-      const truckNumber = normalizeTruckNumber(row?.truckNumber || row?.truck_number);
-      if (!truckNumber || existing.has(truckNumber)) return;
-      if (truckNumber === "-" || truckNumber === "N/A") return;
-      list.push({
-        id: uid(),
-        truckNumber,
-        registration: "",
-        model: "",
-        capacity: 0,
-        serviceDueDate: "",
-        status: "Available",
-        notes: "Auto-added from saved records"
-      });
-      existing.add(truckNumber);
-      changed = true;
-    });
-  });
-
   return { rows: list, changed };
 }
 
