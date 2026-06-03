@@ -10,7 +10,6 @@
   },
   "dependencies": {
     "@supabase/ssr": "^0.10.2",
-    "@supabase/supabase-js": "^2.103.0",
-    "vercel": "^53.4.0"
+    "@supabase/supabase-js": "^2.103.0"
   }
 }
