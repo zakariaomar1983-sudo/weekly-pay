@@ -81,7 +81,7 @@ const PRIMARY_TRUCK_BY_DRIVER = new Map([
   ["Samatar Yusuf", "855"],
   ["Sharmake Hashi", "672"],
   ["Soleh Sungkar", "840"],
-  ["Suhen Omar", "620"]
+  
 ]);
 const LEGACY_DRIVER_NAME_ALIASES = new Map([
   [normalizeDriverNameKey("Khalid Aden"), "Suhen Omar"],
@@ -89,7 +89,7 @@ const LEGACY_DRIVER_NAME_ALIASES = new Map([
   [normalizeDriverNameKey("Mohammed Siyad"), "Muhammed A H Siyad"],
   [normalizeDriverNameKey("Muhamed Siyad"), "Muhammed A H Siyad"]
 ]);
-const REQUIRED_DRIVER_NAMES = ["Soleh Sungkar"];
+
 const ROSTER_EXCLUDED_DRIVER_NAMES = new Set([
   normalizeDriverNameKey("Muhammed A H Siyad")
 ]);
