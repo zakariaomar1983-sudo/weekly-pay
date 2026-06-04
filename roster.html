@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
@@ -39,7 +39,7 @@
       <div class="roster-focus-grid">
         <article class="focus-card">
           <p class="eyebrow">Fleet Goal</p>
-          <h3>7 Drivers | 7 Trucks</h3>
+          <h3>7 Drivers | 8 Trucks</h3>
           <p class="muted">Keep one active truck matched to one active driver as the default weekly setup.</p>
         </article>
         <article class="focus-card">
@@ -79,7 +79,7 @@
         <label>Truck Number
           <select id="truckNumber" class="roster-pick-select" required>
             <option value="">Select truck</option>
-            <option value="330">330</option>
+            <option value="376">376</option>
             <option value="620">620</option>
             <option value="672">672</option>
             <option value="840">840</option>
@@ -1499,7 +1499,7 @@
                 data-template="${row.isTemplate ? "true" : "false"}"
                 draggable="${row.isTemplate ? "false" : "true"}"
                 title="${row.isTemplate ? "Click to load this template into the form." : "Click to edit or drag to move/swap this shift."}">
-                ${!row.isTemplate ? `<button type="button" class="board-chip-delete" data-board-delete="${row.id}" aria-label="Delete shift for ${row.driverName} on ${row.shiftDate}" title="Delete shift">Ã—</button>` : ""}
+                ${!row.isTemplate ? `<button type="button" class="board-chip-delete" data-board-delete="${row.id}" aria-label="Delete shift for ${row.driverName} on ${row.shiftDate}" title="Delete shift">×</button>` : ""}
                 <strong>${isAwayStatus(row.status) ? (isLeaveStatus(row.status) ? "On Leave" : "Absent") : displayTruck(row)}</strong>
                 ${row.isTemplate ? "<span>Template</span>" : ""}
                 ${row.nightRun ? "<span>Night Run +</span>" : ""}

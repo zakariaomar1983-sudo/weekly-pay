@@ -1,4 +1,4 @@
-﻿const auth = window.OPXAuth?.requireAuth("./login.html");
+const auth = window.OPXAuth?.requireAuth("./login.html");
 if (!auth) throw new Error("Authentication required");
 
 if (!auth.can("accessCRM") || !auth.can("viewRoster")) {
@@ -64,7 +64,7 @@ const FALLBACK_DRIVERS = [
   { id: "fallback-driver-7", name: "Samatar Yusuf", status: "Active" }
 ];
 const FALLBACK_TRUCKS = [
-  { id: "fallback-truck-1", truckNumber: "330", status: "Available" },
+  { id: "fallback-truck-1", truckNumber: "376", status: "Available" },
   { id: "fallback-truck-2", truckNumber: "840", status: "Available" },
   { id: "fallback-truck-3", truckNumber: "881", status: "Available" },
   { id: "fallback-truck-4", truckNumber: "855", status: "Available" },

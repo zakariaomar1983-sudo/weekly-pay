@@ -1,4 +1,4 @@
-ï»¿const auth = window.OPXAuth?.requireAuth("./login.html");
+const auth = window.OPXAuth?.requireAuth("./login.html");
 if (!auth) throw new Error("Authentication required");
 
 if (!auth.can("accessCRM") || !auth.can("viewTrucks")) {
@@ -24,7 +24,7 @@ const useSupabase = Boolean(window.OPXSupabase?.isReady && trucksSupabaseClient)
 const REGO_NOTIFY_KEY = "transport_crm_rego_notify_state";
 const REGO_ALERT_WINDOW_DAYS = 30;
 const TRUCK_DEFAULTS_BY_NUMBER = new Map([
-  ["330", { registration: "N/A", model: "TRUCK 330", capacity: 0, serviceDueDate: "", regoExpiryDate: "", status: "Available", notes: "" }],
+  ["376", { registration: "N/A", model: "TRUCK 376", capacity: 0, serviceDueDate: "", regoExpiryDate: "", status: "Available", notes: "" }],
   ["840", { registration: "XW46EK", model: "ISUZU FVL  1400", capacity: 8, serviceDueDate: "2026-04-10", regoExpiryDate: "2026-04-29", status: "Available", notes: "" }],
   ["881", { registration: "XW91GW", model: "MITSO FUSO FIGHTER 10.0", capacity: 12, serviceDueDate: "2026-04-11", regoExpiryDate: "2027-04-11", status: "Available", notes: "" }],
   ["855", { registration: "XW64YE", model: "Hino GD184R-Q3", capacity: 12, serviceDueDate: "2026-04-24", regoExpiryDate: "2026-04-26", status: "Available", notes: "" }],
@@ -33,7 +33,7 @@ const TRUCK_DEFAULTS_BY_NUMBER = new Map([
   ["620", { registration: "1KF3MA", model: "MITSUBISHI FUSO FIGHTER 6.0", capacity: 6, serviceDueDate: "2026-04-30", regoExpiryDate: "2026-09-18", status: "Available", notes: "" }],
   ["841", { registration: "XV90EH", model: "HINO", capacity: 8, serviceDueDate: "2026-07-01", regoExpiryDate: "2026-08-11", status: "Available", notes: "" }]
 ]);
-const REQUIRED_TRUCK_NUMBERS = ["330", "853"];
+const REQUIRED_TRUCK_NUMBERS = ["376", "853"];
 const DELETED_TRUCK_NUMBERS = new Set(["001", "002", "672", "ALL"]);
 const DELETE_SPARSE_ONLY_TRUCK_NUMBERS = new Set();
 const state = { trucks: readData() };
@@ -542,7 +542,7 @@ function drawTruckAttachments(recordId = currentTruckRecordId()) {
     <article class="attachment-card">
       <div>
         <strong>${attachment.name || "Document"}</strong>
-        <span>${formatTruckAttachmentSize(attachment.size)} Â· ${attachment.type || "file"}</span>
+        <span>${formatTruckAttachmentSize(attachment.size)} · ${attachment.type || "file"}</span>
       </div>
       <div class="contact-actions">
         <button type="button" class="contact-link contact-link-email" data-action="download-truck-attachment" data-truck-id="${recordId}" data-attachment-id="${attachment.id}">Open</button>
@@ -871,7 +871,7 @@ function drawRegoAlerts() {
         <article class="stat-card profit-negative">
           <p>Overdue</p>
           <h3>Truck ${entry.truck.truckNumber}</h3>
-          <p>${entry.truck.registration} Â· ${entry.truck.model || "No model"}</p>
+          <p>${entry.truck.registration} · ${entry.truck.model || "No model"}</p>
           <p>Expired ${Math.abs(entry.days)} day(s) ago on ${entry.truck.regoExpiryDate}</p>
         </article>
       `);
@@ -882,7 +882,7 @@ function drawRegoAlerts() {
         <article class="stat-card profit-neutral">
           <p>Due Soon</p>
           <h3>Truck ${entry.truck.truckNumber}</h3>
-          <p>${entry.truck.registration} Â· ${entry.truck.model || "No model"}</p>
+          <p>${entry.truck.registration} · ${entry.truck.model || "No model"}</p>
           <p>Expires in ${entry.days} day(s) on ${entry.truck.regoExpiryDate}</p>
         </article>
       `);
