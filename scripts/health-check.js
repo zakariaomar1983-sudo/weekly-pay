@@ -82,6 +82,10 @@ if (/ensureReferencedTrucks|Auto-added from roster\/finance records/.test(read("
   failures.push("trucks.js still recreates deleted vehicles from historical records.");
 }
 
+if (!/hydrateTruckCountFromSupabase/.test(read("index.js")) || !/from\("trucks"\)\.select\("\*", \{ count: "exact", head: true \}\)/.test(read("index.js"))) {
+  failures.push("index.js does not hydrate the dashboard truck count from shared storage.");
+}
+
 for (const required of ["api/_auth-server.js", "api/auth-session.js"]) {
   if (!fs.existsSync(path.join(root, required))) failures.push(`${required} is missing.`);
 }
