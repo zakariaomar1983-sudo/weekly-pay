@@ -23,7 +23,7 @@ const ROSTER_SYNC_RETRY_DELAYS_MS = [2000, 5000, 10000, 30000];
 const ROSTER_PULL_INTERVAL_MS = 30000;
 const ROSTER_PULL_THROTTLE_MS = 2000;
 const TARGET_DRIVERS = 7;
-const TARGET_TRUCKS = 7;
+const TARGET_TRUCKS = 8;
 const TARGET_DAYS_PER_DRIVER = 5;
 const DAY_NAMES = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
 const DEFAULT_SHIFT_TIME = "06:00 - 14:00";
@@ -64,7 +64,7 @@ const FALLBACK_DRIVERS = [
   { id: "fallback-driver-7", name: "Samatar Yusuf", status: "Active" }
 ];
 const FALLBACK_TRUCKS = [
-  { id: "fallback-truck-1", truckNumber: "330", status: "Available" },
+  { id: "fallback-truck-1", truckNumber: "376", status: "Available" },
   { id: "fallback-truck-2", truckNumber: "840", status: "Available" },
   { id: "fallback-truck-3", truckNumber: "881", status: "Available" },
   { id: "fallback-truck-4", truckNumber: "855", status: "Available" },
@@ -77,11 +77,14 @@ const PRIMARY_TRUCK_BY_DRIVER = new Map([
   ["Abdirizak Ahmed", "853"],
   ["Imran Abdella", "881"],
   ["Muhammed A H Siyad", "620"],
-  ["Ramzi Mohamed", "841"],
+  ["Ramzi Mohamed", "376"],
   ["Samatar Yusuf", "855"],
   ["Sharmake Hashi", "672"],
   ["Soleh Sungkar", "840"],
   ["Suhen Omar", "620"]
+]);
+const LEGACY_PRIMARY_TRUCK_ASSIGNMENTS = new Map([
+  ["Ramzi Mohamed", "841"]
 ]);
 const LEGACY_DRIVER_NAME_ALIASES = new Map([
   [normalizeDriverNameKey("Khalid Aden"), "Suhen Omar"],
@@ -609,22 +612,36 @@ function normalizeRosterRow(item) {
   const aliasChanged = Boolean(driverName && driverName !== originalDriverName);
   const configuredTruck = getConfiguredPrimaryTruckForDriver(driverName);
   const away = isAwayStatus(item?.status);
+  const currentTruck = String(item?.truckNumber || "").trim();
+  const legacyPrimaryTruck = LEGACY_PRIMARY_TRUCK_ASSIGNMENTS.get(driverName) || "";
+  const primaryTruckChanged = Boolean(configuredTruck && legacyPrimaryTruck && currentTruck === legacyPrimaryTruck);
   const unpackedRoute = unpackRouteValue(item?.route || "");
   return normalizeRosterPayload({
     ...item,
     route: unpackedRoute.route || String(item?.route || "").trim(),
     startLocation: item?.startLocation || unpackedRoute.startLocation || "",
     driverName,
-    truckNumber: aliasChanged && !away ? (configuredTruck || String(item?.truckNumber || "").trim()) : String(item?.truckNumber || "").trim()
+    truckNumber: !away && (aliasChanged || primaryTruckChanged) ? (configuredTruck || currentTruck) : currentTruck
   });
 }
 
 function normalizeRosterRows(rows) {
-  return dedupeRosterRows(
+  const normalized = dedupeRosterRows(
     rows
       .filter((item) => item && typeof item === "object")
       .map((item) => normalizeRosterRow(item))
   );
+  const seenIds = new Set();
+  return normalized.map((item) => {
+    const id = String(item.id || "").trim();
+    if (isUuid(id) && !seenIds.has(id)) {
+      seenIds.add(id);
+      return item;
+    }
+    const replacementId = uid();
+    seenIds.add(replacementId);
+    return { ...item, id: replacementId };
+  });
 }
 
 function escapeHtml(value) {
@@ -717,7 +734,25 @@ function scheduleWeekSearchRefresh() {
 }
 
 function uid() {
-  return `${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+  if (typeof globalThis.crypto?.randomUUID === "function") {
+    return globalThis.crypto.randomUUID();
+  }
+  const bytes = new Uint8Array(16);
+  if (typeof globalThis.crypto?.getRandomValues === "function") {
+    globalThis.crypto.getRandomValues(bytes);
+  } else {
+    for (let index = 0; index < bytes.length; index += 1) {
+      bytes[index] = Math.floor(Math.random() * 256);
+    }
+  }
+  bytes[6] = (bytes[6] & 0x0f) | 0x40;
+  bytes[8] = (bytes[8] & 0x3f) | 0x80;
+  const hex = Array.from(bytes, (value) => value.toString(16).padStart(2, "0"));
+  return `${hex.slice(0, 4).join("")}-${hex.slice(4, 6).join("")}-${hex.slice(6, 8).join("")}-${hex.slice(8, 10).join("")}-${hex.slice(10).join("")}`;
+}
+
+function isUuid(value) {
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(String(value || "").trim());
 }
 
 function toDbRoster(item) {

@@ -86,6 +86,14 @@ if (!/hydrateTruckCountFromSupabase/.test(read("index.js")) || !/from\("trucks"\
   failures.push("index.js does not hydrate the dashboard truck count from shared storage.");
 }
 
+if (/function uid\(\) \{\s*return `\$\{Date\.now\(\)\}_/.test(read("roster.js")) || !/crypto\?\.randomUUID/.test(read("roster.js"))) {
+  failures.push("roster.js does not generate database-compatible UUID roster IDs.");
+}
+
+if (!/\["Ramzi Mohamed", "376"\]/.test(read("roster.js")) || !/LEGACY_PRIMARY_TRUCK_ASSIGNMENTS/.test(read("roster.js"))) {
+  failures.push("roster.js does not migrate Ramzi Mohamed from truck 841 to truck 376.");
+}
+
 for (const required of ["api/_auth-server.js", "api/auth-session.js"]) {
   if (!fs.existsSync(path.join(root, required))) failures.push(`${required} is missing.`);
 }
