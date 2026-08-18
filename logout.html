@@ -17,6 +17,7 @@
   <script>
     try {
       localStorage.removeItem("opx_auth_session");
+      localStorage.removeItem("opx_api_session");
     } catch {}
     window.location.replace("./login.html?logout=1&ts=20260414b");
   </script>

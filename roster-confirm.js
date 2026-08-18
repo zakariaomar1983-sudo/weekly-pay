@@ -12,6 +12,7 @@
   const state = {
     driverName: "",
     weekKey: "",
+    token: "",
     acknowledgement: null
   };
 
@@ -70,7 +71,8 @@
         weekKey: state.weekKey,
         status,
         mode,
-        source
+        source,
+        token: state.token
       })
     });
     const payload = await response.json().catch(() => ({}));
@@ -88,7 +90,8 @@
   async function refreshAcknowledgement() {
     const params = new URLSearchParams({
       weekKey: state.weekKey,
-      driverName: state.driverName
+      driverName: state.driverName,
+      token: state.token
     });
     const response = await fetch(`./api/roster-ack?${params.toString()}`);
     const payload = await response.json().catch(() => ({}));
@@ -121,10 +124,11 @@
     const params = new URLSearchParams(window.location.search);
     state.driverName = canonicalDriverName(params.get("driver"));
     state.weekKey = validWeekKey(params.get("week"));
+    state.token = String(params.get("token") || "").trim();
 
-    if (!state.driverName || !state.weekKey) {
+    if (!state.driverName || !state.weekKey || !state.token) {
       document.getElementById("confirmTitle").textContent = "Invalid roster confirmation link";
-      document.getElementById("confirmMeta").textContent = "This confirmation link is missing the driver or week details.";
+      document.getElementById("confirmMeta").textContent = "This confirmation link is missing required security details.";
       document.getElementById("confirmStatusText").textContent = "Unavailable";
       document.getElementById("confirmWeekText").textContent = "Unavailable";
       document.getElementById("confirmRosterBtn").disabled = true;

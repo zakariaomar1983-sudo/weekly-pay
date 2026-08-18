@@ -873,17 +873,20 @@ async function loadWebhookStatus() {
   byId("receiptsWebhookUrl").value = webhookUrl;
   byId("receiptsWhatsappNumber").value = RECEIPTS_WHATSAPP_NUMBER;
   try {
-    const response = await fetch(webhookUrl, { method: "GET" });
+    const response = await window.OPXAuth.authorizedFetch(webhookUrl, { method: "GET" });
     const data = await response.json();
     state.webhookStatus = data;
-    byId("receiptsWebhookState").textContent = data.configured ? "Ready for webhook verification" : "Setup still needed";
+    const webhookReady = Boolean(data.configured && data.accessTokenConfigured && data.accessTokenValid);
+    byId("receiptsWebhookState").textContent = webhookReady
+      ? "WhatsApp receipt connection ready"
+      : (data.configured ? "Meta access token needs renewal" : "Setup still needed");
     const tokenState = data.accessTokenConfigured
       ? (data.accessTokenValid ? "valid" : "invalid")
       : "missing";
     const tokenNote = data.accessTokenConfigured && !data.accessTokenValid && data.accessTokenError
       ? ` Token check: ${data.accessTokenError}`
       : "";
-    byId("receiptsWebhookMeta").textContent = data.configured
+    byId("receiptsWebhookMeta").textContent = webhookReady
       ? `Supabase ${data.supabaseConfigured ? "ready" : "missing"}. Verify token ${data.verifyTokenConfigured ? "configured" : "missing"}. Cloud API token ${tokenState}.${tokenNote}`
       : `Webhook setup still needs attention. Supabase ${data.supabaseConfigured ? "ready" : "missing"}, verify token ${data.verifyTokenConfigured ? "configured" : "missing"}, access token ${tokenState}.${tokenNote}`;
   } catch (error) {

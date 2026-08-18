@@ -853,7 +853,7 @@ async function refreshReportEmailConfigured() {
     return;
   }
   try {
-    const response = await fetch("/api/send-weekly-report-email", { method: "GET" });
+    const response = await window.OPXAuth.authorizedFetch("/api/send-weekly-report-email", { method: "GET" });
     const payload = await response.json().catch(() => ({}));
     reportState.emailConfigured = Boolean(payload?.configured);
     setReportEmailStatus(
@@ -871,7 +871,7 @@ async function refreshReportEmailConfigured() {
 
 async function refreshServerSchedulerStatus() {
   try {
-    const response = await fetch("/api/weekly-report-cron", { method: "GET" });
+    const response = await window.OPXAuth.authorizedFetch("/api/weekly-report-cron", { method: "GET" });
     const payload = await response.json().catch(() => ({}));
     reportState.serverDeliveryActive = Boolean(payload?.serverDeliveryActive);
 
@@ -978,7 +978,7 @@ async function sendPreparedReportEmail(snapshot, mode = "manual") {
   const truckRows = collectTruckReportRows(data, snapshot.financeWeekKey);
   const attachmentHtml = buildReportAttachmentHtml(snapshot, financeRows, driverRows, truckRows);
 
-  const response = await fetch("/api/send-weekly-report-email", {
+  const response = await window.OPXAuth.authorizedFetch("/api/send-weekly-report-email", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({

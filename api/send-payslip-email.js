@@ -1,3 +1,5 @@
+const { requireStaff } = require("./_auth-server");
+
 module.exports = async function handler(req, res) {
   const apiKey = process.env.RESEND_API_KEY;
   const configuredFromEmail = process.env.PAYSLIP_FROM_EMAIL || process.env.RESEND_FROM_EMAIL || "";
@@ -7,15 +9,18 @@ module.exports = async function handler(req, res) {
     : (normalizedFromEmail || "onboarding@resend.dev");
   const replyTo = process.env.PAYSLIP_REPLY_TO || "";
 
+  if (!["GET", "POST"].includes(req.method)) {
+    res.setHeader("Allow", "GET, POST");
+    return res.status(405).json({ error: "Method not allowed." });
+  }
+
+  const staff = requireStaff(req, res, "viewPayslips");
+  if (!staff) return;
+
   if (req.method === "GET") {
     return res.status(200).json({
       configured: Boolean(apiKey && fromEmail)
     });
-  }
-
-  if (req.method !== "POST") {
-    res.setHeader("Allow", "GET, POST");
-    return res.status(405).json({ error: "Method not allowed." });
   }
 
   if (!apiKey || !fromEmail) {

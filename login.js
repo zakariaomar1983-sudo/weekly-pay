@@ -57,6 +57,8 @@ async function startLogin() {
 
   if (params.get("locked") === "1") {
     loginError.textContent = "Session locked after 5 minutes of inactivity. Please log in again.";
+  } else if (params.get("reauth") === "1") {
+    loginError.textContent = "Please log in again to create a secure server session.";
   }
 
   const sessionUser = window.OPXAuth.getSessionUser();
@@ -67,7 +69,12 @@ async function startLogin() {
     if (sessionContinueWrap) sessionContinueWrap.style.display = "";
     if (continueSessionBtn) {
       continueSessionBtn.textContent = `Continue as ${sessionUser.username}`;
-      continueSessionBtn.addEventListener("click", () => {
+      continueSessionBtn.addEventListener("click", async () => {
+        const secureSession = await window.OPXAuth.refreshServerSession(true);
+        if (!secureSession.ok) {
+          loginError.textContent = "Enter your password to renew the secure server session.";
+          return;
+        }
         if (!routeUser(sessionUser)) {
           loginError.textContent = "This account has no page access assigned.";
           window.OPXAuth.logout();
@@ -84,7 +91,7 @@ async function startLogin() {
     firstRunPanel.style.display = "none";
   }
 
-  loginForm.addEventListener("submit", (e) => {
+  loginForm.addEventListener("submit", async (e) => {
     e.preventDefault();
     loginError.textContent = "";
 
@@ -94,6 +101,13 @@ async function startLogin() {
     const result = window.OPXAuth.login(username, password);
     if (!result.ok) {
       loginError.textContent = result.message;
+      return;
+    }
+
+    const secureSession = await window.OPXAuth.startServerSession(username, password);
+    if (!secureSession.ok) {
+      loginError.textContent = secureSession.message;
+      window.OPXAuth.logout();
       return;
     }
 
@@ -133,6 +147,13 @@ async function startLogin() {
     const result = window.OPXAuth.login(adminUsername, adminPassword);
     if (!result.ok) {
       loginError.textContent = result.message;
+      return;
+    }
+
+    const secureSession = await window.OPXAuth.startServerSession(adminUsername, adminPassword);
+    if (!secureSession.ok) {
+      loginError.textContent = secureSession.message;
+      window.OPXAuth.logout();
       return;
     }
 

@@ -1,4 +1,5 @@
 const { getSupabaseServerClient, getSupabaseServerConfig } = require("./_supabase-server");
+const { requireStaff } = require("./_auth-server");
 const { getWeeklyReportEmailConfig, normalizeRecipientList, sendWeeklyReportEmail } = require("./_weekly-report-email");
 const {
   buildReportAttachmentHtml,
@@ -47,23 +48,21 @@ module.exports = async function handler(req, res) {
   }
 
   const requestState = getRequestState(req);
-  const client = getSupabaseServerClient();
-  const status = await buildServerStatus(client);
-
   const wantsExecution = req.method === "POST"
     || req.query?.run === "1"
     || requestState.isCronLike;
 
   if (!wantsExecution) {
-    return res.status(200).json(status);
+    const staff = requireStaff(req, res, "emailReports");
+    if (!staff) return;
+  } else if (!requestState.authorized) {
+    const staff = requireStaff(req, res, "emailReports");
+    if (!staff) return;
   }
 
-  if (!requestState.authorized) {
-    return res.status(401).json({
-      error: "Unauthorized cron request.",
-      configured: status.configured
-    });
-  }
+  const client = getSupabaseServerClient();
+  const status = await buildServerStatus(client);
+  if (!wantsExecution) return res.status(200).json(status);
 
   if (!status.configured) {
     return res.status(500).json({

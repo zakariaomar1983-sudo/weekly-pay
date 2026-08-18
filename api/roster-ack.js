@@ -1,4 +1,9 @@
 const { getSupabaseServerClient, getSupabaseServerConfig } = require("./_supabase-server");
+const {
+  issueRosterConfirmationToken,
+  requireStaff,
+  verifyRosterConfirmationToken
+} = require("./_auth-server");
 
 const ACK_LOG_TYPE = "Roster Ack";
 const STATUS_ORDER = ["pending", "sent", "viewed", "confirmed"];
@@ -86,6 +91,30 @@ module.exports = async function handler(req, res) {
       });
     }
 
+    const weekKey = normalizeWeekKey(req.query?.weekKey);
+    const driverName = canonicalDriverName(req.query?.driverName || "");
+    if (req.query?.link === "1") {
+      const staff = requireStaff(req, res, "viewRoster");
+      if (!staff) return;
+      if (!driverName || !weekKey) {
+        return res.status(400).json({ error: "Driver name and week key are required." });
+      }
+      return res.status(200).json({
+        ok: true,
+        token: issueRosterConfirmationToken(driverName, weekKey)
+      });
+    }
+
+    const confirmationToken = String(req.query?.token || "").trim();
+    if (confirmationToken) {
+      if (!driverName || !weekKey || !verifyRosterConfirmationToken(confirmationToken, driverName, weekKey)) {
+        return res.status(401).json({ error: "Roster confirmation link is invalid or expired." });
+      }
+    } else {
+      const staff = requireStaff(req, res, "viewRoster");
+      if (!staff) return;
+    }
+
     if (!config.configured || !client) {
       return res.status(200).json({
         configured: false,
@@ -93,8 +122,6 @@ module.exports = async function handler(req, res) {
       });
     }
 
-    const weekKey = normalizeWeekKey(req.query?.weekKey);
-    const driverName = canonicalDriverName(req.query?.driverName || "");
     try {
       let query = client
         .from("app_logs")
@@ -144,6 +171,16 @@ module.exports = async function handler(req, res) {
 
   if (!driverName || !weekKey || !status) {
     return res.status(400).json({ error: "Missing driver name, week key, or acknowledgement status." });
+  }
+
+  const confirmationToken = String(body.token || "").trim();
+  if (confirmationToken) {
+    if (!verifyRosterConfirmationToken(confirmationToken, driverName, weekKey)) {
+      return res.status(401).json({ error: "Roster confirmation link is invalid or expired." });
+    }
+  } else {
+    const staff = requireStaff(req, res, "viewRoster");
+    if (!staff) return;
   }
 
   const reference = acknowledgementReference(driverName, weekKey);

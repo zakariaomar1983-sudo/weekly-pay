@@ -473,6 +473,16 @@ function applyAccessControl() {
     if (reportsLink) reportsLink.style.display = "none";
   }
 
+  if (!auth.can("viewDrivers")) {
+    const driversLink = document.getElementById("driversLink");
+    if (driversLink) driversLink.style.display = "none";
+  }
+
+  if (!auth.can("viewTrucks")) {
+    const trucksLink = document.getElementById("trucksLink");
+    if (trucksLink) trucksLink.style.display = "none";
+  }
+
   if (!(auth.can("viewTruckIncome") || auth.can("viewSpending") || auth.can("viewPayslips") || auth.can("viewStats"))) {
     const financeLink = document.getElementById("financeLink");
     if (financeLink) financeLink.style.display = "none";

@@ -1074,7 +1074,7 @@ async function sendPayslipEmail(item) {
 
   try {
     const documentData = buildPayslipDocument(item);
-    const response = await fetch("/api/send-payslip-email", {
+    const response = await window.OPXAuth.authorizedFetch("/api/send-payslip-email", {
       method: "POST",
       headers: {
         "Content-Type": "application/json"
@@ -1106,7 +1106,7 @@ async function sendPayslipEmail(item) {
 
 async function hydratePayslipEmailStatus() {
   try {
-    const response = await fetch("/api/send-payslip-email", { method: "GET" });
+    const response = await window.OPXAuth.authorizedFetch("/api/send-payslip-email", { method: "GET" });
     if (!response.ok) return;
     const payload = await response.json().catch(() => ({}));
     const configured = Boolean(payload?.configured);

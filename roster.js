@@ -97,8 +97,8 @@ const AUTO_TEMPLATE_BLOCKED_DRIVERS = new Set([
   normalizeDriverNameKey("Muhammed A H Siyad"),
   normalizeDriverNameKey("Faaid Warsame")
 ]);
-const supabase = window.OPXSupabase?.client || null;
-const useSupabase = Boolean(window.OPXSupabase?.isReady && supabase);
+const rosterSupabaseClient = window.OPXSupabase?.client || null;
+const useSupabase = Boolean(window.OPXSupabase?.isReady && rosterSupabaseClient);
 const state = {
   roster: readData(),
   syncedRosterIds: [],
@@ -109,6 +109,7 @@ const state = {
 };
 const boardDragState = { shiftId: "" };
 const weekRenderState = { queued: false };
+const rosterConfirmationUrlCache = new Map();
 let rosterSyncTimerId = 0;
 let rosterSearchTimerId = 0;
 let rosterRetryTimerId = 0;
@@ -353,7 +354,7 @@ function updateSharedAcknowledgementCache(entry) {
 async function syncSharedWeekAcknowledgement(driverName, weekKey, status, mode = "set", source = "crm") {
   if (!driverName || !weekKey || !Object.prototype.hasOwnProperty.call(ACK_STATUS_META, status)) return null;
   try {
-    const response = await fetch("./api/roster-ack", {
+    const response = await window.OPXAuth.authorizedFetch("./api/roster-ack", {
       method: "POST",
       headers: {
         "Content-Type": "application/json"
@@ -398,7 +399,7 @@ async function loadSharedWeekAcknowledgements(weekKey, { force = false } = {}) {
   if (!force && state.sharedAcknowledgementWeek === weekKey && state.sharedAcknowledgementsLoaded) return;
   const requestId = ++rosterAcknowledgementRequestId;
   try {
-    const response = await fetch(`./api/roster-ack?weekKey=${encodeURIComponent(weekKey)}`);
+    const response = await window.OPXAuth.authorizedFetch(`./api/roster-ack?weekKey=${encodeURIComponent(weekKey)}`);
     const payload = await response.json().catch(() => ({}));
     if (!response.ok) {
       throw new Error(payload?.error || "Unable to load shared roster acknowledgements.");
@@ -843,9 +844,9 @@ function queueThrottledSharedRosterPull() {
 }
 
 function initRosterRealtimeSync() {
-  if (!useSupabase || typeof supabase?.channel !== "function") return;
+  if (!useSupabase || typeof rosterSupabaseClient?.channel !== "function") return;
   try {
-    rosterRealtimeChannel = supabase
+    rosterRealtimeChannel = rosterSupabaseClient
       .channel("opx-roster-live")
       .on(
         "postgres_changes",
@@ -865,8 +866,8 @@ function stopRosterRealtimeSync() {
   rosterPullIntervalId = 0;
   window.clearTimeout(rosterPullTimerId);
   rosterPullTimerId = 0;
-  if (rosterRealtimeChannel && typeof supabase?.removeChannel === "function") {
-    void supabase.removeChannel(rosterRealtimeChannel);
+  if (rosterRealtimeChannel && typeof rosterSupabaseClient?.removeChannel === "function") {
+    void rosterSupabaseClient.removeChannel(rosterRealtimeChannel);
   }
   rosterRealtimeChannel = null;
 }
@@ -882,7 +883,7 @@ async function syncRosterToSupabase() {
   try {
     if (!rows.length) {
       if (previouslySyncedIds.length) {
-        const wipe = await supabase.from(ROSTER_TABLE).delete().in("id", previouslySyncedIds);
+        const wipe = await rosterSupabaseClient.from(ROSTER_TABLE).delete().in("id", previouslySyncedIds);
         if (wipe.error) {
           console.error("Supabase delete sync failed for roster:", wipe.error.message);
           queueRosterSyncRetry(wipe.error.message);
@@ -895,7 +896,7 @@ async function syncRosterToSupabase() {
       return true;
     }
 
-    const { error } = await supabase.from(ROSTER_TABLE).upsert(rows, { onConflict: "id" });
+    const { error } = await rosterSupabaseClient.from(ROSTER_TABLE).upsert(rows, { onConflict: "id" });
     if (error) {
       console.error("Supabase sync failed for roster:", error.message);
       queueRosterSyncRetry(error.message);
@@ -903,7 +904,7 @@ async function syncRosterToSupabase() {
     }
 
     if (idsToDelete.length) {
-      const cleanup = await supabase.from(ROSTER_TABLE).delete().in("id", idsToDelete);
+      const cleanup = await rosterSupabaseClient.from(ROSTER_TABLE).delete().in("id", idsToDelete);
       if (cleanup.error) {
         console.error("Supabase cleanup failed for roster:", cleanup.error.message);
         queueRosterSyncRetry(cleanup.error.message);
@@ -932,7 +933,7 @@ async function hydrateRosterFromSupabase({ silent = false } = {}) {
   if (!silent) {
     setRosterSyncStatus("Checking shared roster data...", "syncing");
   }
-  const { data, error } = await supabase.from(ROSTER_TABLE).select("*");
+  const { data, error } = await rosterSupabaseClient.from(ROSTER_TABLE).select("*");
   if (error) {
     console.error("Supabase load failed for roster:", error.message);
     if (!silent) {
@@ -971,13 +972,13 @@ async function hydrateRosterReferencesFromSupabase() {
   const localTrucks = readArray(TRUCKS_KEY);
 
   const [driversRes, trucksRes] = await Promise.all([
-    supabase.from(DRIVERS_TABLE).select("*"),
-    supabase.from(TRUCKS_TABLE).select("*")
+    rosterSupabaseClient.from(DRIVERS_TABLE).select("*"),
+    rosterSupabaseClient.from(TRUCKS_TABLE).select("*")
   ]);
 
   if (!driversRes.error && Array.isArray(driversRes.data)) {
     if (!driversRes.data.length && localDrivers.length) {
-      const { error } = await supabase.from(DRIVERS_TABLE).upsert(localDrivers.map(toDbDriver), { onConflict: "id" });
+      const { error } = await rosterSupabaseClient.from(DRIVERS_TABLE).upsert(localDrivers.map(toDbDriver), { onConflict: "id" });
       if (error) {
         console.error("Supabase seed failed for roster drivers:", error.message);
       } else {
@@ -990,7 +991,7 @@ async function hydrateRosterReferencesFromSupabase() {
 
       // Keep freshly-added local drivers visible immediately, then backfill shared store.
       if (JSON.stringify(mergedDrivers) !== JSON.stringify(remoteDrivers)) {
-        const { error } = await supabase.from(DRIVERS_TABLE).upsert(mergedDrivers.map(toDbDriver), { onConflict: "id" });
+        const { error } = await rosterSupabaseClient.from(DRIVERS_TABLE).upsert(mergedDrivers.map(toDbDriver), { onConflict: "id" });
         if (error) {
           console.error("Supabase merge sync failed for roster drivers:", error.message);
         }
@@ -1002,7 +1003,7 @@ async function hydrateRosterReferencesFromSupabase() {
 
   if (!trucksRes.error && Array.isArray(trucksRes.data)) {
     if (!trucksRes.data.length && localTrucks.length) {
-      const { error } = await supabase.from(TRUCKS_TABLE).upsert(localTrucks.map(toDbTruck), { onConflict: "id" });
+      const { error } = await rosterSupabaseClient.from(TRUCKS_TABLE).upsert(localTrucks.map(toDbTruck), { onConflict: "id" });
       if (error) {
         console.error("Supabase seed failed for roster trucks:", error.message);
       } else {
@@ -1951,10 +1952,40 @@ function getContactWeekKeys(item) {
 function buildRosterConfirmationUrl(driverName, weekKey) {
   const name = canonicalDriverName(driverName);
   if (!name || !weekKey) return "";
+  const token = rosterConfirmationUrlCache.get(`${name.toLowerCase()}::${weekKey}`) || "";
+  if (!token) return "";
   const url = new URL("./roster-confirm.html", window.location.href);
   url.searchParams.set("driver", name);
   url.searchParams.set("week", weekKey);
+  url.searchParams.set("token", token);
   return url.toString();
+}
+
+async function loadRosterConfirmationUrl(driverName, weekKey) {
+  const name = canonicalDriverName(driverName);
+  if (!name || !weekKey) return "";
+  const cacheKey = `${name.toLowerCase()}::${weekKey}`;
+  if (rosterConfirmationUrlCache.has(cacheKey)) {
+    return buildRosterConfirmationUrl(name, weekKey);
+  }
+
+  try {
+    const params = new URLSearchParams({
+      link: "1",
+      driverName: name,
+      weekKey
+    });
+    const response = await window.OPXAuth.authorizedFetch(`./api/roster-ack?${params.toString()}`);
+    const payload = await response.json().catch(() => ({}));
+    if (!response.ok || !payload?.token) {
+      throw new Error(payload?.error || "Unable to create a secure roster confirmation link.");
+    }
+    rosterConfirmationUrlCache.set(cacheKey, String(payload.token));
+    return buildRosterConfirmationUrl(name, weekKey);
+  } catch (error) {
+    console.warn("Secure roster confirmation link failed:", error?.message || error);
+    return "";
+  }
 }
 
 function weekKeyFromWeekKeys(weekKeys, fallbackShiftDate = "") {
@@ -2889,6 +2920,16 @@ document.getElementById("openWhatsAppWeekDispatch")?.addEventListener("click", (
   document.getElementById("rosterWhatsAppDispatch")?.scrollIntoView?.({ behavior: "smooth", block: "start" });
 });
 document.getElementById("copyWeekViewSummary")?.addEventListener("click", async () => {
+  const { weekKey, weekRows } = getWeekContext();
+  const driverNames = [...new Set([
+    ...getActiveDrivers().map((driver) => String(driver.name || "").trim()).filter(Boolean),
+    ...weekRows.map((row) => String(row.driverName || "").trim()).filter(Boolean)
+  ])];
+  const confirmationUrls = await Promise.all(driverNames.map((driverName) => loadRosterConfirmationUrl(driverName, weekKey)));
+  if (driverNames.length && confirmationUrls.some((url) => !url)) {
+    setDispatchStatus("Could not create every secure confirmation link. Please log in again and retry.", "error-text");
+    return;
+  }
   const summary = buildAllDriversWeekSummary();
   const message = await copyText(summary, "Full week view copied. You can paste it into WhatsApp or any message.");
   setDispatchStatus(message);
@@ -2914,7 +2955,7 @@ document.getElementById("resetRosterDriversBtn")?.addEventListener("click", () =
   refresh();
 });
 
-document.body.addEventListener("click", (e) => {
+document.body.addEventListener("click", async (e) => {
   const boardDelete = e.target.closest(".board-chip-delete[data-board-delete]");
   if (boardDelete) {
     e.stopPropagation();
@@ -2970,6 +3011,11 @@ document.body.addEventListener("click", (e) => {
     const driverName = button.dataset.driverName || "";
     const { weekKeys, weekRows } = getWeekContext();
     const weekKey = selectedWeekStartKey();
+    const secureConfirmationUrl = await loadRosterConfirmationUrl(driverName, weekKey);
+    if (!secureConfirmationUrl) {
+      setDispatchStatus(`A secure confirmation link could not be created for ${driverName}. Please log in again and retry.`, "error-text");
+      return;
+    }
     const message = buildWeeklyDriverMessage(driverName, weekKeys, weekRows);
     const confirmationUrl = buildRosterConfirmationUrl(driverName, weekKey);
     const contact = getDriverContactByName(driverName);

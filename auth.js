@@ -3,6 +3,7 @@
     roles: "opx_auth_roles",
     users: "opx_auth_users",
     session: "opx_auth_session",
+    apiSession: "opx_api_session",
     audit: "transport_crm_staff_audit"
   };
   const TRUCKS_STORAGE_KEY = "transport_crm_trucks";
@@ -1032,8 +1033,100 @@
     write(STORAGE.session, session);
   }
 
+  function getApiToken() {
+    try {
+      return String(localStorage.getItem(STORAGE.apiSession) || "").trim();
+    } catch {
+      return "";
+    }
+  }
+
+  function setApiToken(token) {
+    const value = String(token || "").trim();
+    if (!value) return false;
+    localStorage.setItem(STORAGE.apiSession, value);
+    return true;
+  }
+
+  function clearApiToken() {
+    try {
+      localStorage.removeItem(STORAGE.apiSession);
+    } catch {
+      // ignore unavailable browser storage
+    }
+  }
+
+  function apiTokenExpiry(token = getApiToken()) {
+    const body = String(token || "").split(".")[0];
+    if (!body) return 0;
+    try {
+      const normalized = body.replaceAll("-", "+").replaceAll("_", "/");
+      const padded = normalized.padEnd(Math.ceil(normalized.length / 4) * 4, "=");
+      const payload = JSON.parse(atob(padded));
+      return Number(payload?.exp || 0) * 1000;
+    } catch {
+      return 0;
+    }
+  }
+
+  async function startServerSession(username, password) {
+    try {
+      const response = await fetch("./api/auth-session", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ username, password })
+      });
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok || !payload?.token) {
+        clearApiToken();
+        return { ok: false, message: payload?.error || "Secure server session could not be started." };
+      }
+      setApiToken(payload.token);
+      return { ok: true };
+    } catch {
+      clearApiToken();
+      return { ok: false, message: "Secure server session could not be started." };
+    }
+  }
+
+  async function refreshServerSession(force = false) {
+    const token = getApiToken();
+    if (!token) return { ok: false, message: "Secure server session is missing." };
+    if (!force && apiTokenExpiry(token) - Date.now() > 90 * 1000) return { ok: true };
+    try {
+      const response = await fetch("./api/auth-session", {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok || !payload?.token) {
+        clearApiToken();
+        return { ok: false, message: payload?.error || "Secure server session expired." };
+      }
+      setApiToken(payload.token);
+      return { ok: true };
+    } catch {
+      return { ok: false, message: "Secure server session could not be refreshed." };
+    }
+  }
+
+  async function authorizedFetch(input, init = {}) {
+    await refreshServerSession(false);
+    const headers = new Headers(init.headers || {});
+    const token = getApiToken();
+    if (token) headers.set("Authorization", `Bearer ${token}`);
+    const response = await fetch(input, { ...init, headers });
+    if (response.status !== 401 || !token) return response;
+
+    const refreshed = await refreshServerSession(true);
+    if (!refreshed.ok) return response;
+    headers.set("Authorization", `Bearer ${getApiToken()}`);
+    return fetch(input, { ...init, headers });
+  }
+
   function clearSession() {
     localStorage.removeItem(STORAGE.session);
+    clearApiToken();
   }
 
   function getIdleRedirectPath() {
@@ -1078,6 +1171,7 @@
 
     lastActivityTouch = now;
     setSession({ ...session, lastActivityAt: new Date(now).toISOString() });
+    void refreshServerSession(false);
     scheduleIdleLock();
     return true;
   }
@@ -1272,6 +1366,13 @@
       if (redirectPath) {
         window.location.href = expired ? getIdleRedirectPath() : redirectPath;
       }
+      return null;
+    }
+
+    if (!getApiToken()) {
+      clearSession();
+      clearIdleTimer();
+      if (redirectPath) window.location.href = `${redirectPath}?reauth=1`;
       return null;
     }
 
@@ -1650,6 +1751,10 @@
     logout,
     triggerLogout,
     requireAuth,
+    startServerSession,
+    refreshServerSession,
+    authorizedFetch,
+    getApiToken,
     getSessionUser,
     getPermissionsForUser,
     canUser,

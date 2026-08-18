@@ -1,17 +1,19 @@
 const { getWeeklyReportEmailConfig, sendWeeklyReportEmail } = require("./_weekly-report-email");
+const { requireStaff } = require("./_auth-server");
 
 module.exports = async function handler(req, res) {
   const config = getWeeklyReportEmailConfig(process.env);
+  if (!["GET", "POST"].includes(req.method)) {
+    res.setHeader("Allow", "GET, POST");
+    return res.status(405).json({ error: "Method not allowed." });
+  }
+  const staff = requireStaff(req, res, "emailReports");
+  if (!staff) return;
 
   if (req.method === "GET") {
     return res.status(200).json({
       configured: config.configured
     });
-  }
-
-  if (req.method !== "POST") {
-    res.setHeader("Allow", "GET, POST");
-    return res.status(405).json({ error: "Method not allowed." });
   }
 
   if (!config.configured) {

@@ -1,4 +1,5 @@
 const { getSupabaseServerClient, getSupabaseServerConfig } = require("./_supabase-server");
+const { requireStaff } = require("./_auth-server");
 const { randomUUID } = require("crypto");
 
 const RECEIPT_LOG_TYPE = "WhatsApp Receipt";
@@ -220,6 +221,8 @@ module.exports = async function handler(req, res) {
   const client = getSupabaseServerClient(process.env);
 
   if (req.method === "GET" && !req.query?.["hub.mode"]) {
+    const staff = requireStaff(req, res, ["viewSpending", "editSpending", "accessControlPanel"]);
+    if (!staff) return;
     const tokenHealth = await validateAccessToken(config);
     return res.status(200).json({
       phoneNumberId: config.phoneNumberId,

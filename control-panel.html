@@ -140,6 +140,49 @@
       </div>
     </section>
 
+    <section class="panel">
+      <div class="panel-head">
+        <h2>Shared Data Connection</h2>
+      </div>
+      <p class="muted">Configure the browser's Supabase connection used for shared CRM data.</p>
+      <div class="form-grid">
+        <label class="full">Supabase URL
+          <input id="supabaseUrlInput" type="url" placeholder="https://project.supabase.co" autocomplete="off" />
+        </label>
+        <label class="full">Supabase Anon Key
+          <input id="supabaseAnonKeyInput" type="password" autocomplete="new-password" />
+        </label>
+        <div class="actions full">
+          <button id="saveSupabaseConfigBtn" class="btn" type="button">Save Connection</button>
+          <button id="testSupabaseBtn" class="btn btn-outline" type="button">Test Connection</button>
+          <button id="clearSupabaseConfigBtn" class="btn btn-muted" type="button">Clear Browser Connection</button>
+        </div>
+      </div>
+      <p id="supabaseConfigStatus" class="muted">Checking browser connection...</p>
+    </section>
+
+    <section class="panel">
+      <div class="panel-head">
+        <h2>Backup &amp; Restore</h2>
+      </div>
+      <p class="muted">Download a recoverable copy of CRM data or restore a previously exported JSON backup.</p>
+      <div class="actions">
+        <button id="downloadBackupBtn" class="btn" type="button">Download Full Backup</button>
+        <button id="downloadCategoryBackupsBtn" class="btn btn-outline" type="button">Download Category Backups</button>
+        <button id="syncSupabaseBtn" class="btn btn-outline" type="button">Sync Browser Data</button>
+        <button id="restoreBackupBtn" class="btn btn-muted" type="button">Choose Backup To Restore</button>
+      </div>
+      <div class="form-grid">
+        <label class="full">Backup JSON File
+          <input id="backupFileInputVisible" type="file" accept=".json,application/json" />
+        </label>
+        <div class="actions full">
+          <button id="importBackupBtn" class="btn btn-outline" type="button">Import Selected Backup</button>
+        </div>
+      </div>
+      <p id="backupStatus" class="muted">Backup tools are ready.</p>
+    </section>
+
   </main>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -171,13 +214,13 @@
       }
     }, true);
   </script>
-  <script src="./auth.js?v=20260513a"></script>
+  <script src="./auth.js?v=20260818a"></script>
   <script>
     if (window.OPXAuth?.healCoreAccess) {
       window.OPXAuth.healCoreAccess();
     }
   </script>
-  <script type="module" src="./control-panel-entry.js?v=20260423a"></script>
+  <script type="module" src="./control-panel-entry.js?v=20260818a"></script>
   <script src="./emergency-fill.js?v=20260413s"></script>
 </body>
 </html>
