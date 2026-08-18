@@ -78,6 +78,10 @@ if (/^\s*const supabase\b/m.test(read("roster.js"))) {
   failures.push("roster.js redeclares the global Supabase binding.");
 }
 
+if (/ensureReferencedTrucks|Auto-added from roster\/finance records/.test(read("trucks.js"))) {
+  failures.push("trucks.js still recreates deleted vehicles from historical records.");
+}
+
 for (const required of ["api/_auth-server.js", "api/auth-session.js"]) {
   if (!fs.existsSync(path.join(root, required))) failures.push(`${required} is missing.`);
 }
