@@ -566,10 +566,12 @@ h2 {
 .activity-list {
   display: grid;
   gap: 0.7rem;
+  min-width: 0;
 }
 
 .activity-item {
   display: block;
+  min-width: 0;
   text-decoration: none;
   color: inherit;
   border: 1px solid var(--line);
@@ -598,6 +600,7 @@ h2 {
   margin: 0;
   font-size: 1rem;
   font-family: "Space Grotesk", "Segoe UI", sans-serif;
+  overflow-wrap: anywhere;
 }
 
 .activity-item-live {
@@ -666,6 +669,8 @@ textarea {
   border-radius: 10px;
   padding: 0.55rem 0.65rem;
   background: #fff;
+  max-width: 100%;
+  box-sizing: border-box;
 }
 
 .full {
