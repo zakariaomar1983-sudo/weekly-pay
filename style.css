@@ -1055,13 +1055,20 @@ tr.row-rego-soon td {
 }
 
 .app-auth {
+  width: 100%;
+  max-width: none;
   min-height: 100vh;
+  min-height: 100dvh;
+  margin: 0;
+  padding: clamp(1rem, 4vw, 3rem);
   display: grid;
   place-items: center;
 }
 
 .auth-panel {
-  width: min(520px, 100%);
+  width: 100%;
+  max-width: 520px;
+  margin: 0;
 }
 
 .role-presets {
