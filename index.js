@@ -9,6 +9,7 @@ if (!auth.can("accessCRM") && !auth.can("accessLogs") && !auth.can("accessContro
 }
 
 const links = [
+  { label: "AI Assistant", href: "./ai.html", show: auth.can("accessAI") },
   { label: "Driver Report Page", href: "./driver-report.html", show: auth.can("accessDriverReports") },
   { label: "Reports Page", href: "./reports.html", show: auth.can("accessCRM") && auth.can("viewReports") },
   { label: "Drivers Page", href: "./drivers.html", show: auth.can("accessCRM") && auth.can("viewDrivers") },

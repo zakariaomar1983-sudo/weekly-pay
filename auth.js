@@ -63,8 +63,9 @@
     { key: "viewStats", label: "View Dashboard Stats" },
     { key: "editLogs", label: "Edit Logs" },
     { key: "backupRestore", label: "Backup and Restore Data" },
-    { key: "adminData", label: "Clear all data" }
-    ,{ key: "accessDriverReports", label: "Access Driver Reports" }
+    { key: "adminData", label: "Clear all data" },
+    { key: "accessDriverReports", label: "Access Driver Reports" },
+    { key: "accessAI", label: "Access CRM AI" }
   ];
 
   const SYSTEM_ROLE_IDS = {
@@ -596,6 +597,7 @@
       "viewStats",
       "editLogs",
       "backupRestore"
+      ,"accessAI"
     ].forEach((key) => {
       managerPerms[key] = true;
     });
@@ -614,6 +616,7 @@
       "emailReports",
       "viewPayslips",
       "viewStats"
+      ,"accessAI"
     ].forEach((key) => {
       viewerPerms[key] = true;
     });
@@ -651,6 +654,7 @@
       "viewPayslips",
       "editPayslips",
       "viewStats"
+      ,"accessAI"
     ].forEach((key) => {
       financePerms[key] = true;
     });
