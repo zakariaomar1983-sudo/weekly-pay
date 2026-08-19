@@ -41,7 +41,19 @@
     if (!client) return;
     const { data, error } = await client.from("driver_reports").select("*").order("report_date", { ascending: false });
     if (error) { byId("reportStatus").textContent = "Shared reports are not connected yet. Local draft mode is active."; return; }
-    sharedSync = true; reports = (data || []).map(fromRow); localStorage.setItem(KEY, JSON.stringify(reports)); render();
+    const remoteReports = (data || []).map(fromRow);
+    if (!remoteReports.length && reports.length) {
+      const { error: seedError } = await client.from("driver_reports").upsert(reports.map(toRow), { onConflict: "id" });
+      if (seedError) {
+        byId("reportStatus").textContent = "Shared reports are connected, but existing drafts could not be migrated yet.";
+        return;
+      }
+      sharedSync = true;
+      byId("reportStatus").textContent = "Shared reports connected. Existing drafts were uploaded.";
+      render();
+      return;
+    }
+    sharedSync = true; reports = remoteReports; localStorage.setItem(KEY, JSON.stringify(reports)); render();
   }
 
   async function syncShared(item) {
