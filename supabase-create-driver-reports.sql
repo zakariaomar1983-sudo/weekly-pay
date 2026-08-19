@@ -15,8 +15,11 @@ create table if not exists public.driver_reports (
   issues text not null default '',
   notes text not null default '',
   status text not null default 'Draft',
+  submitted_at timestamptz,
   updated_at timestamptz not null default timezone('utc', now())
 );
+
+alter table public.driver_reports add column if not exists submitted_at timestamptz;
 
 create index if not exists driver_reports_date_idx on public.driver_reports (report_date desc);
 create index if not exists driver_reports_driver_idx on public.driver_reports (driver_user_id);

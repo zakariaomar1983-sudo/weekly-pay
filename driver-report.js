@@ -18,6 +18,7 @@
   byId("currentUserChip").textContent = `User: ${auth.user.username}`;
   byId("historyTitle").textContent = isReviewer ? "Driver Reports" : "My Reports";
   byId("reportDate").value = today();
+  if (!isReviewer) byId("reportDate").min = today();
 
   function visibleReports() {
     return reports.filter((item) => isReviewer || item.driverUserId === auth.user.id);
@@ -25,7 +26,11 @@
 
   function render() {
     const rows = visibleReports().sort((a, b) => String(b.reportDate).localeCompare(String(a.reportDate)) || String(b.updatedAt).localeCompare(String(a.updatedAt)));
-    byId("reportsTableBody").innerHTML = rows.length ? rows.map((item) => `<tr><td>${escapeHtml(item.reportDate)}</td><td>${escapeHtml(item.truckNumber)}</td><td>${escapeHtml(item.jobClient || "-")}</td><td>${escapeHtml(item.vehicleCondition)}</td><td><span class="status-pill">${escapeHtml(item.status)}</span></td><td>${escapeHtml(new Date(item.updatedAt).toLocaleString())}</td><td><button class="btn btn-outline" type="button" data-action="edit" data-id="${escapeHtml(item.id)}">Edit</button> <button class="btn btn-muted" type="button" data-action="delete" data-id="${escapeHtml(item.id)}">Delete</button></td></tr>`).join("") : "<tr><td colspan='7' class='muted'>No reports submitted yet.</td></tr>";
+    byId("reportsTableBody").innerHTML = rows.length ? rows.map((item) => {
+      const locked = !isReviewer && item.status === "Submitted";
+      const actions = locked ? "<span class='muted'>Locked</span>" : `<button class="btn btn-outline" type="button" data-action="edit" data-id="${escapeHtml(item.id)}">Edit</button> <button class="btn btn-muted" type="button" data-action="delete" data-id="${escapeHtml(item.id)}">Delete</button>`;
+      return `<tr><td>${escapeHtml(item.reportDate)}</td><td>${escapeHtml(item.truckNumber)}</td><td>${escapeHtml(item.jobClient || "-")}</td><td>${escapeHtml(item.vehicleCondition)}</td><td><span class="status-pill">${escapeHtml(item.status)}</span></td><td>${escapeHtml(new Date(item.updatedAt).toLocaleString())}</td><td>${actions}</td></tr>`;
+    }).join("") : "<tr><td colspan='7' class='muted'>No reports submitted yet.</td></tr>";
   }
 
   function toRow(item) {
@@ -33,7 +38,7 @@
   }
 
   function fromRow(row) {
-    return { id: row.id, driverUserId: row.driver_user_id, driverName: row.driver_name, reportDate: row.report_date, truckNumber: row.truck_number, shiftStart: row.shift_start || "", shiftFinish: row.shift_finish || "", jobClient: row.job_client || "", deliveryCount: Number(row.delivery_count || 0), fuelUsed: Number(row.fuel_used || 0), vehicleCondition: row.vehicle_condition || "Good", issues: row.issues || "", notes: row.notes || "", status: row.status || "Draft", updatedAt: row.updated_at || new Date().toISOString() };
+    return { id: row.id, driverUserId: row.driver_user_id, driverName: row.driver_name, reportDate: row.report_date, truckNumber: row.truck_number, shiftStart: row.shift_start || "", shiftFinish: row.shift_finish || "", jobClient: row.job_client || "", deliveryCount: Number(row.delivery_count || 0), fuelUsed: Number(row.fuel_used || 0), vehicleCondition: row.vehicle_condition || "Good", issues: row.issues || "", notes: row.notes || "", status: row.status || "Draft", submittedAt: row.submitted_at || "", updatedAt: row.updated_at || new Date().toISOString() };
   }
 
   async function hydrateSharedReports() {
@@ -64,20 +69,42 @@
   }
 
   function resetForm() {
-    byId("driverReportForm").reset(); byId("reportId").value = ""; byId("reportDate").value = today(); byId("deliveryCount").value = "0"; byId("fuelUsed").value = "0"; byId("vehicleCondition").value = "Good";
+    byId("driverReportForm").reset();
+    byId("reportId").value = "";
+    byId("reportDate").value = today();
+    if (!isReviewer) byId("reportDate").min = today();
+    byId("reportDate").readOnly = false;
+    byId("deliveryCount").value = "0";
+    byId("fuelUsed").value = "0";
+    byId("vehicleCondition").value = "Good";
   }
 
   function save(status) {
     const id = byId("reportId").value;
     const existing = reports.find((item) => item.id === id);
     if (existing && !isReviewer && existing.driverUserId !== auth.user.id) return;
+    if (existing && !isReviewer && existing.status === "Submitted") {
+      byId("reportStatus").textContent = "Submitted reports are locked. Ask the office to make a correction.";
+      return;
+    }
+    if (!isReviewer && byId("reportDate").value !== today()) {
+      byId("reportStatus").textContent = "Drivers can only create or update a report for today. The report date cannot be rolled back.";
+      return;
+    }
     const item = { id: id || `report_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`, driverUserId: existing?.driverUserId || auth.user.id, driverName: existing?.driverName || auth.user.username, reportDate: byId("reportDate").value, truckNumber: byId("truckNumber").value.trim(), shiftStart: byId("shiftStart").value, shiftFinish: byId("shiftFinish").value, jobClient: byId("jobClient").value.trim(), deliveryCount: Number(byId("deliveryCount").value || 0), fuelUsed: Number(byId("fuelUsed").value || 0), vehicleCondition: byId("vehicleCondition").value, issues: byId("issues").value.trim(), notes: byId("notes").value.trim(), status, updatedAt: new Date().toISOString() };
+    if (status === "Submitted") item.submittedAt = existing?.submittedAt || new Date().toISOString();
+    else if (existing?.submittedAt) item.submittedAt = existing.submittedAt;
     if (!item.truckNumber || !item.reportDate) { byId("reportStatus").textContent = "Report date and truck number are required."; return; }
     reports = id ? reports.map((entry) => entry.id === id ? item : entry) : [...reports, item]; write(reports); void syncShared(item); resetForm(); byId("reportStatus").textContent = status === "Submitted" ? "Report submitted to the office." : "Draft saved. You can return and finish it later."; render();
   }
 
   function edit(item) {
+    if (!isReviewer && item.status === "Submitted") {
+      byId("reportStatus").textContent = "Submitted reports are locked. Ask the office to make a correction.";
+      return;
+    }
     ["reportId", "reportDate", "truckNumber", "shiftStart", "shiftFinish", "jobClient", "deliveryCount", "fuelUsed", "vehicleCondition", "issues", "notes"].forEach((field) => { if (byId(field)) byId(field).value = item[field] ?? ""; });
+    if (!isReviewer) byId("reportDate").readOnly = true;
     window.scrollTo({ top: 0, behavior: "smooth" });
   }
 
