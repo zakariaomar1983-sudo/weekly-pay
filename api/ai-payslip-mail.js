@@ -1,21 +1,19 @@
-const crypto = require("crypto");
 const { requireStaff } = require("./_auth-server");
 
-function b64(value) { return Buffer.from(value).toString("base64url"); }
 function responseText(payload) { return String(payload?.output_text || payload?.output?.flatMap((item) => item.content || []).map((part) => part.text || "").join("\n") || "").trim(); }
-function serviceAccount() {
-  const raw = String(process.env.GOOGLE_SERVICE_ACCOUNT_JSON || "").trim();
-  if (!raw) throw new Error("Google Workspace is not configured.");
-  try { return JSON.parse(raw); } catch { throw new Error("GOOGLE_SERVICE_ACCOUNT_JSON is not valid JSON."); }
+function oauthClient() {
+  const raw = String(process.env.GOOGLE_OAUTH_CLIENT_JSON || "").trim();
+  if (!raw) throw new Error("Google OAuth is not configured.");
+  try {
+    const parsed = JSON.parse(raw);
+    return parsed.installed || parsed.web || parsed;
+  } catch { throw new Error("GOOGLE_OAUTH_CLIENT_JSON is not valid JSON."); }
 }
 
 async function googleToken() {
-  const account = serviceAccount(); const now = Math.floor(Date.now() / 1000);
-  const header = b64(JSON.stringify({ alg: "RS256", typ: "JWT" }));
-  const claim = b64(JSON.stringify({ iss: account.client_email, scope: "https://www.googleapis.com/auth/gmail.readonly", aud: "https://oauth2.googleapis.com/token", iat: now, exp: now + 3600, sub: process.env.GOOGLE_MAILBOX || "admin@onpointgroupes.com" }));
-  const signer = crypto.createSign("RSA-SHA256"); signer.update(`${header}.${claim}`); signer.end();
-  const assertion = `${header}.${claim}.${signer.sign(account.private_key, "base64url")}`;
-  const response = await fetch("https://oauth2.googleapis.com/token", { method: "POST", headers: { "Content-Type": "application/x-www-form-urlencoded" }, body: new URLSearchParams({ grant_type: "urn:ietf:params:oauth:grant-type:jwt-bearer", assertion }) });
+  const client = oauthClient(); const refreshToken = String(process.env.GOOGLE_OAUTH_REFRESH_TOKEN || "").trim();
+  if (!refreshToken) throw new Error("Google OAuth refresh token is not configured.");
+  const response = await fetch("https://oauth2.googleapis.com/token", { method: "POST", headers: { "Content-Type": "application/x-www-form-urlencoded" }, body: new URLSearchParams({ client_id: client.client_id, client_secret: client.client_secret, refresh_token: refreshToken, grant_type: "refresh_token" }) });
   const data = await response.json(); if (!response.ok) throw new Error(data.error_description || "Google authentication failed."); return data.access_token;
 }
 
@@ -41,7 +39,7 @@ function parseJson(text) { try { return JSON.parse(text); } catch { const match 
 module.exports = async function handler(req, res) {
   if (req.method !== "GET") return res.status(405).json({ error: "Method not allowed." });
   if (!requireStaff(req, res, "accessAI")) return;
-  if (!process.env.OPENAI_API_KEY || !process.env.GOOGLE_SERVICE_ACCOUNT_JSON || !process.env.GOOGLE_MAILBOX) return res.status(503).json({ error: "Google AI import is not configured. Add GOOGLE_SERVICE_ACCOUNT_JSON, GOOGLE_MAILBOX, and OPENAI_API_KEY in Vercel." });
+  if (!process.env.OPENAI_API_KEY || !process.env.GOOGLE_OAUTH_CLIENT_JSON || !process.env.GOOGLE_OAUTH_REFRESH_TOKEN || !process.env.GOOGLE_MAILBOX) return res.status(503).json({ error: "Google AI import is not configured. Add GOOGLE_OAUTH_CLIENT_JSON, GOOGLE_OAUTH_REFRESH_TOKEN, GOOGLE_MAILBOX, and OPENAI_API_KEY in Vercel." });
   try {
     const token = await googleToken(); const list = await gmailGet("/messages?q=has%3Aattachment%20newer_than%3A30d&maxResults=20", token); const items = [];
     for (const summary of list.messages || []) {

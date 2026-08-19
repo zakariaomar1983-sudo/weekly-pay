@@ -6,7 +6,8 @@
     "dev": "node local-server.js",
     "start": "node local-server.js",
     "health-check": "node scripts/health-check.js",
-    "test": "npm run health-check"
+    "test": "npm run health-check",
+    "google-oauth-token": "node scripts/google-oauth-refresh-token.js"
   },
   "dependencies": {
     "@supabase/ssr": "^0.10.2",
