@@ -15,7 +15,7 @@ const DRIVERS_TABLE = "drivers";
 const EXCLUDED_DRIVER_NAMES = new Set([
   normalizeDriverNameKey("Muhammed A H Siyad")
 ]);
-const REQUIRED_DRIVER_NAMES = ["Faaid Warsame"];
+const REQUIRED_DRIVER_NAMES = [];
 const DRIVER_SYNC_RETRY_DELAYS_MS = [2000, 5000, 10000, 30000];
 const DRIVER_ATTACHMENT_LIMIT = 5;
 const DRIVER_ATTACHMENT_MAX_BYTES = 1.5 * 1024 * 1024;
