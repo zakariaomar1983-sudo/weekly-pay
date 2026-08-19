@@ -49,11 +49,17 @@ Transport operations CRM with pages for:
 ```bash
 npm install
 ```
-2. Run local server (example):
+2. Run the bundled local server (serves pages + `/api/*` routes):
 ```bash
-npx vite
+npm run dev
 ```
 3. Open local URL shown in terminal.
+4. Run the route health check before deploy:
+```bash
+npm run health-check
+```
+
+Alternative: `npx vercel dev` if you want Vercel emulation.
 
 ## Vercel Deploy (Production)
 1. Link this folder to the correct Vercel project:

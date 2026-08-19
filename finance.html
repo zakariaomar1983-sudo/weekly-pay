@@ -4,10 +4,11 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Onpoint Express Finance & Pay</title>
+  <link rel="icon" href="./favicon.svg" type="image/svg+xml" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=Manrope:wght@400;500;700&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="./style.css" />
+  <link rel="stylesheet" href="./style.css?v=20260421k" />
 </head>
 <body>
   <main class="app-shell">
@@ -19,9 +20,11 @@
       <div class="topbar-actions">
         <span id="currentUserChip" class="user-chip"></span>
         <a class="btn btn-outline" href="./index.html">Home</a>
+        <a id="reportsLink" class="btn btn-outline" href="./reports.html">Reports</a>
         <a class="btn btn-outline" href="./drivers.html">Drivers</a>
         <a class="btn btn-outline" href="./trucks.html">Trucks</a>
         <a id="rosterLink" class="btn btn-outline" href="./roster.html">Roster</a>
+        <a id="receiptsLink" class="btn btn-outline" href="./receipts.html">Receipts</a>
         <a class="btn btn-outline" href="./log.html">Logs</a>
         <a id="controlPanelLink" class="btn btn-outline" href="./control-panel.html">Control Panel</a>
         <a id="logoutBtn" class="btn btn-muted" href="./logout.html">Logout</a>
@@ -29,6 +32,8 @@
     </header>
 
     <section class="stats-grid" id="financeStats"></section>
+    <p id="financeSyncStatus" class="sync-badge sync-badge-neutral">Checking sync...</p>
+    <p id="financeQueueBanner" class="queue-banner queue-banner-pending" hidden></p>
 
     <section class="panel" id="periodTotalsPanel">
       <div class="panel-head">
@@ -42,6 +47,7 @@
       <div class="panel-head">
         <h2>Weekly Profit Summary</h2>
       </div>
+      <p class="muted">Finance week runs Thursday to Wednesday.</p>
       <div class="table-wrap">
         <table>
           <thead>
@@ -56,6 +62,7 @@
       <div class="panel-head">
         <h2>Truck Income (Weekly Records)</h2>
       </div>
+      <p class="muted">Truck Income now shows this Thursday-to-Wednesday week by default. Use Search Income History to find older income.</p>
       <form id="incomeForm" class="form-grid">
         <input type="hidden" id="incomeId" />
         <label>Income Date<input id="incomeDate" type="date" required /></label>
@@ -99,6 +106,7 @@
       <div class="panel-head">
         <h2>Truck Expense</h2>
       </div>
+      <p class="muted">Truck Expense shows this Thursday-to-Wednesday week by default. Use Search Expense History to find older expenses.</p>
       <form id="expenseForm" class="form-grid">
         <input type="hidden" id="expenseId" />
         <label>Expense Date<input id="expenseDate" type="date" required /></label>
@@ -131,10 +139,69 @@
       </div>
     </section>
 
+    <section class="panel" id="payablesPanel">
+      <div class="panel-head">
+        <h2>Things To Be Paid</h2>
+      </div>
+      <p class="muted">Track upcoming payments and mark them paid when done.</p>
+      <form id="payablesForm" class="form-grid">
+        <input type="hidden" id="payableId" />
+        <label>Thing To Pay
+          <input id="payableTitle" type="text" placeholder="Fuel invoice, toll account, rego..." required />
+        </label>
+        <label>Amount (AUD)
+          <input id="payableAmount" type="number" min="0" step="0.01" placeholder="0.00" />
+        </label>
+        <label>Due Date
+          <input id="payableDueDate" type="date" />
+        </label>
+        <label>Status
+          <select id="payableStatus" required>
+            <option value="To Pay">To Pay</option>
+            <option value="In Progress">In Progress</option>
+            <option value="Paid">Paid</option>
+          </select>
+        </label>
+        <label class="full">Notes
+          <input id="payableNotes" type="text" placeholder="Optional notes" />
+        </label>
+        <div class="actions full">
+          <button class="btn" type="submit">Save Item</button>
+          <button id="cancelPayableEdit" class="btn btn-muted" type="button">Cancel Edit</button>
+        </div>
+      </form>
+      <form class="form-grid" onsubmit="return false;">
+        <label class="full">Search Things To Be Paid
+          <input id="payablesSearch" type="text" placeholder="Thing, status, notes..." />
+        </label>
+        <div class="actions full">
+          <button id="clearPayablesFilters" class="btn btn-outline" type="button">Clear Filters</button>
+        </div>
+      </form>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr><th>Thing</th><th>Amount</th><th>Due Date</th><th>Status</th><th>Notes</th><th>Actions</th></tr>
+          </thead>
+          <tbody id="payablesTableBody"></tbody>
+        </table>
+      </div>
+    </section>
+
     <section class="panel" id="payPanel">
       <div class="panel-head">
         <h2>Driver Pay (Payslip)</h2>
       </div>
+      <form class="form-grid" onsubmit="return false;">
+        <label>Roster Week Start
+          <input id="payRosterWeekStart" type="date" />
+        </label>
+        <div class="actions full">
+          <button id="generatePayFromRoster" class="btn" type="button">Generate Driver Pay From Roster</button>
+        </div>
+        <p id="payGenerationStatus" class="data-status full muted">Driver Pay uses completed roster shifts from the selected week.</p>
+      </form>
+      <p class="muted">Driver Pay shows the selected week by default. Use Search Driver Pay History to find older payslips.</p>
       <form id="payForm" class="form-grid">
         <input type="hidden" id="payId" />
         <label>Driver Name<input id="payDriver" type="text" list="payDriverOptions" required /></label>
@@ -184,11 +251,153 @@
   <script src="./supabase-config.js?v=20260413g"></script>
   <script src="./supabase-client.js?v=20260413g"></script>
   <script src="./seed-data.js?v=20260413g"></script>
-  <script src="./auth.js?v=20260414b"></script>
-  <script src="./finance.js?v=20260414b"></script>
+  <script src="./auth.js?v=20260818a"></script>
+  <script src="./finance.js?v=20260818a"></script>
+  <script>
+    (function initPayablesPanel() {
+      if (window.__opxPayablesInit) return;
+      window.__opxPayablesInit = true;
+
+      const LIST_KEY = "transport_crm_payables_list";
+      const panel = document.getElementById("payablesPanel");
+      if (!panel) return;
+
+      const form = document.getElementById("payablesForm");
+      const searchInput = document.getElementById("payablesSearch");
+      const clearBtn = document.getElementById("clearPayablesFilters");
+      const cancelBtn = document.getElementById("cancelPayableEdit");
+      const tableBody = document.getElementById("payablesTableBody");
+
+      if (!form || !searchInput || !clearBtn || !cancelBtn || !tableBody) return;
+
+      function safeRead() {
+        try {
+          const parsed = JSON.parse(localStorage.getItem(LIST_KEY) || "[]");
+          return Array.isArray(parsed) ? parsed : [];
+        } catch {
+          return [];
+        }
+      }
+
+      function safeWrite(rows) {
+        localStorage.setItem(LIST_KEY, JSON.stringify(rows));
+      }
+
+      function uid() {
+        if (typeof crypto !== "undefined" && crypto.randomUUID) return crypto.randomUUID();
+        return `${Date.now()}${Math.random().toString(16).slice(2, 10)}`;
+      }
+
+      function toAmount(value) {
+        const num = Number(String(value || "").replace(",", "").trim());
+        return Number.isFinite(num) ? num : 0;
+      }
+
+      function money(value) {
+        return `$${toAmount(value).toFixed(2)}`;
+      }
+
+      function render() {
+        const rows = safeRead();
+        const q = (searchInput.value || "").trim().toLowerCase();
+        const filtered = rows.filter((row) => {
+          if (!q) return true;
+          const hay = `${row.title || ""} ${row.status || ""} ${row.dueDate || ""} ${row.notes || ""}`.toLowerCase();
+          return hay.includes(q);
+        });
+
+        if (!filtered.length) {
+          tableBody.innerHTML = `<tr><td colspan="6" class="empty">${q ? "No payment items match your search." : "No payment items added yet."}</td></tr>`;
+          return;
+        }
+
+        filtered.sort((a, b) => {
+          const aDate = a.dueDate || "9999-12-31";
+          const bDate = b.dueDate || "9999-12-31";
+          if (aDate !== bDate) return aDate.localeCompare(bDate);
+          return String(a.title || "").localeCompare(String(b.title || ""));
+        });
+
+        tableBody.innerHTML = filtered.map((row) => `
+          <tr>
+            <td>${row.title || "-"}</td>
+            <td>${row.amount ? money(row.amount) : "-"}</td>
+            <td>${row.dueDate || "-"}</td>
+            <td>${row.status || "To Pay"}</td>
+            <td>${row.notes || "-"}</td>
+            <td>
+              <div class="table-actions">
+                <button type="button" data-action="edit-payable" data-id="${row.id}">Edit</button>
+                <button type="button" data-action="delete-payable" data-id="${row.id}">Delete</button>
+              </div>
+            </td>
+          </tr>
+        `).join("");
+      }
+
+      form.addEventListener("submit", (e) => {
+        e.preventDefault();
+        const rows = safeRead();
+        const id = document.getElementById("payableId").value || uid();
+        const payload = {
+          id,
+          title: document.getElementById("payableTitle").value.trim(),
+          amount: toAmount(document.getElementById("payableAmount").value),
+          dueDate: document.getElementById("payableDueDate").value,
+          status: document.getElementById("payableStatus").value,
+          notes: document.getElementById("payableNotes").value.trim()
+        };
+
+        const next = rows.some((item) => item.id === id)
+          ? rows.map((item) => (item.id === id ? payload : item))
+          : [...rows, payload];
+        safeWrite(next);
+        form.reset();
+        document.getElementById("payableId").value = "";
+        document.getElementById("payableStatus").value = "To Pay";
+        render();
+      });
+
+      cancelBtn.addEventListener("click", () => {
+        form.reset();
+        document.getElementById("payableId").value = "";
+        document.getElementById("payableStatus").value = "To Pay";
+      });
+
+      clearBtn.addEventListener("click", () => {
+        searchInput.value = "";
+        render();
+      });
+
+      searchInput.addEventListener("input", render);
+
+      tableBody.addEventListener("click", (e) => {
+        const btn = e.target.closest("button[data-action][data-id]");
+        if (!btn) return;
+        const { action, id } = btn.dataset;
+        const rows = safeRead();
+        const item = rows.find((x) => x.id === id);
+        if (!item) return;
+
+        if (action === "edit-payable") {
+          document.getElementById("payableId").value = item.id;
+          document.getElementById("payableTitle").value = item.title || "";
+          document.getElementById("payableAmount").value = item.amount || "";
+          document.getElementById("payableDueDate").value = item.dueDate || "";
+          document.getElementById("payableStatus").value = item.status || "To Pay";
+          document.getElementById("payableNotes").value = item.notes || "";
+          return;
+        }
+
+        if (action === "delete-payable") {
+          safeWrite(rows.filter((x) => x.id !== id));
+          render();
+        }
+      });
+
+      render();
+    })();
+  </script>
   <script src="./emergency-fill.js?v=20260413g"></script>
 </body>
 </html>
-
-
-
