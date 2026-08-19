@@ -613,15 +613,14 @@ function normalizeRosterRow(item) {
   const configuredTruck = getConfiguredPrimaryTruckForDriver(driverName);
   const away = isAwayStatus(item?.status);
   const currentTruck = String(item?.truckNumber || "").trim();
-  const legacyPrimaryTruck = LEGACY_PRIMARY_TRUCK_ASSIGNMENTS.get(driverName) || "";
-  const primaryTruckChanged = Boolean(configuredTruck && legacyPrimaryTruck && currentTruck === legacyPrimaryTruck);
   const unpackedRoute = unpackRouteValue(item?.route || "");
   return normalizeRosterPayload({
     ...item,
     route: unpackedRoute.route || String(item?.route || "").trim(),
     startLocation: item?.startLocation || unpackedRoute.startLocation || "",
     driverName,
-    truckNumber: !away && (aliasChanged || primaryTruckChanged) ? (configuredTruck || currentTruck) : currentTruck
+    // Keep the saved truck assignment; driver-to-truck mappings are suggestions only.
+    truckNumber: !away && aliasChanged ? (configuredTruck || currentTruck) : currentTruck
   });
 }
 
@@ -1645,9 +1644,7 @@ function populateRosterPickers(selectedDriver = "", selectedTruck = "", options 
   const placeholder = shiftDate ? "Select available truck" : "Select truck";
 
   let nextTruck = selectedTruck;
-  if (options.preferMatched) {
-    nextTruck = availableTruckNumbers.includes(matchedTruck) ? matchedTruck : (availableTruckNumbers[0] || "");
-  } else if (!nextTruck || !availableTruckNumbers.includes(nextTruck)) {
+  if (!nextTruck || !availableTruckNumbers.includes(nextTruck)) {
     nextTruck = availableTruckNumbers.includes(matchedTruck) ? matchedTruck : (availableTruckNumbers[0] || "");
   }
 
