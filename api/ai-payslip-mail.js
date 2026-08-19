@@ -45,7 +45,34 @@ async function collectParts(part, messageId, token, output = []) {
   for (const child of part.parts || []) await collectParts(child, messageId, token, output);
   return output;
 }
-function parseJson(text) { try { return JSON.parse(text); } catch { const match = String(text).match(/\{[\s\S]*\}/); return match ? JSON.parse(match[0]) : null; } }
+function parseJson(text) {
+  const source = String(text || "").replace(/^\s*```(?:json)?\s*/i, "").replace(/\s*```\s*$/i, "").trim();
+  try { return JSON.parse(source); } catch {}
+
+  // Responses can contain a valid object followed by commentary. Find the
+  // first balanced object without treating braces inside quoted strings as JSON.
+  const start = source.indexOf("{");
+  if (start < 0) return null;
+  let depth = 0; let quoted = false; let escaped = false;
+  for (let index = start; index < source.length; index += 1) {
+    const char = source[index];
+    if (quoted) {
+      if (escaped) escaped = false;
+      else if (char === "\\") escaped = true;
+      else if (char === '"') quoted = false;
+      continue;
+    }
+    if (char === '"') { quoted = true; continue; }
+    if (char === "{") depth += 1;
+    if (char === "}") {
+      depth -= 1;
+      if (depth === 0) {
+        try { return JSON.parse(source.slice(start, index + 1)); } catch { return null; }
+      }
+    }
+  }
+  return null;
+}
 
 module.exports = async function handler(req, res) {
   if (req.method !== "GET") return res.status(405).json({ error: "Method not allowed." });
