@@ -27,6 +27,7 @@
     { key: "editLogs", label: "Edit Logs" },
     { key: "backupRestore", label: "Backup and Restore Data" },
     { key: "adminData", label: "Clear all data" }
+    ,{ key: "accessDriverReports", label: "Access Driver Reports" }
   ];
 
   const SYSTEM_ROLE_IDS = {
@@ -209,6 +210,9 @@
       dataEntryPerms[key] = true;
     });
 
+    const driverPerms = allPermissions(false);
+    driverPerms.accessDriverReports = true;
+
     return [
       { id: STARTER_CUSTOM_ROLE_IDS.dispatcher, name: "Dispatcher", system: false, permissions: dispatcherPerms },
       { id: STARTER_CUSTOM_ROLE_IDS.finance, name: "Finance Officer", system: false, permissions: financePerms },
@@ -216,6 +220,7 @@
       { id: STARTER_CUSTOM_ROLE_IDS.payroll, name: "Payroll Officer", system: false, permissions: payrollPerms },
       { id: STARTER_CUSTOM_ROLE_IDS.compliance, name: "Compliance Officer", system: false, permissions: compliancePerms },
       { id: STARTER_CUSTOM_ROLE_IDS.dataEntry, name: "Data Entry", system: false, permissions: dataEntryPerms }
+      ,{ id: "role_driver", name: "Driver", system: false, permissions: driverPerms }
     ];
   }
 

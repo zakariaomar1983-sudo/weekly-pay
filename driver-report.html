@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Driver Report | Onpoint Express</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=Manrope:wght@400;500;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="./style.css?v=20260819a" />
+</head>
+<body>
+  <main class="app-shell">
+    <header class="topbar">
+      <div><p class="eyebrow">Driver Portal</p><h1>Daily Driver Report</h1></div>
+      <div class="topbar-actions">
+        <span id="currentUserChip" class="user-chip"></span>
+        <a class="btn btn-outline" href="./index.html">Home</a>
+        <a class="btn btn-outline" href="./roster.html">Roster</a>
+        <button id="logoutBtn" class="btn btn-muted" type="button">Logout</button>
+      </div>
+    </header>
+
+    <section class="panel report-intro">
+      <div class="panel-head"><h2>Report Your Shift</h2></div>
+      <p class="muted">Complete this report after your shift. Save it as a draft if you need to finish it later, or submit it when all details are ready.</p>
+      <p id="reportStatus" class="data-status full muted"></p>
+    </section>
+
+    <section class="panel">
+      <form id="driverReportForm" class="form-grid">
+        <input type="hidden" id="reportId" />
+        <label>Report Date<input id="reportDate" type="date" required /></label>
+        <label>Truck Number<input id="truckNumber" type="text" placeholder="Truck 881" required /></label>
+        <label>Shift Start<input id="shiftStart" type="time" /></label>
+        <label>Shift Finish<input id="shiftFinish" type="time" /></label>
+        <label>Job / Client<input id="jobClient" type="text" placeholder="Job number or client" /></label>
+        <label>Delivery / Pickup Count<input id="deliveryCount" type="number" min="0" step="1" value="0" /></label>
+        <label>Fuel Used (litres)<input id="fuelUsed" type="number" min="0" step="0.1" value="0" /></label>
+        <label>Vehicle Condition
+          <select id="vehicleCondition">
+            <option value="Good">Good</option><option value="Needs Attention">Needs Attention</option><option value="Unsafe - Do Not Drive">Unsafe - Do Not Drive</option>
+          </select>
+        </label>
+        <label class="full">Issues, delays or incidents<textarea id="issues" rows="4" placeholder="Describe any delay, damage, incident, or safety issue."></textarea></label>
+        <label class="full">Driver Notes<textarea id="notes" rows="4" placeholder="Anything the office should know about this shift."></textarea></label>
+        <div class="actions full">
+          <button class="btn btn-muted" type="button" data-report-status="Draft">Save Draft</button>
+          <button class="btn" type="button" data-report-status="Submitted">Submit Report</button>
+          <button id="cancelReportEdit" class="btn btn-outline" type="button">Clear Form</button>
+        </div>
+      </form>
+    </section>
+
+    <section class="panel">
+      <div class="panel-head"><h2 id="historyTitle">My Reports</h2></div>
+      <div class="table-wrap"><table><thead><tr><th>Date</th><th>Truck</th><th>Job / Client</th><th>Condition</th><th>Status</th><th>Updated</th><th>Actions</th></tr></thead><tbody id="reportsTableBody"></tbody></table></div>
+    </section>
+  </main>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="./supabase-config.js?v=20260819a"></script>
+  <script src="./supabase-client.js?v=20260819a"></script>
+  <script src="./auth.js?v=20260819a"></script>
+  <script src="./driver-report.js?v=20260819a"></script>
+</body>
+</html>

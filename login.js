@@ -6,6 +6,10 @@ if (params.get("logout") === "1") {
 }
 
 function routeUser(user) {
+  if (window.OPXAuth.canUser(user, "accessDriverReports")) {
+    window.location.href = "./driver-report.html";
+    return true;
+  }
   if (window.OPXAuth.canUser(user, "accessCRM")) {
     window.location.href = "./index.html";
     return true;
