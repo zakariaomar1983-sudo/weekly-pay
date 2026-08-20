@@ -752,11 +752,24 @@
       if (seen.has(role.id)) return;
       seen.add(role.id);
 
+      const rawPermissions = role.permissions && typeof role.permissions === "object"
+        ? role.permissions
+        : {};
+      const permissions = { ...allPermissions(false), ...rawPermissions };
+
+      // Older staff roles predate the AI permission. Preserve an explicit
+      // false value, but migrate legacy CRM staff roles that never had it.
+      if (!Object.prototype.hasOwnProperty.call(rawPermissions, "accessAI")
+        && permissions.accessCRM
+        && role.id !== "role_driver") {
+        permissions.accessAI = true;
+      }
+
       custom.push({
         id: role.id,
         name: String(role.name || "Custom Role"),
         system: false,
-        permissions: { ...allPermissions(false), ...(role.permissions || {}) }
+        permissions
       });
     });
 
