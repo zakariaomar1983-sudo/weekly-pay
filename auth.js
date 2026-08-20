@@ -1142,6 +1142,14 @@
     return "./login.html?locked=1";
   }
 
+  function addLoginReturnPath(loginPath) {
+    if (typeof window === "undefined") return loginPath;
+    const returnPath = `${window.location.pathname}${window.location.search}${window.location.hash}`;
+    if (!returnPath || returnPath === "/login.html") return loginPath;
+    const separator = loginPath.includes("?") ? "&" : "?";
+    return `${loginPath}${separator}next=${encodeURIComponent(returnPath)}`;
+  }
+
   function clearIdleTimer() {
     if (idleTimerId) {
       clearTimeout(idleTimerId);
@@ -1373,7 +1381,7 @@
     const user = expired ? null : getSessionUser();
     if (!user) {
       if (redirectPath) {
-        window.location.href = expired ? getIdleRedirectPath() : redirectPath;
+        window.location.href = addLoginReturnPath(expired ? getIdleRedirectPath() : redirectPath);
       }
       return null;
     }
@@ -1381,7 +1389,7 @@
     if (!getApiToken()) {
       clearSession();
       clearIdleTimer();
-      if (redirectPath) window.location.href = `${redirectPath}?reauth=1`;
+      if (redirectPath) window.location.href = addLoginReturnPath(`${redirectPath}?reauth=1`);
       return null;
     }
 

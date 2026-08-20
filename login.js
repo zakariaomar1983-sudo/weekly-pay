@@ -22,6 +22,11 @@ async function waitForSharedAuth() {
 }
 
 function routeUser(user) {
+  const requestedPath = new URLSearchParams(window.location.search).get("next");
+  if (requestedPath && requestedPath.startsWith("/") && !requestedPath.startsWith("//")) {
+    window.location.href = requestedPath;
+    return true;
+  }
   if (window.OPXAuth.canUser(user, "accessDriverReports")) {
     window.location.href = "./driver-report.html";
     return true;
