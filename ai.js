@@ -5,6 +5,7 @@
   const escapeHtml = (value) => String(value ?? "").replace(/[&<>\"']/g, (char) => ({"&":"&amp;","<":"&lt;",">":"&gt;",'\"':"&quot;", "'":"&#039;"}[char]));
   let staffToken = "";
   let candidates = [];
+  let receiptDraft = null;
   byId("currentUserChip").textContent = `User: ${auth.user.username}`;
 
   async function getStaffToken() {
@@ -24,6 +25,54 @@
   byId("questionForm").addEventListener("submit", async (event) => {
     event.preventDefault(); const answer = byId("answer"); answer.textContent = "Thinking...";
     try { const token = await getStaffToken(); const response = await fetch("./api/ai-assistant", { method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` }, body: JSON.stringify({ question: byId("question").value, context: context() }) }); const data = await response.json(); if (!response.ok) throw new Error(data.error || "AI request failed."); answer.textContent = data.answer || "No answer returned."; } catch (error) { answer.textContent = error.message || String(error); }
+  });
+
+  function renderReceiptDraft() {
+    const container = byId("receiptDraft");
+    if (!receiptDraft) { container.hidden = true; container.innerHTML = ""; return; }
+    container.hidden = false;
+    container.innerHTML = `<div class="table-wrap"><table><tbody>
+      <tr><th>Date</th><td>${escapeHtml(receiptDraft.date || "Review")}</td></tr>
+      <tr><th>Truck #</th><td>${escapeHtml(receiptDraft.truckNumber || "Review")}</td></tr>
+      <tr><th>Category</th><td>${escapeHtml(receiptDraft.category || "Expense")}</td></tr>
+      <tr><th>Amount</th><td>$${Number(receiptDraft.amount || 0).toFixed(2)}</td></tr>
+      <tr><th>Paid to</th><td>${escapeHtml(receiptDraft.vendor || "Review")}</td></tr>
+      <tr><th>Notes</th><td>${escapeHtml(receiptDraft.notes || "")}</td></tr>
+      <tr><th>Confidence</th><td>${receiptDraft.confidence ? `${Math.round(Number(receiptDraft.confidence) * 100)}%` : "Review"}</td></tr>
+      </tbody></table></div>
+      <div class="actions"><button id="approveReceipt" class="btn" type="button">Approve to Finance</button><button id="discardReceipt" class="btn btn-muted" type="button">Discard Draft</button></div>`;
+  }
+
+  byId("receiptForm").addEventListener("submit", async (event) => {
+    event.preventDefault();
+    byId("receiptStatus").textContent = "Extracting receipt...";
+    try {
+      const token = await getStaffToken();
+      const response = await fetch("./api/ai-receipt", { method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` }, body: JSON.stringify({ receiptText: byId("receiptText").value }) });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || "Receipt extraction failed.");
+      receiptDraft = data.item || null; renderReceiptDraft();
+      byId("receiptStatus").textContent = "Draft extracted. Check the details before approving.";
+    } catch (error) { byId("receiptStatus").textContent = error.message || String(error); }
+  });
+
+  async function approveReceipt() {
+    if (!receiptDraft) return;
+    if (!receiptDraft.date || !receiptDraft.truckNumber || !receiptDraft.amount || receiptDraft.amount <= 0) { byId("receiptStatus").textContent = "Please review the draft: date, truck number and amount are required."; return; }
+    const expense = { id: crypto.randomUUID(), date: receiptDraft.date, truckNumber: receiptDraft.truckNumber, category: receiptDraft.category || "Fuel", amount: Number(receiptDraft.amount), vendor: receiptDraft.vendor || "", notes: receiptDraft.notes || "AI receipt import" };
+    const client = window.OPXSupabase?.client;
+    if (client) {
+      const { error } = await client.from("truck_expense").upsert({ id: expense.id, expense_date: expense.date, truck_number: expense.truckNumber, category: expense.category, amount: expense.amount, vendor: expense.vendor, notes: expense.notes }, { onConflict: "id" });
+      if (error) { byId("receiptStatus").textContent = error.message; return; }
+    }
+    let local = []; try { local = JSON.parse(localStorage.getItem("transport_crm_spending") || "[]"); } catch {}
+    localStorage.setItem("transport_crm_spending", JSON.stringify([...local.filter((entry) => entry.id !== expense.id), expense]));
+    receiptDraft = null; renderReceiptDraft(); byId("receiptText").value = ""; byId("receiptStatus").textContent = "Receipt approved and added to Finance expenses.";
+  }
+
+  document.body.addEventListener("click", (event) => {
+    if (event.target.closest("#approveReceipt")) approveReceipt();
+    if (event.target.closest("#discardReceipt")) { receiptDraft = null; renderReceiptDraft(); byId("receiptStatus").textContent = "Draft discarded."; }
   });
 
   function renderCandidates() {

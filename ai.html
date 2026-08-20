@@ -24,6 +24,17 @@
     </section>
 
     <section class="panel">
+      <div class="panel-head"><h2>Paste Receipt to Finance</h2></div>
+      <p class="muted">Paste a diesel or fuel receipt below. AI will extract a draft expense for you to check before it is saved.</p>
+      <form id="receiptForm" class="form-grid">
+        <label class="full">Receipt text<textarea id="receiptText" rows="6" required placeholder="Paste the receipt text here, including date, truck number, supplier and total amount."></textarea></label>
+        <div class="actions full"><button class="btn" type="submit">Extract Expense</button></div>
+      </form>
+      <p id="receiptStatus" class="data-status muted"></p>
+      <div id="receiptDraft" hidden></div>
+    </section>
+
+    <section class="panel">
       <div class="panel-head"><h2>Google Mail Payslip Import</h2></div>
       <p class="muted">Scan the configured Google Workspace <strong>admin@onpointgroupes.com</strong> mailbox for payslip emails. Extracted payslips require approval before they are added to Finance.</p>
       <div class="actions"><button id="scanPayslips" class="btn" type="button">Scan Gmail Payslips</button></div>
@@ -35,6 +46,6 @@
   <script src="./supabase-config.js?v=20260819a"></script>
   <script src="./supabase-client.js?v=20260819a"></script>
   <script src="./auth.js?v=20260819a"></script>
-  <script src="./ai.js?v=20260820c"></script>
+  <script src="./ai.js?v=20260820d"></script>
 </body>
 </html>
