@@ -624,7 +624,8 @@
     [
       "accessCRM",
       "viewTrucks",
-      "viewRoster"
+      "viewRoster",
+      "accessAI"
     ].forEach((key) => {
       teamBasicPerms[key] = true;
     });
@@ -638,7 +639,8 @@
       "viewTrucks",
       "viewRoster",
       "editRoster",
-      "viewTruckIncome"
+      "viewTruckIncome",
+      "accessAI"
     ].forEach((key) => {
       dispatcherPerms[key] = true;
     });
@@ -669,7 +671,8 @@
       "viewRoster",
       "editRoster",
       "viewReports",
-      "viewStats"
+      "viewStats",
+      "accessAI"
     ].forEach((key) => {
       fleetPerms[key] = true;
     });
@@ -682,7 +685,8 @@
       "viewTruckIncome",
       "viewSpending",
       "viewReports",
-      "viewStats"
+      "viewStats",
+      "accessAI"
     ].forEach((key) => {
       payrollPerms[key] = true;
     });
@@ -696,7 +700,8 @@
       "editTrucks",
       "viewContracts",
       "viewReports",
-      "viewStats"
+      "viewStats",
+      "accessAI"
     ].forEach((key) => {
       compliancePerms[key] = true;
     });
@@ -714,7 +719,8 @@
       "viewTruckIncome",
       "editTruckIncome",
       "viewSpending",
-      "editSpending"
+      "editSpending",
+      "accessAI"
     ].forEach((key) => {
       dataEntryPerms[key] = true;
     });
@@ -757,11 +763,9 @@
         : {};
       const permissions = { ...allPermissions(false), ...rawPermissions };
 
-      // Older staff roles predate the AI permission. Preserve an explicit
-      // false value, but migrate legacy CRM staff roles that never had it.
-      if (!Object.prototype.hasOwnProperty.call(rawPermissions, "accessAI")
-        && permissions.accessCRM
-        && role.id !== "role_driver") {
+      // Older non-driver CRM roles predate the AI page. Keep drivers out,
+      // and migrate the known staff roles even when their old row stored false.
+      if (permissions.accessCRM && role.id !== "role_driver") {
         permissions.accessAI = true;
       }
 

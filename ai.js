@@ -6,6 +6,7 @@
   let staffToken = "";
   let candidates = [];
   let receiptDraft = null;
+  let receiptImageDataUrl = "";
   byId("currentUserChip").textContent = `User: ${auth.user.username}`;
 
   async function getStaffToken() {
@@ -43,12 +44,64 @@
       <div class="actions"><button id="approveReceipt" class="btn" type="button">Approve to Finance</button><button id="discardReceipt" class="btn btn-muted" type="button">Discard Draft</button></div>`;
   }
 
+  function clearReceiptImage() {
+    receiptImageDataUrl = "";
+    const input = byId("receiptImageInput");
+    if (input) input.value = "";
+    const preview = byId("receiptImagePreview");
+    if (preview) { preview.hidden = true; preview.innerHTML = ""; }
+  }
+
+  function resizeReceiptImage(file) {
+    return new Promise((resolve, reject) => {
+      if (!file || !file.type.startsWith("image/")) return reject(new Error("Choose a receipt image file."));
+      const source = URL.createObjectURL(file);
+      const image = new Image();
+      image.onload = () => {
+        try {
+          const maxSize = 1600;
+          const scale = Math.min(1, maxSize / Math.max(image.naturalWidth, image.naturalHeight));
+          const canvas = document.createElement("canvas");
+          canvas.width = Math.max(1, Math.round(image.naturalWidth * scale));
+          canvas.height = Math.max(1, Math.round(image.naturalHeight * scale));
+          canvas.getContext("2d").drawImage(image, 0, 0, canvas.width, canvas.height);
+          resolve(canvas.toDataURL("image/jpeg", 0.8));
+        } catch (error) { reject(error); }
+        URL.revokeObjectURL(source);
+      };
+      image.onerror = () => { URL.revokeObjectURL(source); reject(new Error("The receipt image could not be read.")); };
+      image.src = source;
+    });
+  }
+
+  async function setReceiptImage(file) {
+    try {
+      receiptImageDataUrl = await resizeReceiptImage(file);
+      const preview = byId("receiptImagePreview");
+      preview.hidden = false;
+      preview.innerHTML = "Receipt image ready. <button id=\"clearReceiptImage\" class=\"btn btn-muted\" type=\"button\">Remove image</button>";
+      byId("receiptStatus").textContent = "Receipt image ready. Extract the expense when you are ready.";
+    } catch (error) {
+      clearReceiptImage();
+      byId("receiptStatus").textContent = error.message || String(error);
+    }
+  }
+
+  byId("receiptText").addEventListener("paste", (event) => {
+    const imageItem = [...(event.clipboardData?.items || [])].find((item) => item.kind === "file" && item.type.startsWith("image/"));
+    const file = imageItem?.getAsFile();
+    if (file) { event.preventDefault(); void setReceiptImage(file); }
+  });
+  byId("receiptImageInput").addEventListener("change", (event) => { void setReceiptImage(event.target.files?.[0]); });
+
   byId("receiptForm").addEventListener("submit", async (event) => {
     event.preventDefault();
     byId("receiptStatus").textContent = "Extracting receipt...";
     try {
+      const receiptText = byId("receiptText").value.trim();
+      if (!receiptText && !receiptImageDataUrl) throw new Error("Paste receipt text or an image first.");
       const token = await getStaffToken();
-      const response = await fetch("./api/ai-receipt", { method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` }, body: JSON.stringify({ receiptText: byId("receiptText").value }) });
+      const response = await fetch("./api/ai-receipt", { method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` }, body: JSON.stringify({ receiptText, receiptImage: receiptImageDataUrl }) });
       const data = await response.json();
       if (!response.ok) throw new Error(data.error || "Receipt extraction failed.");
       receiptDraft = data.item || null; renderReceiptDraft();
@@ -58,6 +111,7 @@
 
   async function approveReceipt() {
     if (!receiptDraft) return;
+    if (!auth.can("editSpending")) { byId("receiptStatus").textContent = "Your staff role can extract the draft, but Finance approval requires spending permission."; return; }
     if (!receiptDraft.date || !receiptDraft.truckNumber || !receiptDraft.amount || receiptDraft.amount <= 0) { byId("receiptStatus").textContent = "Please review the draft: date, truck number and amount are required."; return; }
     const expense = { id: crypto.randomUUID(), date: receiptDraft.date, truckNumber: receiptDraft.truckNumber, category: receiptDraft.category || "Fuel", amount: Number(receiptDraft.amount), vendor: receiptDraft.vendor || "", notes: receiptDraft.notes || "AI receipt import" };
     const client = window.OPXSupabase?.client;
@@ -67,12 +121,13 @@
     }
     let local = []; try { local = JSON.parse(localStorage.getItem("transport_crm_spending") || "[]"); } catch {}
     localStorage.setItem("transport_crm_spending", JSON.stringify([...local.filter((entry) => entry.id !== expense.id), expense]));
-    receiptDraft = null; renderReceiptDraft(); byId("receiptText").value = ""; byId("receiptStatus").textContent = "Receipt approved and added to Finance expenses.";
+    receiptDraft = null; renderReceiptDraft(); byId("receiptText").value = ""; clearReceiptImage(); byId("receiptStatus").textContent = "Receipt approved and added to Finance expenses.";
   }
 
   document.body.addEventListener("click", (event) => {
     if (event.target.closest("#approveReceipt")) approveReceipt();
-    if (event.target.closest("#discardReceipt")) { receiptDraft = null; renderReceiptDraft(); byId("receiptStatus").textContent = "Draft discarded."; }
+    if (event.target.closest("#discardReceipt")) { receiptDraft = null; renderReceiptDraft(); byId("receiptText").value = ""; clearReceiptImage(); byId("receiptStatus").textContent = "Draft discarded."; }
+    if (event.target.closest("#clearReceiptImage")) clearReceiptImage();
   });
 
   function renderCandidates() {

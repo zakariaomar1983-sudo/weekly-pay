@@ -25,11 +25,13 @@
 
     <section class="panel">
       <div class="panel-head"><h2>Paste Receipt to Finance</h2></div>
-      <p class="muted">Paste a diesel or fuel receipt below. AI will extract a draft expense for you to check before it is saved.</p>
+      <p class="muted">Paste receipt text or a receipt screenshot below. AI will extract a draft expense for you to check before it is saved.</p>
       <form id="receiptForm" class="form-grid">
-        <label class="full">Receipt text<textarea id="receiptText" rows="6" required placeholder="Paste the receipt text here, including date, truck number, supplier and total amount."></textarea></label>
-        <div class="actions full"><button class="btn" type="submit">Extract Expense</button></div>
+        <label class="full">Receipt text or image<textarea id="receiptText" rows="6" placeholder="Paste receipt text here, or copy a receipt screenshot and paste it into this box."></textarea></label>
+        <div class="actions full"><button class="btn" type="submit">Extract Expense</button><label class="btn btn-outline" for="receiptImageInput">Choose Receipt Image</label><input id="receiptImageInput" type="file" accept="image/*" hidden /></div>
+        <p class="muted full">Include the date, truck number, supplier and total amount when they are visible. The image is resized before it is sent for extraction.</p>
       </form>
+      <div id="receiptImagePreview" class="muted" hidden></div>
       <p id="receiptStatus" class="data-status muted"></p>
       <div id="receiptDraft" hidden></div>
     </section>
@@ -46,6 +48,6 @@
   <script src="./supabase-config.js?v=20260819a"></script>
   <script src="./supabase-client.js?v=20260819a"></script>
   <script src="./auth.js?v=20260820c"></script>
-  <script src="./ai.js?v=20260820d"></script>
+  <script src="./ai.js?v=20260820e"></script>
 </body>
 </html>

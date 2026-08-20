@@ -64,6 +64,26 @@ function normalizePermissions(value) {
   return Object.fromEntries(Object.entries(value).map(([key, enabled]) => [String(key), Boolean(enabled)]));
 }
 
+function normalizeStaffRolePermissions(roleId, value) {
+  const permissions = normalizePermissions(value);
+  const legacyCrmStaffRoles = new Set([
+    "role_manager",
+    "role_viewer",
+    "role_team_basic",
+    "role_dispatcher",
+    "role_finance",
+    "role_fleet_manager",
+    "role_payroll",
+    "role_compliance",
+    "role_data_entry"
+  ]);
+
+  // Older shared roles were created before CRM AI existed. Keep drivers out,
+  // but migrate known non-driver CRM staff when they sign in.
+  if (legacyCrmStaffRoles.has(String(roleId || ""))) permissions.accessAI = true;
+  return permissions;
+}
+
 async function authenticateCredentials(username, password) {
   const client = getSupabaseServerClient();
   if (!client || !process.env.SUPABASE_SERVICE_ROLE_KEY) {
@@ -97,7 +117,7 @@ async function authenticateCredentials(username, password) {
     id: String(user.id || ""),
     username: String(user.username || ""),
     roleId: String(user.role_id || ""),
-    permissions: normalizePermissions(role?.permissions)
+    permissions: normalizeStaffRolePermissions(user.role_id, role?.permissions)
   };
 }
 
@@ -107,7 +127,7 @@ function issueStaffToken(user, env = process.env) {
     sub: String(user?.id || user?.sub || ""),
     username: String(user?.username || ""),
     roleId: String(user?.roleId || ""),
-    permissions: normalizePermissions(user?.permissions)
+    permissions: normalizeStaffRolePermissions(user?.roleId, user?.permissions)
   }, STAFF_TOKEN_TTL_SECONDS, env);
 }
 
