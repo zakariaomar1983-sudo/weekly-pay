@@ -90,6 +90,52 @@ function payNetAmount(item) {
   return (daysWorked * dailyRate) + (nightRunDrops * 90) + bonus - deductions;
 }
 
+const WEEKLY_DIESEL_ALLOWANCE = 4500;
+const FLEET_DIESEL_LABEL = "Fleet diesel average";
+
+function payFingerprint(item) {
+  return [
+    item.driver,
+    item.truckNumber,
+    item.payPeriod,
+    item.daysWorked,
+    item.dailyRate,
+    item.nightRunDrops,
+    item.driverBonus,
+    item.deductions,
+    item.paymentDate || item.periodStart || item.periodEnd
+  ].map((value) => String(value ?? "").trim().toLowerCase()).join("|");
+}
+
+function dedupeExactPayRows(rows) {
+  const seen = new Set();
+  return rows.filter((row) => {
+    const fingerprint = payFingerprint(row);
+    if (seen.has(fingerprint)) return false;
+    seen.add(fingerprint);
+    return true;
+  });
+}
+
+function isDieselExpense(row) {
+  const category = String(row.category || "").trim().toLowerCase();
+  return category.includes("fuel") || category.includes("diesel");
+}
+
+function nonDieselExpenseAmount(row) {
+  return isDieselExpense(row) ? 0 : Number(row.amount || 0);
+}
+
+function rollingWeekKeysEndingAt(selectedFinanceWeekKey, count = 6) {
+  const latest = parseDateOnly(selectedFinanceWeekKey);
+  if (!latest) return [];
+  const keys = [];
+  for (let index = count - 1; index >= 0; index -= 1) {
+    keys.push(keyOf(addDays(latest, -(index * 7))));
+  }
+  return keys;
+}
+
 function primaryTruckMap(rosterRows, fallbackTrucks) {
   const map = new Map();
   rosterRows.forEach((row) => {
@@ -173,18 +219,30 @@ function normalizeSupabaseData(rows) {
 }
 
 function collectFinanceReportRows(data, selectedFinanceWeekKey) {
-  const groups = new Map();
+  const weekKeys = rollingWeekKeysEndingAt(selectedFinanceWeekKey, 6);
+  const groups = new Map(weekKeys.map((weekKeyValue) => [weekKeyValue, {
+    income: 0,
+    expense: WEEKLY_DIESEL_ALLOWANCE,
+    pay: 0
+  }]));
   const add = (key, field, amount) => {
-    if (!key) return;
-    if (!groups.has(key)) groups.set(key, { income: 0, expense: 0, pay: 0 });
+    if (!key || !groups.has(key)) return;
     groups.get(key)[field] += Number(amount || 0);
   };
 
   data.income.forEach((row) => add(financeWeekKey(row.incomeDate || row.date), "income", row.amount));
-  data.expense.forEach((row) => add(financeWeekKey(row.expenseDate || row.date), "expense", row.amount));
-  data.pay.forEach((row) => add(financeWeekKey(row.paymentDate || row.periodStart || row.periodEnd), "pay", payNetAmount(row)));
+  data.expense.forEach((row) => add(
+    financeWeekKey(row.expenseDate || row.date),
+    "expense",
+    nonDieselExpenseAmount(row)
+  ));
+  dedupeExactPayRows(data.pay).forEach((row) => add(
+    financeWeekKey(row.paymentDate || row.periodStart || row.periodEnd),
+    "pay",
+    payNetAmount(row)
+  ));
 
-  return Array.from(groups.keys()).sort().reverse().slice(0, 6).map((weekKeyValue) => {
+  return [...weekKeys].reverse().map((weekKeyValue) => {
     const item = groups.get(weekKeyValue) || { income: 0, expense: 0, pay: 0 };
     const start = parseDateOnly(weekKeyValue);
     const end = addDays(start, 6);
@@ -241,13 +299,22 @@ function collectTruckReportRows(data, selectedFinanceWeekKey) {
   data.expense
     .filter((row) => financeWeekKey(row.expenseDate || row.date) === selectedFinanceWeekKey)
     .forEach((row) => {
+      if (isDieselExpense(row)) return;
       const item = ensure(row.truckNumber);
       if (!item) return;
       item.expense += Number(row.amount || 0);
       item.expenseItems += 1;
     });
 
-  return Array.from(summary.keys()).sort((a, b) => Number(a) - Number(b)).map((truckNumber) => {
+  const dieselAllowance = ensure(FLEET_DIESEL_LABEL);
+  dieselAllowance.expense += WEEKLY_DIESEL_ALLOWANCE;
+  dieselAllowance.expenseItems += 1;
+
+  return Array.from(summary.keys()).sort((a, b) => {
+    if (a === FLEET_DIESEL_LABEL) return 1;
+    if (b === FLEET_DIESEL_LABEL) return -1;
+    return Number(a) - Number(b);
+  }).map((truckNumber) => {
     const item = summary.get(truckNumber);
     return {
       truckNumber,
@@ -319,6 +386,7 @@ function buildReportAttachmentHtml(snapshot, financeRows, driverRows, truckRows)
   </div>
 
   <h2>Weekly Finance Summary</h2>
+  <p class="meta">Truck expense uses a ${money(WEEKLY_DIESEL_ALLOWANCE)} weekly diesel average plus recorded non-diesel expenses.</p>
   <table>
     <thead><tr><th>Week</th><th>Truck Income</th><th>Truck Expense</th><th>Driver Pay</th><th>Profit</th></tr></thead>
     <tbody>${financeTable}</tbody>
@@ -381,6 +449,9 @@ function getSydneyScheduleState(now = new Date()) {
   };
   const weekdayIndex = weekdayByShort[parts.weekday] ?? -1;
 
+  const currentFinanceWeek = parseDateOnly(financeWeekKey(todayKey));
+  const currentRosterWeek = parseDateOnly(rosterWeekKey(todayKey));
+
   return {
     timezone: "Australia/Sydney",
     todayKey,
@@ -388,8 +459,8 @@ function getSydneyScheduleState(now = new Date()) {
     weekdayLabel: parts.weekday,
     hour: parts.hour,
     minute: parts.minute,
-    financeWeekKey: financeWeekKey(todayKey),
-    rosterWeekKey: rosterWeekKey(todayKey),
+    financeWeekKey: keyOf(addDays(currentFinanceWeek, -7)),
+    rosterWeekKey: keyOf(addDays(currentRosterWeek, -7)),
     shouldSendNow: weekdayIndex === 4 && parts.hour >= 8
   };
 }

@@ -36,6 +36,8 @@ const DATA_FIELD_BY_STORAGE_KEY = {
 const AWAY_STATUSES = new Set(["leave", "absent"]);
 
 const NIGHT_DROP_DEFAULT_RATE = 90;
+const WEEKLY_DIESEL_ALLOWANCE = 4500;
+const FLEET_DIESEL_LABEL = "Fleet diesel average";
 const reportState = {
   financeRows: [],
   driverRows: [],
@@ -249,8 +251,12 @@ function shortWeekLabel(weekKey) {
   return start.toLocaleDateString("en-AU", { day: "2-digit", month: "short" });
 }
 
-function rollingWeekKeys(startDay, count = 6) {
-  const latest = weekStartByDay(new Date(), startDay);
+function lastCompletedWeekStart(startDay, now = new Date()) {
+  return addDays(weekStartByDay(now, startDay), -7);
+}
+
+function rollingWeekKeys(startDay, count = 6, latestWeekStart = null) {
+  const latest = latestWeekStart || lastCompletedWeekStart(startDay);
   const keys = [];
   for (let index = count - 1; index >= 0; index -= 1) {
     const week = addDays(latest, -(index * 7));
@@ -331,6 +337,39 @@ function payNetAmount(item) {
   const bonus = Number(item.driverBonus || 0);
   const deductions = Number(item.deductions || 0);
   return (daysWorked * dailyRate) + (nightRunDrops * NIGHT_DROP_DEFAULT_RATE) + bonus - deductions;
+}
+
+function payFingerprint(item) {
+  return [
+    item.driver,
+    item.truckNumber,
+    item.payPeriod,
+    item.daysWorked,
+    item.dailyRate,
+    item.nightRunDrops,
+    item.driverBonus,
+    item.deductions,
+    item.paymentDate || item.periodStart || item.periodEnd
+  ].map((value) => String(value ?? "").trim().toLowerCase()).join("|");
+}
+
+function dedupeExactPayRows(rows) {
+  const seen = new Set();
+  return rows.filter((row) => {
+    const fingerprint = payFingerprint(row);
+    if (seen.has(fingerprint)) return false;
+    seen.add(fingerprint);
+    return true;
+  });
+}
+
+function isDieselExpense(row) {
+  const category = String(row.category || "").trim().toLowerCase();
+  return category.includes("fuel") || category.includes("diesel");
+}
+
+function nonDieselExpenseAmount(row) {
+  return isDieselExpense(row) ? 0 : Number(row.amount || 0);
 }
 
 function readLocalDataSnapshot() {
@@ -454,18 +493,31 @@ function primaryTruckMap(rosterRows, fallbackTrucks) {
 }
 
 function collectFinanceReportRows(data, selectedFinanceWeekKey) {
-  const groups = new Map();
+  const selectedStart = parseDateOnly(selectedFinanceWeekKey) || lastCompletedWeekStart(4);
+  const weekKeys = rollingWeekKeys(4, 6, selectedStart);
+  const groups = new Map(weekKeys.map((weekKey) => [weekKey, {
+    income: 0,
+    expense: WEEKLY_DIESEL_ALLOWANCE,
+    pay: 0
+  }]));
   const add = (key, field, amount) => {
-    if (!key) return;
-    if (!groups.has(key)) groups.set(key, { income: 0, expense: 0, pay: 0 });
+    if (!key || !groups.has(key)) return;
     groups.get(key)[field] += Number(amount || 0);
   };
 
   data.income.forEach((row) => add(financeWeekKey(row.incomeDate || row.date), "income", row.amount));
-  data.expense.forEach((row) => add(financeWeekKey(row.expenseDate || row.date), "expense", row.amount));
-  data.pay.forEach((row) => add(financeWeekKey(row.paymentDate || row.periodStart || row.periodEnd), "pay", payNetAmount(row)));
+  data.expense.forEach((row) => add(
+    financeWeekKey(row.expenseDate || row.date),
+    "expense",
+    nonDieselExpenseAmount(row)
+  ));
+  dedupeExactPayRows(data.pay).forEach((row) => add(
+    financeWeekKey(row.paymentDate || row.periodStart || row.periodEnd),
+    "pay",
+    payNetAmount(row)
+  ));
 
-  return Array.from(groups.keys()).sort().reverse().slice(0, 6).map((weekKey) => {
+  return [...weekKeys].reverse().map((weekKey) => {
     const item = groups.get(weekKey) || { income: 0, expense: 0, pay: 0 };
     const start = parseDateOnly(weekKey);
     const end = addDays(start, 6);
@@ -499,11 +551,11 @@ function buildWeeklyFinanceSummary(data, selectedFinanceWeekKey) {
   }).join("");
 }
 
-function buildReportsChartSeries(data) {
-  const financeWeekKeys = rollingWeekKeys(4, 6);
-  const rosterWeekKeys = rollingWeekKeys(1, 6);
+function buildReportsChartSeries(data, selectedFinanceWeekKey, selectedRosterWeekKey) {
+  const financeWeekKeys = rollingWeekKeys(4, 6, parseDateOnly(selectedFinanceWeekKey));
+  const rosterWeekKeys = rollingWeekKeys(1, 6, parseDateOnly(selectedRosterWeekKey));
   const incomeMap = new Map(financeWeekKeys.map((week) => [week, 0]));
-  const expenseMap = new Map(financeWeekKeys.map((week) => [week, 0]));
+  const expenseMap = new Map(financeWeekKeys.map((week) => [week, WEEKLY_DIESEL_ALLOWANCE]));
   const payMap = new Map(financeWeekKeys.map((week) => [week, 0]));
   const completedMap = new Map(rosterWeekKeys.map((week) => [week, 0]));
 
@@ -514,10 +566,10 @@ function buildReportsChartSeries(data) {
 
   data.expense.forEach((row) => {
     const week = financeWeekKey(row.expenseDate || row.date);
-    if (expenseMap.has(week)) expenseMap.set(week, expenseMap.get(week) + Number(row.amount || 0));
+    if (expenseMap.has(week)) expenseMap.set(week, expenseMap.get(week) + nonDieselExpenseAmount(row));
   });
 
-  data.pay.forEach((row) => {
+  dedupeExactPayRows(data.pay).forEach((row) => {
     const week = financeWeekKey(row.paymentDate || row.periodStart || row.periodEnd);
     if (payMap.has(week)) payMap.set(week, payMap.get(week) + payNetAmount(row));
   });
@@ -649,13 +701,22 @@ function collectTruckReportRows(data, selectedFinanceWeekKey) {
   data.expense
     .filter((row) => financeWeekKey(row.expenseDate || row.date) === selectedFinanceWeekKey)
     .forEach((row) => {
+      if (isDieselExpense(row)) return;
       const item = ensure(row.truckNumber);
       if (!item) return;
       item.expense += Number(row.amount || 0);
       item.expenseItems += 1;
     });
 
-  return Array.from(summary.keys()).sort((a, b) => Number(a) - Number(b)).map((truckNumber) => {
+  const dieselAllowance = ensure(FLEET_DIESEL_LABEL);
+  dieselAllowance.expense += WEEKLY_DIESEL_ALLOWANCE;
+  dieselAllowance.expenseItems += 1;
+
+  return Array.from(summary.keys()).sort((a, b) => {
+    if (a === FLEET_DIESEL_LABEL) return 1;
+    if (b === FLEET_DIESEL_LABEL) return -1;
+    return Number(a) - Number(b);
+  }).map((truckNumber) => {
     const item = summary.get(truckNumber);
     return {
       truckNumber,
@@ -689,22 +750,20 @@ function buildTruckReport(data, selectedFinanceWeekKey) {
 }
 
 function drawStats(data, selectedFinanceWeekKey, selectedRosterWeekKey) {
-  const financeIncome = data.income
-    .filter((row) => financeWeekKey(row.incomeDate || row.date) === selectedFinanceWeekKey)
-    .reduce((sum, row) => sum + Number(row.amount || 0), 0);
-  const financeExpense = data.expense
-    .filter((row) => financeWeekKey(row.expenseDate || row.date) === selectedFinanceWeekKey)
-    .reduce((sum, row) => sum + Number(row.amount || 0), 0);
-  const financePay = data.pay
-    .filter((row) => financeWeekKey(row.paymentDate || row.periodStart || row.periodEnd) === selectedFinanceWeekKey)
-    .reduce((sum, row) => sum + payNetAmount(row), 0);
+  const financeCurrent = collectFinanceReportRows(data, selectedFinanceWeekKey)
+    .find((row) => row.weekKey === selectedFinanceWeekKey) || {
+      truckIncome: 0,
+      truckExpense: WEEKLY_DIESEL_ALLOWANCE,
+      driverPay: 0,
+      profit: -WEEKLY_DIESEL_ALLOWANCE
+    };
   const rosterRows = data.roster.filter((row) => rosterWeekKey(row.shiftDate) === selectedRosterWeekKey);
   const completedShifts = rosterRows.filter((row) => normalizeRosterStatus(row.status) === "completed").length;
   const leaveDays = rosterRows.filter((row) => isAwayRosterStatus(row.status)).length;
   const stats = [
-    { label: "Finance Week Income", value: money(financeIncome) },
-    { label: "Finance Week Expense", value: money(financeExpense) },
-    { label: "Finance Week Profit", value: money(financeIncome - financeExpense - financePay) },
+    { label: "Finance Week Income", value: money(financeCurrent.truckIncome) },
+    { label: "Finance Week Expense", value: money(financeCurrent.truckExpense) },
+    { label: "Finance Week Profit", value: money(financeCurrent.profit) },
     { label: "Completed Shifts", value: String(completedShifts) },
     { label: "Leave Days", value: String(leaveDays) },
     { label: "Drivers In Report", value: String(new Set(rosterRows.map((row) => row.driverName).filter(Boolean)).size) }
@@ -1008,8 +1067,8 @@ async function prepareScheduledSnapshot(mode = "auto", runDateOverride = null) {
   const scheduler = readScheduler();
   const data = currentData();
   const runDate = runDateOverride || mostRecentScheduledRun(scheduler);
-  const financeWeekKeyValue = keyOf(weekStartByDay(runDate, 4));
-  const rosterWeekKeyValue = keyOf(weekStartByDay(runDate, 1));
+  const financeWeekKeyValue = keyOf(addDays(weekStartByDay(runDate, 4), -7));
+  const rosterWeekKeyValue = keyOf(addDays(weekStartByDay(runDate, 1), -7));
   const snapshot = buildSnapshot(data, financeWeekKeyValue, rosterWeekKeyValue, mode, new Date());
   const nextSnapshots = [snapshot, ...readSnapshots().filter((item) => item.id !== snapshot.id && !(item.runKey === snapshot.runKey && item.mode === snapshot.mode))].slice(0, REPORT_SNAPSHOT_LIMIT);
   saveSnapshots(nextSnapshots);
@@ -1094,12 +1153,8 @@ function applyAccess() {
 
 function refreshReports({ preserveInputs = true } = {}) {
   const data = currentData();
-  const latestFinanceWeek = latestWeekStart(
-    [...data.income, ...data.expense, ...data.pay],
-    (row) => row.incomeDate || row.expenseDate || row.paymentDate || row.periodStart || row.periodEnd,
-    4
-  );
-  const latestRosterWeek = preferredRosterWeekStart(data.roster);
+  const latestFinanceWeek = lastCompletedWeekStart(4);
+  const latestRosterWeek = lastCompletedWeekStart(1);
   const financeWeekInput = document.getElementById("reportFinanceWeek");
   const rosterWeekInput = document.getElementById("reportRosterWeek");
 
@@ -1113,7 +1168,7 @@ function refreshReports({ preserveInputs = true } = {}) {
   document.getElementById("reportsMeta").textContent =
     `Finance week: ${formatWeekRange(financeStart, addDays(financeStart, 6))}. Roster week: ${formatWeekRange(rosterStart, addDays(rosterStart, 6))}.`;
 
-  buildReportsChartSeries(data);
+  buildReportsChartSeries(data, selectedFinanceWeekKey, selectedRosterWeekKey);
   drawStats(data, selectedFinanceWeekKey, selectedRosterWeekKey);
   drawReportsCharts();
   buildWeeklyFinanceSummary(data, selectedFinanceWeekKey);

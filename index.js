@@ -38,6 +38,7 @@ const EXPENSE_KEY = "transport_crm_spending";
 const RECEIPTS_KEY = "transport_crm_whatsapp_receipts";
 const PAY_KEY = "transport_crm_payslips";
 const NIGHT_DROP_DEFAULT_RATE = 90;
+const WEEKLY_DIESEL_ALLOWANCE = 4500;
 
 function dashboardRoleProfile() {
   const roleName = String(currentRole?.name || "").trim().toLowerCase();
@@ -322,9 +323,39 @@ function payNetAmount(item) {
   return daysWorked * dailyRate + (nightRunDrops * NIGHT_DROP_DEFAULT_RATE) + driverBonus - deductions;
 }
 
+function payFingerprint(item) {
+  return [
+    item.driver,
+    item.truckNumber,
+    item.payPeriod,
+    item.daysWorked ?? item.hoursWorked,
+    item.dailyRate ?? item.hourlyRate,
+    item.nightRunDrops,
+    item.driverBonus,
+    item.deductions,
+    item.paymentDate
+  ].map((value) => String(value ?? "").trim().toLowerCase()).join("|");
+}
+
+function dedupeExactPayRows(rows) {
+  const seen = new Set();
+  return rows.filter((row) => {
+    const fingerprint = payFingerprint(row);
+    if (seen.has(fingerprint)) return false;
+    seen.add(fingerprint);
+    return true;
+  });
+}
+
+function isDieselExpense(item) {
+  const category = String(item.category || "").trim().toLowerCase();
+  return category.includes("fuel") || category.includes("diesel");
+}
+
 function rollingWeekKeys(count = 6) {
   const keys = [];
   const currentFinanceStart = weekStartByDay(new Date(), 4);
+  currentFinanceStart.setDate(currentFinanceStart.getDate() - 7);
   for (let index = count - 1; index >= 0; index -= 1) {
     const next = new Date(currentFinanceStart);
     next.setDate(currentFinanceStart.getDate() - (index * 7));
@@ -923,7 +954,7 @@ function buildPerformanceChartSeries() {
   const payRows = readRows(PAY_KEY);
   const rosterRows = readRows("transport_crm_roster");
   const incomeMap = new Map(weekKeys.map((week) => [week, 0]));
-  const expenseMap = new Map(weekKeys.map((week) => [week, 0]));
+  const expenseMap = new Map(weekKeys.map((week) => [week, WEEKLY_DIESEL_ALLOWANCE]));
   const payMap = new Map(weekKeys.map((week) => [week, 0]));
   const completedMap = new Map(weekKeys.map((week) => [week, 0]));
 
@@ -934,10 +965,12 @@ function buildPerformanceChartSeries() {
 
   expenseRows.forEach((item) => {
     const week = financeWeekKey(item.date);
-    if (expenseMap.has(week)) expenseMap.set(week, expenseMap.get(week) + Number(item.amount || 0));
+    if (expenseMap.has(week) && !isDieselExpense(item)) {
+      expenseMap.set(week, expenseMap.get(week) + Number(item.amount || 0));
+    }
   });
 
-  payRows.forEach((item) => {
+  dedupeExactPayRows(payRows).forEach((item) => {
     const week = financeWeekKey(item.paymentDate);
     if (payMap.has(week)) payMap.set(week, payMap.get(week) + payNetAmount(item));
   });

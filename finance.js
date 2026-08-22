@@ -172,6 +172,7 @@ function toNumber(value) {
 
 const money = (value) => `$${toNumber(value).toFixed(2)}`;
 const NIGHT_DROP_DEFAULT_RATE = 90;
+const WEEKLY_DIESEL_ALLOWANCE = 4500;
 const PAYROLL_LAG_WEEKS = 1;
 const DAILY_RATE_BY_TRUCK_NUMBER = {
   "881": 330,
@@ -547,6 +548,39 @@ function netPay(item) {
   const nightRunPay = nightRunDrops * dropRate;
   const driverBonus = toNumber(item.driverBonus ?? 0);
   return daysWorked * dailyRate + nightRunPay + driverBonus - toNumber(item.deductions || 0);
+}
+
+function payFingerprint(item) {
+  return [
+    item.driver,
+    item.truckNumber,
+    item.payPeriod,
+    item.daysWorked ?? item.hoursWorked,
+    item.dailyRate ?? item.hourlyRate,
+    item.nightRunDrops,
+    item.driverBonus,
+    item.deductions,
+    item.paymentDate
+  ].map((value) => String(value ?? "").trim().toLowerCase()).join("|");
+}
+
+function dedupeExactPayRows(rows) {
+  const seen = new Set();
+  return rows.filter((row) => {
+    const fingerprint = payFingerprint(row);
+    if (seen.has(fingerprint)) return false;
+    seen.add(fingerprint);
+    return true;
+  });
+}
+
+function isDieselExpense(item) {
+  const category = String(item.category || "").trim().toLowerCase();
+  return category.includes("fuel") || category.includes("diesel");
+}
+
+function nonDieselExpenseAmount(item) {
+  return isDieselExpense(item) ? 0 : toNumber(item.amount);
 }
 
 function normalizeDriverName(value) {
@@ -1530,14 +1564,15 @@ function getLatestFinanceDate() {
 function periodBoundsForDashboard() {
   const today = new Date();
   today.setHours(0, 0, 0, 0);
-  const referenceDate = getLatestFinanceDate() || today;
-
-  const weekStart = financeWeekStartFromDate(formatDateKey(referenceDate));
+  const currentWeekStart = financeWeekStartFromDate(formatDateKey(today));
+  const weekStart = new Date(currentWeekStart);
+  weekStart.setDate(currentWeekStart.getDate() - 7);
   const weekEnd = new Date(weekStart);
   weekEnd.setDate(weekStart.getDate() + 6);
+  const referenceDate = new Date(weekEnd);
 
   const monthStart = new Date(referenceDate.getFullYear(), referenceDate.getMonth(), 1);
-  const monthEnd = new Date(referenceDate.getFullYear(), referenceDate.getMonth() + 1, 0);
+  const monthEnd = new Date(referenceDate);
   monthEnd.setHours(23, 59, 59, 999);
 
   return { weekStart, weekEnd, monthStart, monthEnd, referenceDate };
@@ -1547,6 +1582,15 @@ function sumForRange(rows, dateField, amountGetter, start, end) {
   return rows.reduce((sum, row) => (
     dateInRange(row[dateField], start, end) ? sum + toNumber(amountGetter(row)) : sum
   ), 0);
+}
+
+function completedFinanceWeeksInRange(start, finalWeekStart) {
+  const firstWeekStart = financeWeekStartFromDate(formatDateKey(start));
+  let count = 0;
+  for (let week = new Date(firstWeekStart); week <= finalWeekStart; week.setDate(week.getDate() + 7)) {
+    count += 1;
+  }
+  return count;
 }
 
 function getFinanceDashboardAccess() {
@@ -1572,16 +1616,19 @@ function drawPeriodTotalsDashboard() {
 
   const { weekStart, weekEnd, monthStart, monthEnd, referenceDate } = periodBoundsForDashboard();
   const fmt = { day: "2-digit", month: "short", year: "numeric" };
-  meta.textContent = `Finance week: ${weekStart.toLocaleDateString("en-AU", fmt)} - ${weekEnd.toLocaleDateString("en-AU", fmt)} (Thursday to Wednesday) | Month: ${monthStart.toLocaleDateString("en-AU", { month: "long", year: "numeric" })} | Latest activity: ${referenceDate.toLocaleDateString("en-AU", fmt)}`;
+  meta.textContent = `Last completed finance week: ${weekStart.toLocaleDateString("en-AU", fmt)} - ${weekEnd.toLocaleDateString("en-AU", fmt)} (Thursday to Wednesday) | Month to date: ${monthStart.toLocaleDateString("en-AU", fmt)} - ${monthEnd.toLocaleDateString("en-AU", fmt)} | Diesel allowance: ${money(WEEKLY_DIESEL_ALLOWANCE)} per completed week`;
 
   const weeklyIncome = sumForRange(state.income, "incomeDate", (x) => x.amount, weekStart, weekEnd);
   const monthlyIncome = sumForRange(state.income, "incomeDate", (x) => x.amount, monthStart, monthEnd);
 
-  const weeklyExpense = sumForRange(state.expense, "date", (x) => x.amount, weekStart, weekEnd);
-  const monthlyExpense = sumForRange(state.expense, "date", (x) => x.amount, monthStart, monthEnd);
+  const weeklyExpense = WEEKLY_DIESEL_ALLOWANCE
+    + sumForRange(state.expense, "date", nonDieselExpenseAmount, weekStart, weekEnd);
+  const monthlyExpense = (completedFinanceWeeksInRange(monthStart, weekStart) * WEEKLY_DIESEL_ALLOWANCE)
+    + sumForRange(state.expense, "date", nonDieselExpenseAmount, monthStart, monthEnd);
 
-  const weeklyDriverPay = sumForRange(state.pay, "paymentDate", (x) => netPay(x), weekStart, weekEnd);
-  const monthlyDriverPay = sumForRange(state.pay, "paymentDate", (x) => netPay(x), monthStart, monthEnd);
+  const uniquePayRows = dedupeExactPayRows(state.pay);
+  const weeklyDriverPay = sumForRange(uniquePayRows, "paymentDate", (x) => netPay(x), weekStart, weekEnd);
+  const monthlyDriverPay = sumForRange(uniquePayRows, "paymentDate", (x) => netPay(x), monthStart, monthEnd);
 
   const weeklyProfit = weeklyIncome - weeklyExpense - weeklyDriverPay;
   const monthlyProfit = monthlyIncome - monthlyExpense - monthlyDriverPay;
@@ -1631,6 +1678,7 @@ function drawPeriodTotalsDashboard() {
 
 function buildWeeklySummary() {
   const summaryMap = new Map();
+  const lastCompletedWeekKey = formatDateKey(periodBoundsForDashboard().weekStart);
 
   function ensure(week) {
     if (!summaryMap.has(week)) {
@@ -1648,17 +1696,21 @@ function buildWeeklySummary() {
   state.expense.forEach((item) => {
     const wk = weekKey(item.date);
     if (!wk) return;
-    ensure(wk).expense += toNumber(item.amount);
+    ensure(wk).expense += nonDieselExpenseAmount(item);
   });
 
-  state.pay.forEach((item) => {
+  dedupeExactPayRows(state.pay).forEach((item) => {
     const wk = weekKey(item.paymentDate);
     if (!wk) return;
     ensure(wk).driverPay += netPay(item);
   });
 
   return Array.from(summaryMap.values())
-    .map((row) => ({ ...row, profit: row.income - row.expense - row.driverPay }))
+    .filter((row) => row.week <= lastCompletedWeekKey)
+    .map((row) => {
+      const expense = row.expense + WEEKLY_DIESEL_ALLOWANCE;
+      return { ...row, expense, profit: row.income - expense - row.driverPay };
+    })
     .sort((a, b) => a.week < b.week ? 1 : -1);
 }
 
