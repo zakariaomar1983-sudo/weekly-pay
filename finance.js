@@ -456,10 +456,11 @@ async function hydrateFinanceFromSupabase() {
   if (!supabase) return;
   let hadLoadError = false;
 
-  const [incomeRes, expenseRes, payRes] = await Promise.all([
+  const [incomeRes, expenseRes, payRes, rosterRes] = await Promise.all([
     supabase.from(TABLE_BY_KEY[KEYS.income]).select("*"),
     supabase.from(TABLE_BY_KEY[KEYS.expense]).select("*"),
-    supabase.from(TABLE_BY_KEY[KEYS.pay]).select("*")
+    supabase.from(TABLE_BY_KEY[KEYS.pay]).select("*"),
+    supabase.from("roster").select("*")
   ]);
 
   if (!incomeRes.error && Array.isArray(incomeRes.data)) {
@@ -508,6 +509,23 @@ async function hydrateFinanceFromSupabase() {
     console.error("Supabase load failed for payslips:", payRes.error.message);
     hadLoadError = true;
     setFinanceSyncStatus("Shared finance sync unavailable. Using this device's saved data.", "local");
+  }
+
+  if (!rosterRes.error && Array.isArray(rosterRes.data)) {
+    const sharedRosterRows = dedupeRosterRowsForPay(rosterRes.data.map(rosterRowFromDb));
+    localStorage.setItem(ROSTER_KEY, JSON.stringify(sharedRosterRows));
+    const latestCompletedWeek = latestRosterWeekKey(sharedRosterRows, true);
+    const latestPaymentWeek = shiftWeekKey(latestCompletedWeek, PAYROLL_LAG_WEEKS);
+    const weekStartInput = document.getElementById("payRosterWeekStart");
+    const defaultPaymentWeek = mondayKeyFrom(formatDateKey(new Date()));
+    if (latestPaymentWeek && weekStartInput && (!weekStartInput.value || weekStartInput.value === defaultPaymentWeek)) {
+      weekStartInput.value = latestPaymentWeek;
+      syncPayDateToRosterWeek();
+    }
+  } else if (rosterRes.error) {
+    console.error("Supabase load failed for roster pay sync:", rosterRes.error.message);
+    hadLoadError = true;
+    setFinanceSyncStatus("Shared roster sync unavailable. Driver Pay will use this device's saved roster.", "local");
   }
 
   if (!hadLoadError) {
@@ -2039,6 +2057,9 @@ document.getElementById("exportPay").addEventListener("click", () => {
   downloadCsv("driver_pay.csv", rows);
 });
 
+// Signals that the complete Finance workflow loaded successfully. The legacy
+// emergency fallback must not capture and replace this button handler.
+window.__OPX_FINANCE_MAIN_LOADED = true;
 document.getElementById("generatePayFromRoster").addEventListener("click", () => {
   void generatePayFromRosterWeek();
 });

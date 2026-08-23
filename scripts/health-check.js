@@ -126,6 +126,14 @@ if (!/removeDriverRosterReferences/.test(read("drivers.js")) || !/from\(ROSTER_T
   failures.push("drivers.js does not remove saved roster shifts when a driver is deleted.");
 }
 
+if (!/window\.__OPX_FINANCE_MAIN_LOADED\s*=\s*true/.test(read("finance.js")) || !/if \(window\.__OPX_FINANCE_MAIN_LOADED\) return;/.test(read("emergency-fill.js"))) {
+  failures.push("The emergency Finance fallback can still intercept the main Driver Pay generator.");
+}
+
+if (!/hydrateFinanceFromSupabase[\s\S]*from\("roster"\)\.select\("\*"\)/.test(read("finance.js")) || !/latestCompletedWeek[\s\S]*PAYROLL_LAG_WEEKS/.test(read("finance.js"))) {
+  failures.push("finance.js does not hydrate the shared roster and select the payment week after the latest completed roster week.");
+}
+
 for (const required of ["api/_auth-server.js", "api/auth-session.js"]) {
   if (!fs.existsSync(path.join(root, required))) failures.push(`${required} is missing.`);
 }

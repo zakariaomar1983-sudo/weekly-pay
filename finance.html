@@ -193,13 +193,13 @@
         <h2>Driver Pay (Payslip)</h2>
       </div>
       <form class="form-grid" onsubmit="return false;">
-        <label>Roster Week Start
+        <label>Payment Week Start
           <input id="payRosterWeekStart" type="date" />
         </label>
         <div class="actions full">
           <button id="generatePayFromRoster" class="btn" type="button">Generate Driver Pay From Roster</button>
         </div>
-        <p id="payGenerationStatus" class="data-status full muted">Driver Pay uses completed roster shifts from the selected week.</p>
+        <p id="payGenerationStatus" class="data-status full muted">Driver Pay uses completed roster shifts from the previous week.</p>
       </form>
       <p class="muted">Driver Pay shows the selected week by default. Use Search Driver Pay History to find older payslips.</p>
       <form id="payForm" class="form-grid">
@@ -252,7 +252,7 @@
   <script src="./supabase-client.js?v=20260413g"></script>
   <script src="./seed-data.js?v=20260413g"></script>
   <script src="./auth.js?v=20260818a"></script>
-  <script src="./finance.js?v=20260818a"></script>
+  <script src="./finance.js?v=20260824b"></script>
   <script>
     (function initPayablesPanel() {
       if (window.__opxPayablesInit) return;
@@ -398,6 +398,6 @@
       render();
     })();
   </script>
-  <script src="./emergency-fill.js?v=20260413g"></script>
+  <script src="./emergency-fill.js?v=20260824a"></script>
 </body>
 </html>

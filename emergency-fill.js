@@ -486,6 +486,10 @@
     if (error) console.error("Driver Pay roster-week sync failed:", error.message);
   }
 
+  // finance.js owns Driver Pay generation when it loaded successfully. Keep
+  // this older implementation only as an emergency fallback for script failure.
+  if (window.__OPX_FINANCE_MAIN_LOADED) return;
+
   async function generateFromRosterWeek(event) {
     const button = event.target?.closest?.("#generatePayFromRoster");
     if (!button) return;
