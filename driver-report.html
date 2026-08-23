@@ -16,7 +16,7 @@
       <div class="topbar-actions">
         <span id="currentUserChip" class="user-chip"></span>
         <a class="btn btn-outline" href="./index.html">Home</a>
-        <a class="btn btn-outline" href="./roster.html">Roster</a>
+        <a id="fullRosterLink" class="btn btn-outline" href="./roster.html">Full Roster</a>
         <button id="logoutBtn" class="btn btn-muted" type="button">Logout</button>
       </div>
     </header>
@@ -25,6 +25,29 @@
       <div class="panel-head"><h2>Report Your Shift</h2></div>
       <p class="muted">Complete this report after your shift. Driver reports are dated today and cannot be rolled back after submission. Save it as a draft if you need to finish it later.</p>
       <p id="reportStatus" class="data-status full muted"></p>
+    </section>
+
+    <section class="panel">
+      <div class="panel-head">
+        <div><p class="eyebrow">Driver View</p><h2 id="driverRosterTitle">My Weekly Roster</h2></div>
+        <div class="actions">
+          <button id="driverRosterPreviousWeek" class="btn btn-outline" type="button">Previous Week</button>
+          <button id="driverRosterCurrentWeek" class="btn btn-muted" type="button">This Week</button>
+          <button id="driverRosterNextWeek" class="btn btn-outline" type="button">Next Week</button>
+        </div>
+      </div>
+      <div class="form-grid">
+        <label>Week Beginning (Monday)<input id="driverRosterWeek" type="date" /></label>
+        <label id="driverRosterDriverLabel">Driver<select id="driverRosterDriver"></select></label>
+      </div>
+      <p id="driverRosterStatus" class="data-status full muted">Loading your roster...</p>
+      <div id="driverRosterStats" class="stats-grid"></div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Day</th><th>Date</th><th>Truck</th><th>Start</th><th>Start Location</th><th>Route / Job</th><th>Night Run</th><th>Status</th></tr></thead>
+          <tbody id="driverRosterTableBody"></tbody>
+        </table>
+      </div>
     </section>
 
     <section class="panel">
@@ -61,6 +84,6 @@
   <script src="./supabase-config.js?v=20260820b"></script>
   <script src="./supabase-client.js?v=20260820b"></script>
   <script src="./auth.js?v=20260820b"></script>
-  <script src="./driver-report.js?v=20260820b"></script>
+  <script src="./driver-report.js?v=20260823a"></script>
 </body>
 </html>
