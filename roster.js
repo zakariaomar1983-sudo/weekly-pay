@@ -60,7 +60,6 @@ const FALLBACK_DRIVERS = [
   { id: "fallback-driver-3", name: "Abdirizak Ahmed", status: "Active" },
   { id: "fallback-driver-4", name: "Ramzi Mohamed", status: "Active" },
   { id: "fallback-driver-5", name: "Suhen Omar", status: "Active" },
-  { id: "fallback-driver-6", name: "Soleh Sungkar", status: "Active" },
   { id: "fallback-driver-7", name: "Samatar Yusuf", status: "Active" }
 ];
 const FALLBACK_TRUCKS = [
@@ -76,11 +75,11 @@ const FALLBACK_TRUCKS = [
 const PRIMARY_TRUCK_BY_DRIVER = new Map([
   ["Abdirizak Ahmed", "853"],
   ["Imran Abdella", "881"],
+  ["Mahmood Xabat", "841"],
   ["Muhammed A H Siyad", "620"],
   ["Ramzi Mohamed", "376"],
   ["Samatar Yusuf", "855"],
   ["Sharmake Hashi", "672"],
-  ["Soleh Sungkar", "840"],
   ["Suhen Omar", "620"]
 ]);
 const LEGACY_PRIMARY_TRUCK_ASSIGNMENTS = new Map([
@@ -92,7 +91,7 @@ const LEGACY_DRIVER_NAME_ALIASES = new Map([
   [normalizeDriverNameKey("Mohammed Siyad"), "Muhammed A H Siyad"],
   [normalizeDriverNameKey("Muhamed Siyad"), "Muhammed A H Siyad"]
 ]);
-const REQUIRED_DRIVER_NAMES = ["Soleh Sungkar"];
+const REQUIRED_DRIVER_NAMES = [];
 const ROSTER_EXCLUDED_DRIVER_NAMES = new Set([
   normalizeDriverNameKey("Muhammed A H Siyad")
 ]);
@@ -1020,16 +1019,8 @@ async function hydrateRosterReferencesFromSupabase() {
       }
     } else {
       const remoteDrivers = normalizeDriverRecords(driversRes.data.map(fromDbDriver));
-      const mergedDrivers = normalizeDriverRecords([...localDrivers, ...remoteDrivers]);
-      localStorage.setItem(DRIVERS_KEY, JSON.stringify(mergedDrivers));
-
-      // Keep freshly-added local drivers visible immediately, then backfill shared store.
-      if (JSON.stringify(mergedDrivers) !== JSON.stringify(remoteDrivers)) {
-        const { error } = await rosterSupabaseClient.from(DRIVERS_TABLE).upsert(mergedDrivers.map(toDbDriver), { onConflict: "id" });
-        if (error) {
-          console.error("Supabase merge sync failed for roster drivers:", error.message);
-        }
-      }
+      localStorage.setItem(DRIVERS_KEY, JSON.stringify(remoteDrivers));
+      pruneRosterDriverPool(remoteDrivers);
     }
   } else if (driversRes.error) {
     console.error("Supabase load failed for roster drivers:", driversRes.error.message);
@@ -1298,6 +1289,22 @@ function readRosterDriverPoolNames() {
 function writeRosterDriverPoolNames(names) {
   const normalized = [...new Set((Array.isArray(names) ? names : []).map((name) => canonicalDriverName(name)).map((name) => String(name || "").trim()).filter(Boolean))];
   localStorage.setItem(ROSTER_DRIVER_POOL_KEY, JSON.stringify(normalized));
+}
+
+function pruneRosterDriverPool(availableRecords) {
+  const current = readRosterDriverPoolNames();
+  if (!current.length) return false;
+  const availableByKey = new Map(
+    normalizeDriverRecords(availableRecords)
+      .filter((driver) => String(driver.status || "").trim().toLowerCase() !== "inactive")
+      .map((driver) => [normalizeDriverNameKey(driver.name), driver.name])
+  );
+  const next = current
+    .map((name) => availableByKey.get(normalizeDriverNameKey(name)) || "")
+    .filter(Boolean);
+  if (JSON.stringify(next) === JSON.stringify(current)) return false;
+  writeRosterDriverPoolNames(next);
+  return true;
 }
 
 function getAvailableDriverRecords() {
@@ -1634,7 +1641,7 @@ function setSelectOptions(selectId, values, placeholder, currentValue = "") {
 }
 
 function populateRosterPickers(selectedDriver = "", selectedTruck = "", options = {}) {
-  const driverNames = getActiveDrivers().map((item) => item.name || "");
+  const driverNames = getAvailableDriverRecords().map((item) => item.name || "");
   setSelectOptions("driverName", driverNames, "Select driver", selectedDriver);
 
   const shiftDate = document.getElementById("shiftDate")?.value || "";
@@ -2829,6 +2836,7 @@ document.getElementById("rosterForm").addEventListener("submit", (e) => {
   }
 
   state.roster = dedupeRosterRows(state.roster);
+  ensureDriverInRosterPool(basePayload.driverName);
   saveData();
   e.target.reset();
   document.getElementById("rosterId").value = "";
@@ -3226,7 +3234,6 @@ applyAccess();
 ensureRosterReferenceFallbacks();
 purgeExcludedDriversFromDriverStore();
 purgeExcludedDriversFromRoster();
-ensureDriverInRosterPool("Soleh Sungkar");
 const todayMonday = mondayOf(todayKey());
 if (todayMonday) {
   document.getElementById("weekStart").value = dateToKey(todayMonday);

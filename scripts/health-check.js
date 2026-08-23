@@ -98,6 +98,14 @@ if (!/\["Ramzi Mohamed", "376"\]/.test(read("roster.js")) || !/LEGACY_PRIMARY_TR
   failures.push("roster.js does not migrate Ramzi Mohamed from truck 841 to truck 376.");
 }
 
+if (!/\["Mahmood Xabat", "841"\]/.test(read("roster.js")) || !/populateRosterPickers[\s\S]*getAvailableDriverRecords\(\)/.test(read("roster.js"))) {
+  failures.push("roster.js does not allow Mahmood Xabat to be assigned to truck 841 from the full active driver list.");
+}
+
+if (/REQUIRED_DRIVER_NAMES\s*=\s*\[[^\]]*Soleh Sungkar/.test(read("roster.js")) || /ensureDriverInRosterPool\("Soleh Sungkar"\)/.test(read("roster.js"))) {
+  failures.push("roster.js still forces deleted driver Soleh Sungkar back into the roster list.");
+}
+
 for (const required of ["api/_auth-server.js", "api/auth-session.js"]) {
   if (!fs.existsSync(path.join(root, required))) failures.push(`${required} is missing.`);
 }
