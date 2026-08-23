@@ -11,7 +11,10 @@ const LEGACY_CONTACT_KEY = "transport_crm_driver_contacts";
 const DRIVER_ATTACHMENTS_KEY = "transport_crm_driver_attachments";
 const DRIVERS_SYNC_STATUS_KEY = "transport_crm_drivers_sync_status";
 const DRIVERS_UPDATED_KEY = "transport_crm_drivers_updated_at";
+const ROSTER_KEY = "transport_crm_roster";
+const ROSTER_DRIVER_POOL_KEY = "transport_crm_roster_driver_pool";
 const DRIVERS_TABLE = "drivers";
+const ROSTER_TABLE = "roster";
 const EXCLUDED_DRIVER_NAMES = new Set([
   normalizeDriverNameKey("Muhammed A H Siyad")
 ]);
@@ -561,6 +564,36 @@ function fromDbDriver(row) {
   };
 }
 
+async function removeDriverRosterReferences(driverName) {
+  const nameKey = normalizeDriverNameKey(driverName);
+  if (!nameKey) return true;
+
+  try {
+    const rosterRows = JSON.parse(localStorage.getItem(ROSTER_KEY) || "[]");
+    if (Array.isArray(rosterRows)) {
+      localStorage.setItem(ROSTER_KEY, JSON.stringify(
+        rosterRows.filter((row) => normalizeDriverNameKey(row?.driverName) !== nameKey)
+      ));
+    }
+    const rosterPool = JSON.parse(localStorage.getItem(ROSTER_DRIVER_POOL_KEY) || "[]");
+    if (Array.isArray(rosterPool) && rosterPool.length) {
+      localStorage.setItem(ROSTER_DRIVER_POOL_KEY, JSON.stringify(
+        rosterPool.filter((name) => normalizeDriverNameKey(name) !== nameKey)
+      ));
+    }
+  } catch (error) {
+    console.warn("Local roster cleanup failed for deleted driver:", error?.message || error);
+  }
+
+  if (!useSupabase) return true;
+  const { error } = await driversSupabase.from(ROSTER_TABLE).delete().eq("driver_name", driverName);
+  if (error) {
+    console.error("Shared roster cleanup failed for deleted driver:", error.message);
+    return false;
+  }
+  return true;
+}
+
 async function syncDriversToSupabase() {
   if (!useSupabase || driverSyncInFlight) return false;
   driverSyncInFlight = true;
@@ -880,7 +913,7 @@ document.getElementById("driverAttachmentsInput")?.addEventListener("change", as
   }
 });
 
-document.body.addEventListener("click", (e) => {
+document.body.addEventListener("click", async (e) => {
   const button = e.target.closest("button[data-action]");
   if (!button) return;
 
@@ -914,7 +947,8 @@ document.body.addEventListener("click", (e) => {
   }
 
   if (action === "delete") {
-    if (item && !confirm(`Delete driver ${item.name}?`)) return;
+    if (!item) return;
+    if (!confirm(`Delete driver ${item.name} and remove all of their saved roster shifts?`)) return;
     state.drivers = state.drivers.filter((d) => d.id !== id);
     if (driverAttachmentStore[id]) {
       delete driverAttachmentStore[id];
@@ -924,8 +958,12 @@ document.body.addEventListener("click", (e) => {
       delete legacyContacts[id];
       localStorage.setItem(LEGACY_CONTACT_KEY, JSON.stringify(legacyContacts));
     }
+    const rosterCleanupSucceeded = await removeDriverRosterReferences(item.name);
     saveData();
     refresh();
+    if (!rosterCleanupSucceeded) {
+      alert(`${item.name} was deleted, but shared roster cleanup could not finish. Please retry while online.`);
+    }
   }
 });
 

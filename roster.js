@@ -1606,11 +1606,16 @@ function buildWeekTemplateRows(weekKeys, actualWeekRows = []) {
   return templateRows;
 }
 
-function getAssignedTruckNumbersForDate(dateKey, excludeId = "") {
+function getAssignedTruckNumbersForDate(dateKey, excludeIds = []) {
   if (!dateKey) return new Set();
+  const exclusions = new Set(
+    (Array.isArray(excludeIds) ? excludeIds : [excludeIds])
+      .map((id) => String(id || "").trim())
+      .filter(Boolean)
+  );
   return new Set(
     state.roster
-      .filter((row) => row.shiftDate === dateKey && row.id !== excludeId)
+      .filter((row) => row.shiftDate === dateKey && !exclusions.has(String(row.id || "").trim()))
       .map((row) => String(row.truckNumber || "").trim())
       .filter(Boolean)
   );
@@ -1887,9 +1892,9 @@ function getBatchShiftDates(anchorDate) {
     });
 }
 
-function isTruckAvailableForDate(truckNumber, shiftDate, excludeId = "") {
+function isTruckAvailableForDate(truckNumber, shiftDate, excludeIds = []) {
   if (!truckNumber || !shiftDate) return false;
-  return !getAssignedTruckNumbersForDate(shiftDate, excludeId).has(String(truckNumber || "").trim());
+  return !getAssignedTruckNumbersForDate(shiftDate, excludeIds).has(String(truckNumber || "").trim());
 }
 
 function cleanPhone(phone) {
@@ -2760,24 +2765,47 @@ document.getElementById("rosterForm").addEventListener("submit", (e) => {
 
   const existingItem = id ? state.roster.find((row) => row.id === id) : null;
   if (id && basePayload.status !== "Leave") {
-    if (basePayload.truckNumber && !isTruckAvailableForDate(basePayload.truckNumber, basePayload.shiftDate, id)) {
+    const copiesExistingShiftToNewDate = Boolean(
+      existingItem
+      && normalizeDriverNameKey(existingItem.driverName) === normalizeDriverNameKey(basePayload.driverName)
+      && existingItem.shiftDate !== basePayload.shiftDate
+    );
+    const existingTargetShift = copiesExistingShiftToNewDate
+      ? state.roster.find((row) => (
+          row.id !== id
+          && normalizeDriverNameKey(row.driverName) === normalizeDriverNameKey(basePayload.driverName)
+          && row.shiftDate === basePayload.shiftDate
+        ))
+      : null;
+    const conflictExclusions = [id, existingTargetShift?.id].filter(Boolean);
+    if (basePayload.truckNumber && !isTruckAvailableForDate(basePayload.truckNumber, basePayload.shiftDate, conflictExclusions)) {
       alert(`Truck ${basePayload.truckNumber} is already assigned on ${basePayload.shiftDate}. Choose another truck or date.`);
       return;
     }
-    const payload = { ...basePayload, id };
-    const previousLeaveRange = existingItem?.status === "Leave"
-      ? inferLeaveRange(existingItem.driverName, existingItem.shiftDate)
-      : null;
-    const previousLeaveDates = previousLeaveRange ? new Set(getDateRangeKeys(previousLeaveRange.start, previousLeaveRange.end)) : null;
-    state.roster = [
-      ...state.roster.filter((row) => {
-        if (row.id === id) return false;
-        if (!previousLeaveDates) return !(row.driverName === payload.driverName && row.shiftDate === payload.shiftDate);
-        if (row.driverName === existingItem.driverName && previousLeaveDates.has(row.shiftDate)) return false;
-        return !(row.driverName === payload.driverName && row.shiftDate === payload.shiftDate);
-      }),
-      payload
-    ];
+    const payload = {
+      ...basePayload,
+      id: copiesExistingShiftToNewDate ? (existingTargetShift?.id || uid()) : id
+    };
+    if (copiesExistingShiftToNewDate) {
+      state.roster = [
+        ...state.roster.filter((row) => row.id !== existingTargetShift?.id),
+        payload
+      ];
+    } else {
+      const previousLeaveRange = existingItem?.status === "Leave"
+        ? inferLeaveRange(existingItem.driverName, existingItem.shiftDate)
+        : null;
+      const previousLeaveDates = previousLeaveRange ? new Set(getDateRangeKeys(previousLeaveRange.start, previousLeaveRange.end)) : null;
+      state.roster = [
+        ...state.roster.filter((row) => {
+          if (row.id === id) return false;
+          if (!previousLeaveDates) return !(row.driverName === payload.driverName && row.shiftDate === payload.shiftDate);
+          if (row.driverName === existingItem.driverName && previousLeaveDates.has(row.shiftDate)) return false;
+          return !(row.driverName === payload.driverName && row.shiftDate === payload.shiftDate);
+        }),
+        payload
+      ];
+    }
   } else if (!id) {
     const batchDates = getBatchShiftDates(basePayload.shiftDate);
     if (getBatchToggle()?.checked && !batchDates.length) {
@@ -3138,9 +3166,8 @@ document.body.addEventListener("click", async (e) => {
     if (!auth.can("editRoster")) return;
     const driverName = button.dataset.driverName || "";
     if (!driverName) return;
-    if (!confirm(`Delete ${driverName} from the roster driver list?`)) return;
-    const removeShifts = confirm(`Also delete all saved shifts for ${driverName} in every week?`);
-    const result = removeDriverFromRosterPool(driverName, { removeShifts });
+    if (!confirm(`Remove ${driverName} from the roster list and delete all saved roster shifts for this driver? Their main Drivers page record will remain.`)) return;
+    const result = removeDriverFromRosterPool(driverName, { removeShifts: true });
     if (!result.removed) {
       if (result.reason === "last-driver") {
         alert("At least one driver must stay in the roster list.");
@@ -3148,9 +3175,7 @@ document.body.addEventListener("click", async (e) => {
       return;
     }
     setDispatchStatus(
-      removeShifts
-        ? `${driverName} deleted from roster list and all saved shifts were removed.`
-        : `${driverName} deleted from roster list.`,
+      `${driverName} deleted from roster list and all saved shifts were removed.`,
       "warning-text"
     );
     refresh();

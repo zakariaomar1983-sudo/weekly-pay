@@ -114,6 +114,18 @@ if (/REQUIRED_DRIVER_NAMES\s*=\s*\[[^\]]*Soleh Sungkar/.test(read("roster.js")) 
   failures.push("roster.js still forces deleted driver Soleh Sungkar back into the roster list.");
 }
 
+if (!/copiesExistingShiftToNewDate/.test(read("roster.js")) || !/existingTargetShift\?\.id \|\| uid\(\)/.test(read("roster.js"))) {
+  failures.push("roster.js still moves an edited shift instead of preserving it when adding the same driver to another date.");
+}
+
+if (!/delete-roster-driver[\s\S]*removeDriverFromRosterPool\(driverName, \{ removeShifts: true \}\)/.test(read("roster.js"))) {
+  failures.push("roster.js does not permanently remove a deleted roster driver's saved shifts.");
+}
+
+if (!/removeDriverRosterReferences/.test(read("drivers.js")) || !/from\(ROSTER_TABLE\)\.delete\(\)\.eq\("driver_name", driverName\)/.test(read("drivers.js"))) {
+  failures.push("drivers.js does not remove saved roster shifts when a driver is deleted.");
+}
+
 for (const required of ["api/_auth-server.js", "api/auth-session.js"]) {
   if (!fs.existsSync(path.join(root, required))) failures.push(`${required} is missing.`);
 }
