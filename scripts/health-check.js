@@ -86,6 +86,10 @@ if (!/hydrateTruckCountFromSupabase/.test(read("index.js")) || !/from\("trucks"\
   failures.push("index.js does not hydrate the dashboard truck count from shared storage.");
 }
 
+if (!/hydrateDriverCountFromSupabase/.test(read("index.js")) || !/countCurrentDrivers/.test(read("index.js")) || !/from\("drivers"\)\.select\("name,status"\)/.test(read("index.js"))) {
+  failures.push("index.js does not hydrate a unique active driver count from shared storage.");
+}
+
 if (/function uid\(\) \{\s*return `\$\{Date\.now\(\)\}_/.test(read("roster.js")) || !/crypto\?\.randomUUID/.test(read("roster.js"))) {
   failures.push("roster.js does not generate database-compatible UUID roster IDs.");
 }

@@ -22,6 +22,7 @@ const links = [
 ];
 
 const state = {
+  driverCount: countCurrentDrivers(),
   logCount: readCount("transport_crm_logs"),
   truckCount: readCount("transport_crm_trucks")
 };
@@ -158,10 +159,20 @@ function readCount(key) {
   }
 }
 
+function countCurrentDrivers(rows = readRows("transport_crm_drivers")) {
+  const uniqueNames = new Set();
+  rows.forEach((driver) => {
+    if (String(driver?.status || "").trim().toLowerCase() === "inactive") return;
+    const name = String(driver?.name || "").trim().toLowerCase().replace(/\s+/g, " ");
+    if (name) uniqueNames.add(name);
+  });
+  return uniqueNames.size;
+}
+
 function drawStats() {
   const userCount = Array.isArray(window.OPXAuth.getUsers?.()) ? window.OPXAuth.getUsers().length : 0;
   const stats = [
-    { label: "Drivers", value: String(readCount("transport_crm_drivers")), show: auth.can("viewDrivers") },
+    { label: "Drivers", value: String(state.driverCount), show: auth.can("viewDrivers") },
     { label: "Trucks", value: String(state.truckCount), show: auth.can("viewTrucks") },
     { label: "Roster Shifts", value: String(readCount("transport_crm_roster")), show: auth.can("viewRoster") },
     { label: "Income Rows", value: String(readCount("transport_crm_truck_income")), show: auth.can("viewTruckIncome") },
@@ -1394,6 +1405,21 @@ async function hydrateTruckCountFromSupabase() {
   drawStats();
 }
 
+async function hydrateDriverCountFromSupabase() {
+  if (!isSupabaseReady() || !auth.can("viewDrivers")) return;
+  const supabase = getSupabaseClient();
+  if (!supabase) return;
+
+  const { data, error } = await supabase.from("drivers").select("name,status");
+  if (error) {
+    console.error("Supabase driver count failed:", error.message);
+    return;
+  }
+
+  state.driverCount = countCurrentDrivers(data || []);
+  drawStats();
+}
+
 applyRoleDashboardProfile();
 drawStats();
 drawManagerSummary();
@@ -1412,11 +1438,13 @@ drawLinks();
 if (isSupabaseReady()) {
   void hydrateLogCountFromSupabase();
   void hydrateTruckCountFromSupabase();
+  void hydrateDriverCountFromSupabase();
 }
 
 window.addEventListener("opx:supabase-ready", () => {
   void hydrateLogCountFromSupabase();
   void hydrateTruckCountFromSupabase();
+  void hydrateDriverCountFromSupabase();
 });
 
 window.addEventListener("storage", (event) => {
@@ -1424,6 +1452,9 @@ window.addEventListener("storage", (event) => {
   if (event.key.startsWith("transport_crm_")) {
     if (event.key === "transport_crm_trucks") {
       state.truckCount = readCount("transport_crm_trucks");
+    }
+    if (event.key === "transport_crm_drivers") {
+      state.driverCount = countCurrentDrivers();
     }
     applyRoleDashboardProfile();
     drawStats();
@@ -1444,6 +1475,7 @@ window.addEventListener("storage", (event) => {
 
 window.addEventListener("online", () => {
   void hydrateTruckCountFromSupabase();
+  void hydrateDriverCountFromSupabase();
   applyRoleDashboardProfile();
   drawManagerSummary();
   drawAttentionStrip();
