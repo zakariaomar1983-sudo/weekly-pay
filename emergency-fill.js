@@ -278,6 +278,7 @@
   const PAY_KEY = "transport_crm_payslips";
   const DROP_RATE = 90;
   const DAILY_RATE_BY_TRUCK_NUMBER = {
+    "376": 320,
     "881": 330,
     "853": 330,
     "855": 330,

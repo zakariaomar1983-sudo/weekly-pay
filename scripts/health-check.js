@@ -134,6 +134,10 @@ if (!/hydrateFinanceFromSupabase[\s\S]*from\("roster"\)\.select\("\*"\)/.test(re
   failures.push("finance.js does not hydrate the shared roster and select the payment week after the latest completed roster week.");
 }
 
+if (!/DAILY_RATE_BY_TRUCK_NUMBER\s*=\s*\{\s*"376": 320/.test(read("finance.js")) || !/DAILY_RATE_BY_TRUCK_NUMBER\s*=\s*\{\s*"376": 320/.test(read("emergency-fill.js"))) {
+  failures.push("Driver Pay does not apply truck 376's established $320 daily rate.");
+}
+
 for (const required of ["api/_auth-server.js", "api/auth-session.js"]) {
   if (!fs.existsSync(path.join(root, required))) failures.push(`${required} is missing.`);
 }
