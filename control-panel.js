@@ -703,32 +703,34 @@ function readSupabaseConfigInputs() {
   return { url, anonKey };
 }
 
-async function testSupabaseConnection(url, anonKey) {
+async function testSupabaseConnection(url, anonKey, showAlert = true) {
   if (!url || !anonKey) {
     setSupabaseConfigStatus("Enter both Supabase URL and anon key.", true);
-    alert("Enter both Supabase URL and anon key.");
+    if (showAlert) alert("Enter both Supabase URL and anon key.");
     return;
   }
 
   if (!window.supabase?.createClient) {
     setSupabaseConfigStatus("Supabase SDK not loaded.", true);
-    alert("Supabase SDK not loaded. Please refresh page.");
+    if (showAlert) alert("Supabase SDK not loaded. Please refresh page.");
     return;
   }
 
   try {
-    const client = window.supabase.createClient(url, anonKey);
+    const client = !showAlert && controlPanelSupabase
+      ? controlPanelSupabase
+      : window.supabase.createClient(url, anonKey);
     const { count, error } = await client.from("trucks").select("*", { count: "exact", head: true });
     if (error) {
       setSupabaseConfigStatus(`Connection failed: ${error.message}`, true);
-      alert(`Connection failed: ${error.message}`);
+      if (showAlert) alert(`Connection failed: ${error.message}`);
       return;
     }
     setSupabaseConfigStatus(`Connected. Trucks rows available: ${count ?? 0}.`);
-    alert(`Connected. Trucks rows available: ${count ?? 0}.`);
+    if (showAlert) alert(`Connected. Trucks rows available: ${count ?? 0}.`);
   } catch (error) {
     setSupabaseConfigStatus(`Connection failed: ${error.message || "Unknown error"}`, true);
-    alert(`Connection failed: ${error.message || "Unknown error"}`);
+    if (showAlert) alert(`Connection failed: ${error.message || "Unknown error"}`);
   }
 }
 
@@ -782,7 +784,7 @@ function initSupabaseConfigPanel() {
   });
 
   if (savedUrl && savedAnon) {
-    void testSupabaseConnection(savedUrl, savedAnon);
+    void testSupabaseConnection(savedUrl, savedAnon, false);
   }
 }
 

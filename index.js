@@ -24,7 +24,11 @@ const links = [
 const state = {
   driverCount: countCurrentDrivers(),
   logCount: readCount("transport_crm_logs"),
-  truckCount: readCount("transport_crm_trucks")
+  truckCount: readCount("transport_crm_trucks"),
+  rosterCount: readCount("transport_crm_roster"),
+  incomeCount: readCount("transport_crm_truck_income"),
+  receiptCount: readCount("transport_crm_whatsapp_receipts"),
+  payslipCount: readCount("transport_crm_payslips")
 };
 const currentRole = window.OPXAuth.getRoleById?.(auth.user.roleId) || null;
 
@@ -174,10 +178,10 @@ function drawStats() {
   const stats = [
     { label: "Drivers", value: String(state.driverCount), show: auth.can("viewDrivers") },
     { label: "Trucks", value: String(state.truckCount), show: auth.can("viewTrucks") },
-    { label: "Roster Shifts", value: String(readCount("transport_crm_roster")), show: auth.can("viewRoster") },
-    { label: "Income Rows", value: String(readCount("transport_crm_truck_income")), show: auth.can("viewTruckIncome") },
-    { label: "Receipts", value: String(readCount(RECEIPTS_KEY)), show: auth.can("accessCRM") && (auth.can("viewSpending") || auth.can("editSpending") || auth.can("accessControlPanel")) },
-    { label: "Payslips", value: String(readCount("transport_crm_payslips")), show: auth.can("viewPayslips") },
+    { label: "Roster Shifts", value: String(state.rosterCount), show: auth.can("viewRoster") },
+    { label: "Income Rows", value: String(state.incomeCount), show: auth.can("viewTruckIncome") },
+    { label: "Receipts", value: String(state.receiptCount), show: auth.can("accessCRM") && (auth.can("viewSpending") || auth.can("editSpending") || auth.can("accessControlPanel")) },
+    { label: "Payslips", value: String(state.payslipCount), show: auth.can("viewPayslips") },
     { label: "Logs", value: String(state.logCount), show: auth.can("accessLogs") },
     { label: "Users", value: String(userCount), show: auth.can("accessControlPanel") }
   ].filter((item) => item.show);
@@ -1420,6 +1424,135 @@ async function hydrateDriverCountFromSupabase() {
   drawStats();
 }
 
+function unpackDashboardRoute(value) {
+  const separator = "|||opx-start-location|||";
+  const raw = String(value || "");
+  const separatorIndex = raw.indexOf(separator);
+  if (separatorIndex < 0) return { route: raw, startLocation: "" };
+  return {
+    startLocation: raw.slice(0, separatorIndex),
+    route: raw.slice(separatorIndex + separator.length)
+  };
+}
+
+function fromDashboardRosterRow(row) {
+  const runType = String(row.run_type || "").trim().toLowerCase();
+  const route = unpackDashboardRoute(row.route);
+  return {
+    id: row.id,
+    driverName: row.driver_name || "",
+    truckNumber: row.truck_number || "",
+    nightRun: runType === "night run" || runType === "night run +",
+    shiftDate: row.shift_date || "",
+    shiftTime: row.shift_time || "",
+    route: route.route,
+    startLocation: route.startLocation,
+    status: row.status || "Scheduled"
+  };
+}
+
+function fromDashboardIncomeRow(row) {
+  return {
+    id: row.id,
+    incomeDate: row.income_date || "",
+    truckNumber: row.truck_number || "",
+    jobRef: row.job_ref || "",
+    client: row.client || "",
+    amount: Number(row.amount || 0),
+    status: row.status || "",
+    notes: row.notes || ""
+  };
+}
+
+function fromDashboardExpenseRow(row) {
+  return {
+    id: row.id,
+    date: row.expense_date || "",
+    truckNumber: row.truck_number || "",
+    category: row.category || "",
+    amount: Number(row.amount || 0),
+    vendor: row.vendor || "",
+    notes: row.notes || ""
+  };
+}
+
+function fromDashboardPayRow(row) {
+  return {
+    id: row.id,
+    driver: row.driver || "",
+    truckNumber: row.truck_number || "",
+    payPeriod: row.pay_period || "",
+    daysWorked: Number(row.days_worked || 0),
+    dailyRate: Number(row.daily_rate || 0),
+    nightRunDrops: Number(row.night_run_drops || 0),
+    dropRate: Number(row.drop_rate || NIGHT_DROP_DEFAULT_RATE),
+    nightRunPay: Number(row.night_run_pay || 0),
+    driverBonus: Number(row.driver_bonus || 0),
+    deductions: Number(row.deductions || 0),
+    paymentDate: row.payment_date || "",
+    autoPay: row.auto_pay || "No",
+    autoPayRef: row.auto_pay_ref || ""
+  };
+}
+
+let dashboardHydrationPromise = null;
+
+async function hydrateDashboardRowsFromSupabase() {
+  if (!isSupabaseReady()) return;
+  if (dashboardHydrationPromise) return dashboardHydrationPromise;
+
+  dashboardHydrationPromise = (async () => {
+    const supabase = getSupabaseClient();
+    if (!supabase) return;
+
+    const [rosterResult, incomeResult, expenseResult, payResult, receiptResult] = await Promise.all([
+      supabase.from("roster").select("*"),
+      supabase.from("truck_income").select("*"),
+      supabase.from("truck_expense").select("*"),
+      supabase.from("payslips").select("*"),
+      supabase.from("app_logs").select("*", { count: "exact", head: true }).eq("log_type", "WhatsApp Receipt")
+    ]);
+
+    const sharedRows = [
+      { result: rosterResult, key: "transport_crm_roster", map: fromDashboardRosterRow, countKey: "rosterCount" },
+      { result: incomeResult, key: INCOME_KEY, map: fromDashboardIncomeRow, countKey: "incomeCount" },
+      { result: expenseResult, key: EXPENSE_KEY, map: fromDashboardExpenseRow },
+      { result: payResult, key: PAY_KEY, map: fromDashboardPayRow, countKey: "payslipCount" }
+    ];
+
+    sharedRows.forEach(({ result, key, map, countKey }) => {
+      if (result.error) {
+        console.error(`Supabase dashboard ${key} hydration failed:`, result.error.message);
+        return;
+      }
+      const rows = (result.data || []).map(map);
+      localStorage.setItem(key, JSON.stringify(rows));
+      if (countKey) state[countKey] = rows.length;
+    });
+
+    if (receiptResult.error) {
+      console.error("Supabase dashboard receipt count failed:", receiptResult.error.message);
+    } else {
+      state.receiptCount = Number(receiptResult.count || 0);
+    }
+
+    drawStats();
+    drawManagerSummary();
+    drawAttentionStrip();
+    drawReminderCenter();
+    drawWeekSnapshot();
+    drawTodayFocus();
+    drawPerformanceCharts();
+    drawGlobalSearch();
+    drawReadinessChecks();
+    drawPayrollReadiness();
+  })().finally(() => {
+    dashboardHydrationPromise = null;
+  });
+
+  return dashboardHydrationPromise;
+}
+
 applyRoleDashboardProfile();
 drawStats();
 drawManagerSummary();
@@ -1439,12 +1572,14 @@ if (isSupabaseReady()) {
   void hydrateLogCountFromSupabase();
   void hydrateTruckCountFromSupabase();
   void hydrateDriverCountFromSupabase();
+  void hydrateDashboardRowsFromSupabase();
 }
 
 window.addEventListener("opx:supabase-ready", () => {
   void hydrateLogCountFromSupabase();
   void hydrateTruckCountFromSupabase();
   void hydrateDriverCountFromSupabase();
+  void hydrateDashboardRowsFromSupabase();
 });
 
 window.addEventListener("storage", (event) => {
@@ -1456,6 +1591,10 @@ window.addEventListener("storage", (event) => {
     if (event.key === "transport_crm_drivers") {
       state.driverCount = countCurrentDrivers();
     }
+    if (event.key === "transport_crm_roster") state.rosterCount = readCount(event.key);
+    if (event.key === INCOME_KEY) state.incomeCount = readCount(event.key);
+    if (event.key === RECEIPTS_KEY) state.receiptCount = readCount(event.key);
+    if (event.key === PAY_KEY) state.payslipCount = readCount(event.key);
     applyRoleDashboardProfile();
     drawStats();
     drawManagerSummary();
@@ -1476,6 +1615,7 @@ window.addEventListener("storage", (event) => {
 window.addEventListener("online", () => {
   void hydrateTruckCountFromSupabase();
   void hydrateDriverCountFromSupabase();
+  void hydrateDashboardRowsFromSupabase();
   applyRoleDashboardProfile();
   drawManagerSummary();
   drawAttentionStrip();

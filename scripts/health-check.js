@@ -90,6 +90,14 @@ if (!/hydrateDriverCountFromSupabase/.test(read("index.js")) || !/countCurrentDr
   failures.push("index.js does not hydrate a unique active driver count from shared storage.");
 }
 
+if (!/hydrateDashboardRowsFromSupabase/.test(read("index.js")) || !/from\("roster"\)\.select\("\*"\)/.test(read("index.js")) || !/from\("truck_income"\)\.select\("\*"\)/.test(read("index.js")) || !/from\("truck_expense"\)\.select\("\*"\)/.test(read("index.js")) || !/from\("payslips"\)\.select\("\*"\)/.test(read("index.js"))) {
+  failures.push("index.js does not hydrate roster and finance dashboard rows from shared storage.");
+}
+
+if (!/testSupabaseConnection\(savedUrl, savedAnon, false\)/.test(read("control-panel.js"))) {
+  failures.push("control-panel.js can block page startup with an automatic Supabase test alert.");
+}
+
 if (/function uid\(\) \{\s*return `\$\{Date\.now\(\)\}_/.test(read("roster.js")) || !/crypto\?\.randomUUID/.test(read("roster.js"))) {
   failures.push("roster.js does not generate database-compatible UUID roster IDs.");
 }
