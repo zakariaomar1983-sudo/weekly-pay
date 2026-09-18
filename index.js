@@ -21,6 +21,8 @@ const links = [
   { label: "Control Panel", href: "./control-panel.html", show: auth.can("accessControlPanel") }
 ];
 
+const dashboardRows = new Map();
+
 const state = {
   driverCount: countCurrentDrivers(),
   logCount: readCount("transport_crm_logs"),
@@ -214,11 +216,25 @@ function formatActivityTime(value) {
 }
 
 function readRows(key) {
+  const liveRows = dashboardRows.get(key);
+  if (Array.isArray(liveRows)) return liveRows;
   try {
     const parsed = JSON.parse(localStorage.getItem(key) || "[]");
     return Array.isArray(parsed) ? parsed : [];
   } catch {
     return [];
+  }
+}
+
+function cacheDashboardRows(key, rows) {
+  const safeRows = Array.isArray(rows) ? rows : [];
+  dashboardRows.set(key, safeRows);
+  try {
+    localStorage.setItem(key, JSON.stringify(safeRows));
+    return true;
+  } catch (error) {
+    console.warn(`Dashboard cache skipped for ${key}; live data remains available.`, error);
+    return false;
   }
 }
 
@@ -292,8 +308,11 @@ function currentWeekStartKey() {
 }
 
 function currentPayRunDate() {
-  const thursday = mondayOf(new Date());
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const thursday = mondayOf(today);
   thursday.setDate(thursday.getDate() + 3);
+  if (today > thursday) thursday.setDate(thursday.getDate() + 7);
   return thursday;
 }
 
@@ -1510,7 +1529,7 @@ async function hydrateDashboardRowsFromSupabase() {
       supabase.from("truck_income").select("*"),
       supabase.from("truck_expense").select("*"),
       supabase.from("payslips").select("*"),
-      supabase.from("app_logs").select("*", { count: "exact", head: true }).eq("log_type", "WhatsApp Receipt")
+      supabase.from("app_logs").select("*", { count: "exact", head: true }).eq("log_type", "WhatsApp Receipt").neq("status", "Archived")
     ]);
 
     const sharedRows = [
@@ -1526,7 +1545,7 @@ async function hydrateDashboardRowsFromSupabase() {
         return;
       }
       const rows = (result.data || []).map(map);
-      localStorage.setItem(key, JSON.stringify(rows));
+      cacheDashboardRows(key, rows);
       if (countKey) state[countKey] = rows.length;
     });
 

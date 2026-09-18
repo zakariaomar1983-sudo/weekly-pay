@@ -63,7 +63,13 @@ function readJson(key, fallback) {
 }
 
 function writeJson(key, value) {
-  localStorage.setItem(key, JSON.stringify(value));
+  try {
+    localStorage.setItem(key, JSON.stringify(value));
+    return true;
+  } catch (error) {
+    console.warn(`Browser cache skipped for ${key}; shared data remains available in memory.`, error);
+    return false;
+  }
 }
 
 function isUuid(value) {
