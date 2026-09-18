@@ -21,6 +21,8 @@ const links = [
   { label: "Control Panel", href: "./control-panel.html", show: auth.can("accessControlPanel") }
 ];
 
+const dashboardRows = new Map();
+
 const state = {
   driverCount: countCurrentDrivers(),
   logCount: readCount("transport_crm_logs"),
@@ -31,7 +33,6 @@ const state = {
   payslipCount: readCount("transport_crm_payslips")
 };
 const currentRole = window.OPXAuth.getRoleById?.(auth.user.roleId) || null;
-const dashboardRows = new Map();
 
 const CLOSE_REGO_WINDOW_DAYS = 14;
 const CLOSE_LICENSE_WINDOW_DAYS = 30;
