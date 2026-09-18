@@ -960,6 +960,22 @@ document.getElementById("trucksForm").addEventListener("submit", (e) => {
     notes: document.getElementById("truckNotes").value.trim()
   };
 
+  const truckNumberKey = payload.truckNumber.toLowerCase();
+  const registrationKey = payload.registration.replace(/\s+/g, "").toLowerCase();
+  const duplicate = state.trucks.find((truck) => {
+    if (truck.id === id) return false;
+    const sameNumber = String(truck.truckNumber || "").trim().toLowerCase() === truckNumberKey;
+    const sameRegistration = String(truck.registration || "").replace(/\s+/g, "").toLowerCase() === registrationKey;
+    return sameNumber || sameRegistration;
+  });
+  if (duplicate) {
+    const duplicateField = String(duplicate.truckNumber || "").trim().toLowerCase() === truckNumberKey
+      ? `truck number ${payload.truckNumber}`
+      : `registration ${payload.registration}`;
+    alert(`Cannot save: ${duplicateField} is already used by truck ${duplicate.truckNumber}.`);
+    return;
+  }
+
   state.trucks = id ? state.trucks.map((t) => t.id === id ? payload : t) : [...state.trucks, payload];
   saveData();
   e.target.reset();
