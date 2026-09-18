@@ -126,6 +126,24 @@ function newId() {
   return `${Date.now()}${Math.random().toString(16).slice(2, 10)}`.slice(0, 32);
 }
 
+function persistLogsLocally(rows) {
+  const safeRows = Array.isArray(rows) ? rows : [];
+  try {
+    localStorage.setItem(LOG_KEY, JSON.stringify(safeRows));
+    return true;
+  } catch (error) {
+    console.warn("Full log cache could not be saved. Retrying with a compact cache.", error);
+    try {
+      localStorage.removeItem(LOG_BACKUP_KEY);
+      localStorage.setItem(LOG_KEY, JSON.stringify(safeRows.slice(0, 100)));
+      return true;
+    } catch (compactError) {
+      console.warn("Log cache remains memory-only; Supabase is still the source of truth.", compactError);
+      return false;
+    }
+  }
+}
+
 function ensureUuidLogs(rows) {
   let changed = false;
   const normalized = rows.map((row) => {
@@ -134,7 +152,7 @@ function ensureUuidLogs(rows) {
     return { ...row, id: newId() };
   });
   if (changed) {
-    localStorage.setItem(LOG_KEY, JSON.stringify(normalized));
+    persistLogsLocally(normalized);
   }
   return normalized;
 }
@@ -166,7 +184,15 @@ function saveLogSnapshot(reason = "auto") {
     savedAt: new Date().toISOString(),
     rows
   });
-  localStorage.setItem(LOG_BACKUP_KEY, JSON.stringify(snapshots.slice(0, 8)));
+  try {
+    const compactSnapshots = snapshots.slice(0, 2).map((snapshot) => ({
+      ...snapshot,
+      rows: Array.isArray(snapshot.rows) ? snapshot.rows.slice(0, 100) : []
+    }));
+    localStorage.setItem(LOG_BACKUP_KEY, JSON.stringify(compactSnapshots));
+  } catch (error) {
+    console.warn("Log recovery snapshot skipped because browser storage is full.", error);
+  }
 }
 
 function latestSnapshotRows() {
@@ -191,7 +217,7 @@ function mergeLogRows(...groups) {
 
 function saveData() {
   saveLogSnapshot("before-save");
-  localStorage.setItem(LOG_KEY, JSON.stringify(state.logs));
+  persistLogsLocally(state.logs);
   if (isSupabaseReady()) {
     clearLogSyncRetry(false);
     setLogsSyncStatus("Syncing log changes...", "syncing");
@@ -316,7 +342,7 @@ async function hydrateLogsFromSupabase() {
     const recoveredRows = mergeLogRows(latestSnapshotRows(), state.logs);
     if (recoveredRows.length > state.logs.length) {
       state.logs = recoveredRows;
-      localStorage.setItem(LOG_KEY, JSON.stringify(state.logs));
+      persistLogsLocally(state.logs);
       refresh();
     }
     return;
@@ -332,7 +358,7 @@ async function hydrateLogsFromSupabase() {
 
   if (mergedLogs.length) {
     state.logs = mergedLogs;
-    localStorage.setItem(LOG_KEY, JSON.stringify(state.logs));
+    persistLogsLocally(state.logs);
     await syncLogsToSupabase();
     setLogsSyncStatus("Shared logs loaded.", "live");
     refresh();
@@ -340,7 +366,7 @@ async function hydrateLogsFromSupabase() {
   }
 
   state.logs = [];
-  localStorage.setItem(LOG_KEY, JSON.stringify(state.logs));
+  persistLogsLocally(state.logs);
   setLogsSyncStatus("Shared logs ready.", "live");
   refresh();
 }
@@ -584,7 +610,7 @@ document.getElementById("clearLogsBtn").addEventListener("click", () => {
   saveLogSnapshot("before-clear-all");
   state.logs = [];
   void clearLogsFromSupabase();
-  localStorage.setItem(LOG_KEY, JSON.stringify(state.logs));
+  persistLogsLocally(state.logs);
   saveData();
   document.getElementById("logForm").reset();
   document.getElementById("logId").value = "";
