@@ -342,7 +342,18 @@
       return;
     }
     const rosterDriverName = resolveRosterDriver(auth.user.username, rosterDriverNames());
-    const item = { id: id || `report_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`, driverUserId: existing?.driverUserId || auth.user.id, driverName: existing?.driverName || rosterDriverName || auth.user.username, reportDate: byId("reportDate").value, truckNumber: byId("truckNumber").value.trim(), shiftStart: byId("shiftStart").value, shiftFinish: byId("shiftFinish").value, jobClient: byId("jobClient").value.trim(), deliveryCount: Number(byId("deliveryCount").value || 0), fuelUsed: Number(byId("fuelUsed").value || 0), vehicleCondition: byId("vehicleCondition").value, issues: byId("issues").value.trim(), notes: byId("notes").value.trim(), status, updatedAt: new Date().toISOString() };
+    const reportDate = byId("reportDate").value;
+    const reportOwnerId = existing?.driverUserId || auth.user.id;
+    const sameDayReport = reports.find((entry) => (
+      entry.id !== id
+      && entry.driverUserId === reportOwnerId
+      && entry.reportDate === reportDate
+    ));
+    if (!id && sameDayReport) {
+      byId("reportStatus").textContent = "A report already exists for this driver and date. Open that report to edit it instead of creating a duplicate.";
+      return;
+    }
+    const item = { id: id || `report_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`, driverUserId: reportOwnerId, driverName: existing?.driverName || rosterDriverName || auth.user.username, reportDate, truckNumber: byId("truckNumber").value.trim(), shiftStart: byId("shiftStart").value, shiftFinish: byId("shiftFinish").value, jobClient: byId("jobClient").value.trim(), deliveryCount: Number(byId("deliveryCount").value || 0), fuelUsed: Number(byId("fuelUsed").value || 0), vehicleCondition: byId("vehicleCondition").value, issues: byId("issues").value.trim(), notes: byId("notes").value.trim(), status, updatedAt: new Date().toISOString() };
     if (status === "Submitted") item.submittedAt = existing?.submittedAt || new Date().toISOString();
     else if (existing?.submittedAt) item.submittedAt = existing.submittedAt;
     if (!item.truckNumber || !item.reportDate) { byId("reportStatus").textContent = "Report date and truck number are required."; return; }
