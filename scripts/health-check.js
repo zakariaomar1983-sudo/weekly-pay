@@ -138,6 +138,30 @@ if (!/DAILY_RATE_BY_TRUCK_NUMBER\s*=\s*\{\s*"376": 320/.test(read("finance.js"))
   failures.push("Driver Pay does not apply truck 376's established $320 daily rate.");
 }
 
+if (!/dashboardRows\.set\(key, safeRows\)/.test(read("index.js")) || !/cacheDashboardRows\(key, rows\)/.test(read("index.js"))) {
+  failures.push("Dashboard hydration is not resilient when browser storage is full.");
+}
+
+if (!/if \(today > thursday\) thursday\.setDate\(thursday\.getDate\(\) \+ 7\)/.test(read("index.js"))) {
+  failures.push("Dashboard pay run date does not roll forward after Thursday.");
+}
+
+if (!/function persistLogsLocally/.test(read("log.js")) || !/memory-only; Supabase is still the source of truth/.test(read("log.js"))) {
+  failures.push("Log hydration is not protected against localStorage quota failures.");
+}
+
+if (!/shared data remains available in memory/.test(read("receipts.js"))) {
+  failures.push("Receipt hydration is not protected against localStorage quota failures.");
+}
+
+if (!/Cannot save:.*already used by truck/s.test(read("trucks.js"))) {
+  failures.push("Truck saves do not reject duplicate truck numbers or registrations.");
+}
+
+if (!/A report already exists for this driver and date/.test(read("driver-report.js"))) {
+  failures.push("Driver reports do not reject duplicate driver/date submissions.");
+}
+
 for (const required of ["api/_auth-server.js", "api/auth-session.js"]) {
   if (!fs.existsSync(path.join(root, required))) failures.push(`${required} is missing.`);
 }
