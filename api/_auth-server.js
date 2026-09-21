@@ -3,6 +3,21 @@ const { getSupabaseServerClient } = require("./_supabase-server");
 
 const STAFF_TOKEN_TTL_SECONDS = 6 * 60;
 const ROSTER_CONFIRM_TOKEN_TTL_SECONDS = 21 * 24 * 60 * 60;
+const PASSWORD_KEY_LENGTH = 32;
+
+function hashPassword(password, salt = crypto.randomBytes(16).toString("hex")) {
+  const derived = crypto.scryptSync(String(password || ""), salt, PASSWORD_KEY_LENGTH).toString("hex");
+  return `scrypt$${salt}$${derived}`;
+}
+
+function verifyPassword(password, storedPassword) {
+  const stored = String(storedPassword || "");
+  if (!stored.startsWith("scrypt$")) return safeEqual(password, stored);
+  const [, salt, expected] = stored.split("$");
+  if (!salt || !expected) return false;
+  const actual = crypto.scryptSync(String(password || ""), salt, PASSWORD_KEY_LENGTH).toString("hex");
+  return safeEqual(actual, expected);
+}
 
 function getSigningSecret(env = process.env) {
   return String(
@@ -106,7 +121,16 @@ async function authenticateCredentials(username, password) {
   const user = (Array.isArray(users) ? users : []).find(
     (item) => String(item?.username || "").trim().toLowerCase() === normalizedUsername
   );
-  if (!user || !safeEqual(suppliedPassword, user.password)) return null;
+  if (!user || !verifyPassword(suppliedPassword, user.password)) return null;
+
+  // Transparently replace legacy plaintext credentials after a successful login.
+  if (!String(user.password || "").startsWith("scrypt$")) {
+    const { error: upgradeError } = await client
+      .from("auth_users")
+      .update({ password: hashPassword(suppliedPassword) })
+      .eq("id", user.id);
+    if (upgradeError) throw upgradeError;
+  }
 
   const { data: roles, error: rolesError } = await client
     .from("auth_roles")
@@ -174,6 +198,7 @@ function verifyRosterConfirmationToken(token, driverName, weekKey, env = process
 module.exports = {
   authenticateCredentials,
   getBearerToken,
+  hashPassword,
   issueRosterConfirmationToken,
   issueStaffToken,
   requireStaff,

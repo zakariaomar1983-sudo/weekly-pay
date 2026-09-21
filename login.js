@@ -54,8 +54,6 @@ async function startLogin() {
     window.OPXAuth.logout();
   }
 
-  await waitForSharedAuth();
-
   const loginForm = document.getElementById("loginForm");
   const loginError = document.getElementById("loginError");
   const loginStatus = document.getElementById("loginStatus");
@@ -96,10 +94,6 @@ async function startLogin() {
   if (!window.OPXAuth.hasUsers() && isLocalProvisioningHost) {
     loginForm.style.display = "none";
     firstRunPanel.style.display = "block";
-  } else if (!window.OPXAuth.hasUsers()) {
-    loginForm.style.display = "none";
-    firstRunPanel.style.display = "none";
-    loginError.textContent = "Secure login is temporarily unavailable. Please contact the office.";
   } else {
     loginForm.style.display = "";
     firstRunPanel.style.display = "none";
@@ -112,15 +106,16 @@ async function startLogin() {
     const username = document.getElementById("username").value.trim();
     const password = document.getElementById("password").value;
 
-    const result = window.OPXAuth.login(username, password);
-    if (!result.ok) {
-      loginError.textContent = result.message;
-      return;
-    }
-
     const secureSession = await window.OPXAuth.startServerSession(username, password);
     if (!secureSession.ok) {
       loginError.textContent = secureSession.message;
+      window.OPXAuth.logout();
+      return;
+    }
+
+    const result = window.OPXAuth.acceptServerSession(secureSession.user);
+    if (!result.ok) {
+      loginError.textContent = result.message;
       window.OPXAuth.logout();
       return;
     }

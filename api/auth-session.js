@@ -36,7 +36,13 @@ module.exports = async function handler(req, res) {
     return res.status(200).json({
       ok: true,
       token,
-      expiresIn: 360
+      expiresIn: 360,
+      user: {
+        id: user.id || user.sub,
+        username: user.username,
+        roleId: user.roleId,
+        permissions: user.permissions || {}
+      }
     });
   } catch (error) {
     return res.status(500).json({

@@ -558,7 +558,8 @@
     return {
       id: String(row.id || ""),
       username: String(row.username || ""),
-      password: String(row.password || ""),
+      password: "",
+      passwordConfigured: row.password_configured !== false,
       roleId: String(row.role_id || SYSTEM_ROLE_IDS.admin),
       active: row.active !== false
     };
@@ -799,7 +800,8 @@
       if (!raw || typeof raw !== "object") return;
       const username = String(raw.username || "").trim();
       const password = String(raw.password || "");
-      if (!username || !password) return;
+      const passwordConfigured = Boolean(raw.passwordConfigured || raw.password_configured || password);
+      if (!username || !passwordConfigured) return;
       const lowered = username.toLowerCase();
       if (seenNames.has(lowered)) return;
 
@@ -807,6 +809,7 @@
         id: typeof raw.id === "string" && raw.id ? raw.id : uid("user"),
         username,
         password,
+        passwordConfigured,
         roleId: roleIds.has(raw.roleId) ? raw.roleId : SYSTEM_ROLE_IDS.admin,
         active: raw.active !== false
       };
@@ -935,40 +938,21 @@
   }
 
   async function syncAuthToSupabase() {
-    const client = getSupabaseClient();
-    if (!client || authSyncBusy) return false;
+    if (authSyncBusy || !getApiToken()) return false;
     authSyncBusy = true;
 
     try {
       const roles = getRoles().map(toDbRole);
       const users = getUsers().map(toDbUser);
-
-      const roleResult = await client.from(AUTH_TABLES.roles).upsert(roles, { onConflict: "id" });
-      if (roleResult.error) {
-        if (isMissingSharedAuthTableError(roleResult.error)) {
-          setLocalOnlySharedAuthStatus();
-          console.warn("Shared auth tables missing in Supabase; using local roles/users.");
-          return false;
-        }
-        sharedAuthStatus = `Shared role sync failed: ${roleResult.error.message}`;
-        console.warn("Shared role sync failed:", roleResult.error.message);
-        return false;
-      }
-
-      const userResult = await client.from(AUTH_TABLES.users).upsert(users, { onConflict: "id" });
-      if (userResult.error) {
-        if (isMissingSharedAuthTableError(userResult.error)) {
-          setLocalOnlySharedAuthStatus();
-          console.warn("Shared auth tables missing in Supabase; using local roles/users.");
-          return false;
-        }
-        sharedAuthStatus = `Shared user sync failed: ${userResult.error.message}`;
-        console.warn("Shared user sync failed:", userResult.error.message);
-        return false;
-      }
-
-      await deleteMissingRemoteRows(client, AUTH_TABLES.roles, roles.map((role) => role.id));
-      await deleteMissingRemoteRows(client, AUTH_TABLES.users, users.map((user) => user.id));
+      const response = await authorizedFetch("./api/auth-directory", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ roles, users })
+      });
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(payload?.error || "Shared login update failed.");
+      if (Array.isArray(payload.roles)) setRoles(payload.roles.map(fromDbRole));
+      if (Array.isArray(payload.users)) setUsers(payload.users.map(fromDbUser));
       sharedAuthStatus = "Shared login roles/users synced.";
       return true;
     } catch (error) {
@@ -991,29 +975,14 @@
   }
 
   async function hydrateAuthFromSupabase() {
-    const client = getSupabaseClient();
-    if (!client) return false;
+    if (!getApiToken()) return false;
 
     try {
-      const [roleResult, userResult] = await Promise.all([
-        client.from(AUTH_TABLES.roles).select("*"),
-        client.from(AUTH_TABLES.users).select("*")
-      ]);
-
-      if (roleResult.error || userResult.error) {
-        const message = roleResult.error?.message || userResult.error?.message || "Unknown Supabase auth load error";
-        if (isMissingSharedAuthTableError(roleResult.error || userResult.error || message)) {
-          setLocalOnlySharedAuthStatus();
-          console.warn("Shared auth tables missing in Supabase; using local roles/users.");
-          return false;
-        }
-        sharedAuthStatus = `Shared login tables not ready: ${message}`;
-        console.warn("Shared auth load failed:", message);
-        return false;
-      }
-
-      const remoteRoles = Array.isArray(roleResult.data) ? roleResult.data.map(fromDbRole).filter((role) => role.id) : [];
-      const remoteUsers = Array.isArray(userResult.data) ? userResult.data.map(fromDbUser).filter((user) => user.id && user.username && user.password) : [];
+      const response = await authorizedFetch("./api/auth-directory");
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(payload?.error || "Shared login load failed.");
+      const remoteRoles = Array.isArray(payload.roles) ? payload.roles.map(fromDbRole).filter((role) => role.id) : [];
+      const remoteUsers = Array.isArray(payload.users) ? payload.users.map(fromDbUser).filter((user) => user.id && user.username) : [];
 
       if (remoteRoles.length || remoteUsers.length) {
         if (remoteRoles.length) setRoles(remoteRoles);
@@ -1116,11 +1085,38 @@
         return { ok: false, message: payload?.error || "Secure server session could not be started." };
       }
       setApiToken(payload.token);
-      return { ok: true };
+      return { ok: true, user: payload.user || null };
     } catch {
       clearApiToken();
       return { ok: false, message: "Secure server session could not be started." };
     }
+  }
+
+  function acceptServerSession(serverUser) {
+    if (!serverUser?.id || !serverUser?.username || !serverUser?.roleId) {
+      return { ok: false, message: "The server returned an incomplete staff profile." };
+    }
+    const role = {
+      id: String(serverUser.roleId),
+      name: String(serverUser.roleId) === SYSTEM_ROLE_IDS.admin ? "Admin" : "Staff",
+      system: String(serverUser.roleId) === SYSTEM_ROLE_IDS.admin,
+      permissions: serverUser.permissions && typeof serverUser.permissions === "object" ? serverUser.permissions : {}
+    };
+    const user = {
+      id: String(serverUser.id),
+      username: String(serverUser.username),
+      password: "",
+      passwordConfigured: true,
+      roleId: role.id,
+      active: true
+    };
+    setRoles([role]);
+    setUsers([user]);
+    const now = new Date().toISOString();
+    setSession({ userId: user.id, loginAt: now, lastActivityAt: now });
+    lastActivityTouch = Date.now();
+    scheduleIdleLock();
+    return { ok: true, user };
   }
 
   async function refreshServerSession(force = false) {
@@ -1794,6 +1790,7 @@
     triggerLogout,
     requireAuth,
     startServerSession,
+    acceptServerSession,
     refreshServerSession,
     authorizedFetch,
     getApiToken,
