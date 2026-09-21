@@ -25,6 +25,7 @@ const ignoredDirectories = new Set([".git", ".cache", "node_modules"]);
 const routeChecks = [
   ...pageScripts.map(([, pageName]) => ({ path: `/${pageName}`, expected: [200] })),
   { path: "/api/auth-session", expected: [405] },
+  { path: "/api/auth-directory", expected: [401] },
   { path: "/api/driver-reports", expected: [401] },
   { path: "/api/send-payslip-email", expected: [401] },
   { path: "/api/send-weekly-report-email", expected: [401] },
@@ -181,6 +182,20 @@ if (/from\("driver_reports"\)/.test(read("driver-report.js")) || !/authorizedFet
 
 for (const required of ["api/_auth-server.js", "api/auth-session.js", "api/driver-reports.js"]) {
   if (!fs.existsSync(path.join(root, required))) failures.push(`${required} is missing.`);
+}
+
+const browserAuth = read("auth.js");
+if (/\.from\(AUTH_TABLES\.(roles|users)\)/.test(browserAuth)) {
+  failures.push("Browser code still reads or writes the shared credential tables directly.");
+}
+if (!/auth-directory/.test(browserAuth) || !/acceptServerSession/.test(browserAuth)) {
+  failures.push("Server-managed staff directory or login handoff is missing.");
+}
+if (!/scrypt\$/.test(read("api/_auth-server.js"))) {
+  failures.push("Server authentication does not upgrade legacy plaintext passwords.");
+}
+if (!fs.existsSync(path.join(root, "api/auth-directory.js"))) {
+  failures.push("Admin-only staff directory API is missing.");
 }
 
 function request(urlPath) {
