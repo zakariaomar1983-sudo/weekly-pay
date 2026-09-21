@@ -283,7 +283,7 @@
   }
 
   function toRow(item) {
-    return { id: item.id, driver_user_id: item.driverUserId, driver_name: item.driverName, report_date: item.reportDate, truck_number: item.truckNumber, shift_start: item.shiftStart || null, shift_finish: item.shiftFinish || null, job_client: item.jobClient || "", delivery_count: item.deliveryCount || 0, fuel_used: item.fuelUsed || 0, vehicle_condition: item.vehicleCondition || "Good", issues: item.issues || "", notes: item.notes || "", status: item.status, updated_at: item.updatedAt };
+    return { id: item.id, driver_user_id: item.driverUserId, driver_name: item.driverName, report_date: item.reportDate, truck_number: item.truckNumber, shift_start: item.shiftStart || null, shift_finish: item.shiftFinish || null, job_client: item.jobClient || "", delivery_count: item.deliveryCount || 0, fuel_used: item.fuelUsed || 0, vehicle_condition: item.vehicleCondition || "Good", issues: item.issues || "", notes: item.notes || "", status: item.status, submitted_at: item.submittedAt || null, updated_at: item.updatedAt };
   }
 
   function fromRow(row) {
@@ -291,30 +291,40 @@
   }
 
   async function hydrateSharedReports() {
-    const client = window.OPXSupabase?.client;
-    if (!client) return;
-    const { data, error } = await client.from("driver_reports").select("*").order("report_date", { ascending: false });
-    if (error) { byId("reportStatus").textContent = "Shared reports are not connected yet. Local draft mode is active."; return; }
-    const remoteReports = (data || []).map(fromRow);
-    if (!remoteReports.length && reports.length) {
-      const { error: seedError } = await client.from("driver_reports").upsert(reports.map(toRow), { onConflict: "id" });
-      if (seedError) {
-        byId("reportStatus").textContent = "Shared reports are connected, but existing drafts could not be migrated yet.";
-        return;
-      }
+    try {
+      const response = await window.OPXAuth.authorizedFetch("./api/driver-reports");
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(payload?.error || "Shared reports could not be loaded.");
       sharedSync = true;
-      byId("reportStatus").textContent = "Shared reports connected. Existing drafts were uploaded.";
+      const remoteReports = (payload?.reports || []).map(fromRow);
+      const localReports = reports.filter((item) => isReviewer || item.driverUserId === auth.user.id);
+      const merged = new Map(localReports.map((item) => [item.id, item]));
+      remoteReports.forEach((item) => merged.set(item.id, item));
+      reports = [...merged.values()];
+      localStorage.setItem(KEY, JSON.stringify(reports));
       render();
-      return;
+    } catch (error) {
+      sharedSync = false;
+      byId("reportStatus").textContent = `Shared reports could not be loaded. Local draft mode is active: ${error.message || error}`;
     }
-    sharedSync = true; reports = remoteReports; localStorage.setItem(KEY, JSON.stringify(reports)); render();
   }
 
   async function syncShared(item) {
-    const client = window.OPXSupabase?.client;
-    if (!client) return;
-    const { error } = await client.from("driver_reports").upsert(toRow(item), { onConflict: "id" });
-    if (error) byId("reportStatus").textContent = "Saved on this device. Run the driver reports database setup to share it with the office.";
+    try {
+      const response = await window.OPXAuth.authorizedFetch("./api/driver-reports", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ report: toRow(item) })
+      });
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(payload?.error || "Report could not be shared.");
+      sharedSync = true;
+      return true;
+    } catch (error) {
+      sharedSync = false;
+      byId("reportStatus").textContent = `Saved on this device, but not received by the office: ${error.message || error}`;
+      return false;
+    }
   }
 
   function resetForm() {
@@ -329,7 +339,7 @@
     renderDriverRoster();
   }
 
-  function save(status) {
+  async function save(status) {
     const id = byId("reportId").value;
     const existing = reports.find((item) => item.id === id);
     if (existing && !isReviewer && existing.driverUserId !== auth.user.id) return;
@@ -357,7 +367,17 @@
     if (status === "Submitted") item.submittedAt = existing?.submittedAt || new Date().toISOString();
     else if (existing?.submittedAt) item.submittedAt = existing.submittedAt;
     if (!item.truckNumber || !item.reportDate) { byId("reportStatus").textContent = "Report date and truck number are required."; return; }
-    reports = id ? reports.map((entry) => entry.id === id ? item : entry) : [...reports, item]; write(reports); void syncShared(item); resetForm(); byId("reportStatus").textContent = status === "Submitted" ? "Report submitted to the office." : "Draft saved. You can return and finish it later."; render();
+    reports = id ? reports.map((entry) => entry.id === id ? item : entry) : [...reports, item];
+    write(reports);
+    byId("reportStatus").textContent = status === "Submitted" ? "Submitting report..." : "Saving draft...";
+    const synced = await syncShared(item);
+    if (!synced) {
+      render();
+      return;
+    }
+    resetForm();
+    byId("reportStatus").textContent = status === "Submitted" ? "Report received by the office." : "Draft saved. You can return and finish it later.";
+    render();
   }
 
   function edit(item) {
@@ -370,7 +390,7 @@
     window.scrollTo({ top: 0, behavior: "smooth" });
   }
 
-  document.querySelectorAll("[data-report-status]").forEach((button) => button.addEventListener("click", () => save(button.dataset.reportStatus)));
+  document.querySelectorAll("[data-report-status]").forEach((button) => button.addEventListener("click", () => { void save(button.dataset.reportStatus); }));
   byId("cancelReportEdit").addEventListener("click", resetForm);
   byId("driverRosterWeek").value = mondayKey(new Date());
   byId("driverRosterWeek").addEventListener("change", () => {
@@ -394,7 +414,28 @@
     renderDriverRoster();
   });
   byId("logoutBtn").addEventListener("click", () => { window.OPXAuth.logout(); window.location.href = "./login.html"; });
-  document.body.addEventListener("click", async (event) => { const button = event.target.closest("button[data-action]"); if (!button) return; const item = reports.find((entry) => entry.id === button.dataset.id); if (!item) return; if (button.dataset.action === "edit") edit(item); if (button.dataset.action === "delete" && (isReviewer || item.driverUserId === auth.user.id) && confirm("Delete this report?")) { reports = reports.filter((entry) => entry.id !== item.id); write(reports); const client = window.OPXSupabase?.client; if (client) await client.from("driver_reports").delete().eq("id", item.id); render(); } });
+  document.body.addEventListener("click", async (event) => {
+    const button = event.target.closest("button[data-action]");
+    if (!button) return;
+    const item = reports.find((entry) => entry.id === button.dataset.id);
+    if (!item) return;
+    if (button.dataset.action === "edit") edit(item);
+    if (button.dataset.action === "delete" && (isReviewer || item.driverUserId === auth.user.id) && confirm("Delete this report?")) {
+      const response = await window.OPXAuth.authorizedFetch("./api/driver-reports", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id: item.id })
+      });
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        byId("reportStatus").textContent = payload?.error || "The report could not be deleted.";
+        return;
+      }
+      reports = reports.filter((entry) => entry.id !== item.id);
+      write(reports);
+      render();
+    }
+  });
   window.addEventListener("storage", (event) => {
     if (event.key === KEY) { reports = read(); render(); }
     if (event.key === ROSTER_KEY) { rosterRows = readRows(ROSTER_KEY).map(normalizeRosterRow); renderDriverRoster(); }
@@ -402,12 +443,11 @@
   });
   render();
   renderDriverRoster();
+  void hydrateSharedReports();
   if (window.OPXSupabase?.isReady) {
-    void hydrateSharedReports();
     void hydrateSharedRoster();
   }
   window.addEventListener("opx:supabase-ready", () => {
-    void hydrateSharedReports();
     void hydrateSharedRoster();
   });
 })();

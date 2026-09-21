@@ -92,9 +92,14 @@ async function startLogin() {
     }
   }
 
-  if (!window.OPXAuth.hasUsers()) {
+  const isLocalProvisioningHost = ["localhost", "127.0.0.1", "::1"].includes(window.location.hostname);
+  if (!window.OPXAuth.hasUsers() && isLocalProvisioningHost) {
     loginForm.style.display = "none";
     firstRunPanel.style.display = "block";
+  } else if (!window.OPXAuth.hasUsers()) {
+    loginForm.style.display = "none";
+    firstRunPanel.style.display = "none";
+    loginError.textContent = "Secure login is temporarily unavailable. Please contact the office.";
   } else {
     loginForm.style.display = "";
     firstRunPanel.style.display = "none";
@@ -129,6 +134,10 @@ async function startLogin() {
   firstRunForm?.addEventListener("submit", async (e) => {
     e.preventDefault();
     loginError.textContent = "";
+    if (!isLocalProvisioningHost) {
+      loginError.textContent = "Admin account creation is disabled on the production site.";
+      return;
+    }
 
     const adminUsername = document.getElementById("firstRunUsername").value.trim();
     const adminPassword = document.getElementById("firstRunPassword").value;

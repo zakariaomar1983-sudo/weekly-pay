@@ -25,6 +25,7 @@ const ignoredDirectories = new Set([".git", ".cache", "node_modules"]);
 const routeChecks = [
   ...pageScripts.map(([, pageName]) => ({ path: `/${pageName}`, expected: [200] })),
   { path: "/api/auth-session", expected: [405] },
+  { path: "/api/driver-reports", expected: [401] },
   { path: "/api/send-payslip-email", expected: [401] },
   { path: "/api/send-weekly-report-email", expected: [401] },
   { path: "/api/weekly-report-cron?health=1", expected: [200] },
@@ -170,7 +171,15 @@ if (!/roleId \|\| ""\) === "role_driver"[\s\S]*permissions\.accessDriverReports 
   failures.push("Server auth does not repair legacy Driver roles with driver-report access.");
 }
 
-for (const required of ["api/_auth-server.js", "api/auth-session.js"]) {
+if (!/isLocalProvisioningHost[\s\S]*Admin account creation is disabled on the production site/.test(read("login.js"))) {
+  failures.push("Production login still permits browser-side first-run admin creation.");
+}
+
+if (/from\("driver_reports"\)/.test(read("driver-report.js")) || !/authorizedFetch\("\.\/api\/driver-reports"/.test(read("driver-report.js"))) {
+  failures.push("Driver reports are not exclusively routed through the authenticated server API.");
+}
+
+for (const required of ["api/_auth-server.js", "api/auth-session.js", "api/driver-reports.js"]) {
   if (!fs.existsSync(path.join(root, required))) failures.push(`${required} is missing.`);
 }
 
