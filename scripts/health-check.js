@@ -162,6 +162,14 @@ if (!/A report already exists for this driver and date/.test(read("driver-report
   failures.push("Driver reports do not reject duplicate driver/date submissions.");
 }
 
+if (!/role\.id === "role_driver"[\s\S]*permissions\.accessDriverReports = true/.test(read("auth.js"))) {
+  failures.push("Browser auth does not repair legacy Driver roles with driver-report access.");
+}
+
+if (!/roleId \|\| ""\) === "role_driver"[\s\S]*permissions\.accessDriverReports = true/.test(read("api/_auth-server.js"))) {
+  failures.push("Server auth does not repair legacy Driver roles with driver-report access.");
+}
+
 for (const required of ["api/_auth-server.js", "api/auth-session.js"]) {
   if (!fs.existsSync(path.join(root, required))) failures.push(`${required} is missing.`);
 }

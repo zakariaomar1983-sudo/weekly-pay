@@ -66,6 +66,9 @@ function normalizePermissions(value) {
 
 function normalizeStaffRolePermissions(roleId, value) {
   const permissions = normalizePermissions(value);
+  if (String(roleId || "") === "role_driver") {
+    permissions.accessDriverReports = true;
+  }
   const legacyCrmStaffRoles = new Set([
     "role_manager",
     "role_viewer",
