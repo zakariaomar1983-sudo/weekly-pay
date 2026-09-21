@@ -763,6 +763,14 @@
         : {};
       const permissions = { ...allPermissions(false), ...rawPermissions };
 
+      // Driver roles created before the driver portal permission was added can
+      // still exist in shared auth with the permission missing or set false.
+      // Treat the built-in driver role as authoritative so those accounts can
+      // always reach their own report page after the shared roles hydrate.
+      if (role.id === "role_driver") {
+        permissions.accessDriverReports = true;
+      }
+
       // Older non-driver CRM roles predate the AI page. Keep drivers out,
       // and migrate the known staff roles even when their old row stored false.
       if (permissions.accessCRM && role.id !== "role_driver") {
