@@ -21,9 +21,9 @@
         <button id="continueSessionBtn" class="btn btn-outline" type="button">Continue</button>
       </div>
 
-      <form id="loginForm" class="form-grid" autocomplete="off">
-        <label>Username<input id="username" type="text" required /></label>
-        <label>Password<input id="password" type="password" required /></label>
+      <form id="loginForm" class="form-grid">
+        <label>Username<input id="username" name="username" type="text" autocomplete="username" required /></label>
+        <label>Password<input id="password" name="password" type="password" autocomplete="current-password" required /></label>
         <div class="actions full">
           <button class="btn" type="submit">Login</button>
         </div>
@@ -53,10 +53,8 @@
   <script src="./supabase-config.js?v=20260413s"></script>
   <script src="./supabase-client.js?v=20260413s"></script>
   <script src="./auth.js?v=20260820b"></script>
-  <script src="./login.js?v=20260820b"></script>
+  <script src="./login.js?v=20260921a"></script>
 </body>
 </html>
-
-
 
 
