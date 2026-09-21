@@ -36,7 +36,25 @@ function getSupabaseServerClient(env = process.env) {
   });
 }
 
+function getSupabaseServiceClient(env = process.env) {
+  const url = String(
+    env.SUPABASE_URL
+      || env.NEXT_PUBLIC_SUPABASE_URL
+      || FALLBACK_SUPABASE_URL
+      || ""
+  ).trim();
+  const key = String(env.SUPABASE_SERVICE_ROLE_KEY || "").trim();
+  if (!url || !key) return null;
+  return createClient(url, key, {
+    auth: {
+      persistSession: false,
+      autoRefreshToken: false
+    }
+  });
+}
+
 module.exports = {
   getSupabaseServerClient,
+  getSupabaseServiceClient,
   getSupabaseServerConfig
 };
