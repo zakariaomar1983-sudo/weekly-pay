@@ -24,6 +24,7 @@ const ROSTER_PULL_INTERVAL_MS = 30000;
 const ROSTER_PULL_THROTTLE_MS = 2000;
 const TARGET_DRIVERS = 9;
 const TARGET_TRUCKS = 8;
+const RETIRED_TRUCK_NUMBERS = new Set(["853"]);
 const TARGET_DAYS_PER_DRIVER = 5;
 const DAY_NAMES = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
 const DEFAULT_SHIFT_TIME = "06:00 - 14:00";
@@ -67,13 +68,11 @@ const FALLBACK_TRUCKS = [
   { id: "fallback-truck-2", truckNumber: "840", status: "Available" },
   { id: "fallback-truck-3", truckNumber: "881", status: "Available" },
   { id: "fallback-truck-4", truckNumber: "855", status: "Available" },
-  { id: "fallback-truck-5", truckNumber: "853", status: "Available" },
   { id: "fallback-truck-6", truckNumber: "672", status: "Available" },
   { id: "fallback-truck-7", truckNumber: "620", status: "Available" },
   { id: "fallback-truck-8", truckNumber: "841", status: "Available" }
 ];
 const PRIMARY_TRUCK_BY_DRIVER = new Map([
-  ["Abdirizak Ahmed", "853"],
   ["Imran Abdella", "881"],
   ["Mahmood Xabat", "841"],
   ["Muhammed A H Siyad", "620"],
@@ -1493,7 +1492,8 @@ function getActiveTrucks() {
   const rows = readArray(TRUCKS_KEY);
   const source = rows.length ? rows : FALLBACK_TRUCKS;
   return source
-    .filter((item) => String(item.status || "").toLowerCase() !== "under repair")
+    .filter((item) => !RETIRED_TRUCK_NUMBERS.has(String(item.truckNumber || "").trim()))
+    .filter((item) => !["under repair", "retired"].includes(String(item.status || "").trim().toLowerCase()))
     .sort((a, b) => String(a.truckNumber || "").localeCompare(String(b.truckNumber || "")));
 }
 
@@ -1522,33 +1522,19 @@ function getMatchedTruckForDriver(driverName) {
   if (!name) return "";
 
   const activeTruckNumbers = new Set(getActiveTrucks().map((item) => String(item.truckNumber || "").trim()).filter(Boolean));
-  for (let index = state.roster.length - 1; index >= 0; index -= 1) {
-    const row = state.roster[index];
-    if (row.driverName === name && activeTruckNumbers.has(String(row.truckNumber || "").trim())) {
-      return row.truckNumber;
-    }
-  }
-
   const configuredTruck = getConfiguredPrimaryTruckForDriver(name);
   if (configuredTruck && activeTruckNumbers.has(configuredTruck)) {
     return configuredTruck;
   }
 
-  const activeDrivers = getActiveDrivers();
-  const activeTrucks = getActiveTrucks();
-  const matchIndex = activeDrivers.findIndex((item) => item.name === name);
-  return matchIndex >= 0 ? (activeTrucks[matchIndex]?.truckNumber || "") : "";
+  const lastSavedShift = state.roster
+    .filter((row) => row.driverName === name && !isAwayStatus(row.status) && activeTruckNumbers.has(String(row.truckNumber || "").trim()))
+    .sort((a, b) => String(b.shiftDate || "").localeCompare(String(a.shiftDate || "")))[0];
+  return lastSavedShift?.truckNumber || "";
 }
 
 function getPreferredTruckForDriver(driverName) {
-  const matched = getMatchedTruckForDriver(driverName);
-  if (matched) return matched;
-  const configuredTruck = getConfiguredPrimaryTruckForDriver(driverName);
-  if (configuredTruck) return configuredTruck;
-  const activeDrivers = getActiveDrivers();
-  const activeTrucks = getActiveTrucks();
-  const matchIndex = activeDrivers.findIndex((item) => item.name === driverName);
-  return matchIndex >= 0 ? (activeTrucks[matchIndex]?.truckNumber || "") : "";
+  return getMatchedTruckForDriver(driverName);
 }
 
 function buildWeekTemplateRows(weekKeys, actualWeekRows = []) {
@@ -1657,7 +1643,7 @@ function populateRosterPickers(selectedDriver = "", selectedTruck = "", options 
 
   let nextTruck = selectedTruck;
   if (!nextTruck || !availableTruckNumbers.includes(nextTruck)) {
-    nextTruck = availableTruckNumbers.includes(matchedTruck) ? matchedTruck : (availableTruckNumbers[0] || "");
+    nextTruck = availableTruckNumbers.includes(matchedTruck) ? matchedTruck : "";
   }
 
   if (options.preserveSelectedTruck && selectedTruck) {
@@ -1781,6 +1767,11 @@ function hasTruckConflict(truckNumber, shiftDate, excludeIds = []) {
   return state.roster.some((row) => row.shiftDate === shiftDate && row.truckNumber === truckNumber && !exclusions.has(row.id));
 }
 
+function movesShiftOntoRetiredTruck(previous, next) {
+  return RETIRED_TRUCK_NUMBERS.has(String(next.truckNumber || "").trim())
+    && (previous.driverName !== next.driverName || previous.shiftDate !== next.shiftDate || previous.truckNumber !== next.truckNumber);
+}
+
 function applyBoardMoveOrSwap(sourceId, targetMeta, targetShiftId = "") {
   const source = state.roster.find((row) => row.id === sourceId);
   if (!source) return;
@@ -1807,6 +1798,11 @@ function applyBoardMoveOrSwap(sourceId, targetMeta, targetShiftId = "") {
       truckNumber: isAwayStatus(target.status) ? "" : (source.truckNumber || getPreferredTruckForDriver(source.driverName))
     });
 
+    if (movesShiftOntoRetiredTruck(source, nextSource) || movesShiftOntoRetiredTruck(target, nextTarget)) {
+      alert("Truck 853 is retired. Choose an active truck for moved shifts.");
+      return;
+    }
+
     if (nextSource.truckNumber && hasTruckConflict(nextSource.truckNumber, nextSource.shiftDate, [source.id, target.id])) {
       alert(`Truck ${nextSource.truckNumber} is already assigned on ${nextSource.shiftDate}.`);
       return;
@@ -1832,6 +1828,10 @@ function applyBoardMoveOrSwap(sourceId, targetMeta, targetShiftId = "") {
     shiftDate: targetShiftDate,
     truckNumber: isAwayStatus(source.status) ? "" : (targetTruckNumber || source.truckNumber)
   });
+  if (movesShiftOntoRetiredTruck(source, nextSource)) {
+    alert("Truck 853 is retired. Choose an active truck for moved shifts.");
+    return;
+  }
 
   if (nextSource.truckNumber && hasTruckConflict(nextSource.truckNumber, nextSource.shiftDate, [source.id])) {
     alert(`Truck ${nextSource.truckNumber} is already assigned on ${nextSource.shiftDate}.`);
@@ -2298,10 +2298,6 @@ function normalizeRouteLabel(route) {
   return text.length > 24 ? `${text.slice(0, 21)}...` : text;
 }
 
-function firstTruckForDriver(rows) {
-  return rows.find((row) => row.truckNumber)?.truckNumber || "-";
-}
-
 function buildDriverPlans(weekRows) {
   const activeDrivers = getActiveDrivers();
   const activeDriverNames = activeDrivers.map((item) => item.name).filter(Boolean);
@@ -2314,6 +2310,21 @@ function buildDriverPlans(weekRows) {
 
   return combined.map((driverName) => {
     const driverRows = weekRows.filter((row) => row.driverName === driverName);
+    const savedTrucks = [...new Set(driverRows
+      .filter((row) => !row.isTemplate && !isAwayStatus(row.status))
+      .sort((a, b) => String(a.shiftDate || "").localeCompare(String(b.shiftDate || "")))
+      .map((row) => String(row.truckNumber || "").trim())
+      .filter(Boolean))];
+    const templateTrucks = [...new Set(driverRows
+      .filter((row) => row.isTemplate)
+      .map((row) => String(row.truckNumber || "").trim())
+      .filter(Boolean))];
+    const suggestedTruck = getMatchedTruckForDriver(driverName);
+    const visibleTrucks = savedTrucks.length ? savedTrucks : templateTrucks;
+    const visibleTruckLabels = visibleTrucks.map((number) => RETIRED_TRUCK_NUMBERS.has(number) ? `${number} (retired)` : number);
+    const truckSummary = visibleTrucks.length
+      ? `${savedTrucks.length ? "Saved" : "Template"} truck${visibleTrucks.length === 1 ? "" : "s"} ${visibleTruckLabels.join(", ")}${suggestedTruck && (visibleTrucks.length !== 1 || visibleTrucks[0] !== suggestedTruck) ? ` | Default ${suggestedTruck}` : ""}`
+      : (suggestedTruck ? `Default truck ${suggestedTruck} (no shift this week)` : "No truck assigned");
     const assignments = {};
 
     driverRows.forEach((row) => {
@@ -2335,7 +2346,8 @@ function buildDriverPlans(weekRows) {
 
     return {
       driverName,
-      truckNumber: firstTruckForDriver(driverRows),
+      truckNumber: suggestedTruck,
+      truckSummary,
       assignments,
       plannedDays,
       weekdayDays,
@@ -2378,8 +2390,9 @@ function drawStats() {
   const { weekRows } = getWeekContext();
   const activeDrivers = getActiveDrivers();
   const activeTrucks = getActiveTrucks();
+  const activeTruckNumbers = new Set(activeTrucks.map((truck) => String(truck.truckNumber || "").trim()));
   const driversPlanned = new Set(weekRows.map((item) => item.driverName).filter(Boolean)).size;
-  const trucksAssigned = new Set(weekRows.map((item) => item.truckNumber).filter(Boolean)).size;
+  const trucksAssigned = new Set(weekRows.map((item) => String(item.truckNumber || "").trim()).filter((number) => activeTruckNumbers.has(number))).size;
   const driverPlans = buildDriverPlans(weekRows);
   const targetHit = driverPlans.filter((item) => item.plannedDays >= TARGET_DAYS_PER_DRIVER).length;
   const weekendShifts = weekRows.filter((item) => {
@@ -2390,7 +2403,7 @@ function drawStats() {
 
   const stats = [
     { label: "Drivers Planned", value: `${driversPlanned}/${activeDrivers.length}` },
-    { label: "Trucks Assigned", value: `${trucksAssigned}/${Math.min(activeTrucks.length || TARGET_TRUCKS, TARGET_TRUCKS)}` },
+    { label: "Active Trucks Assigned", value: `${trucksAssigned}/${activeTrucks.length}` },
     { label: "Drivers At 5 Days", value: String(targetHit) },
     { label: "Weekday Shifts", value: String(weekRows.filter((x) => {
       const date = parseDateOnly(x.shiftDate);
@@ -2482,6 +2495,7 @@ function buildBoardRowMarkup(plan, weekKeys) {
   const signature = [
     plan.driverName,
     plan.truckNumber,
+    plan.truckSummary,
     plan.plannedDays,
     plan.weekdayDays,
     plan.weekendDays,
@@ -2497,7 +2511,7 @@ function buildBoardRowMarkup(plan, weekKeys) {
       <td class='board-driver-cell'>
         <div class='board-driver-name'>
           <strong>${escapeHtml(plan.driverName)}</strong>
-          ${plan.isPlaceholder ? "<span class='board-slot-badge'>Open slot</span>" : `<span class='board-driver-meta'>Primary truck ${escapeHtml(plan.truckNumber || "-")} | ${nightRuns} night run${nightRuns === 1 ? "" : "s"} | ${awayDays} away day${awayDays === 1 ? "" : "s"} | ${acknowledgementBadge}</span>`}
+          ${plan.isPlaceholder ? "<span class='board-slot-badge'>Open slot</span>" : `<span class='board-driver-meta'>${escapeHtml(plan.truckSummary)} | ${nightRuns} night run${nightRuns === 1 ? "" : "s"} | ${awayDays} away day${awayDays === 1 ? "" : "s"} | ${acknowledgementBadge}</span>`}
           ${rowActions}
         </div>
       </td>
@@ -2519,6 +2533,7 @@ function drawDriverBoard() {
   const notes = document.getElementById("rosterCoverageNotes");
   const { weekRows, weekKeys } = getWeekContext();
   const driverPlans = buildDriverPlans(weekRows);
+  const activeTruckNumbers = new Set(getActiveTrucks().map((truck) => String(truck.truckNumber || "").trim()));
 
   if (!driverPlans.length) {
     setMarkupIfChanged(body, `<tr><td colspan='9' class='empty'>No active drivers found yet. Add drivers on the Drivers page or create shifts for this week.</td></tr>`);
@@ -2548,8 +2563,8 @@ function drawDriverBoard() {
     },
     {
       label: "Truck coverage",
-      value: `${new Set(weekRows.map((item) => item.truckNumber).filter(Boolean)).size}/${TARGET_TRUCKS}`,
-      detail: "Truck count shows how many fleet units are actually assigned this week."
+      value: `${new Set(weekRows.map((item) => String(item.truckNumber || "").trim()).filter((number) => activeTruckNumbers.has(number))).size}/${activeTruckNumbers.size}`,
+      detail: "Truck count shows how many active fleet units are assigned this week."
     },
     {
       label: "Weekend usage",
@@ -2764,6 +2779,16 @@ document.getElementById("rosterForm").addEventListener("submit", (e) => {
   }
 
   const existingItem = id ? state.roster.find((row) => row.id === id) : null;
+  const keepsHistoricalRetiredTruck = Boolean(existingItem
+    && existingItem.truckNumber === basePayload.truckNumber
+    && existingItem.shiftDate === basePayload.shiftDate
+    && existingItem.driverName === basePayload.driverName
+    && basePayload.shiftDate < todayKey());
+  if (!isAwayStatus(basePayload.status) && !keepsHistoricalRetiredTruck
+    && !getActiveTrucks().some((truck) => String(truck.truckNumber || "").trim() === basePayload.truckNumber)) {
+    alert(`Truck ${basePayload.truckNumber} is no longer in the active fleet. Choose an available truck.`);
+    return;
+  }
   if (id && basePayload.status !== "Leave") {
     const copiesExistingShiftToNewDate = Boolean(
       existingItem
