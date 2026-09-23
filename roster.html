@@ -250,6 +250,7 @@
   <script src="./roster.js?v=20260824b"></script>
   <script>
     (function rosterQuickAddRecovery() {
+      if (window.__OPX_ROSTER_MAIN_LOADED) return;
       const DRIVERS_KEY = "transport_crm_drivers";
       const DRIVER_POOL_KEY = "transport_crm_roster_driver_pool";
       const DRIVER_UPDATED_KEY = "transport_crm_drivers_updated_at";
@@ -452,7 +453,7 @@
       const fallbackPairs = [
         { name: "Abdirizak Ahmed", truck: "853" },
         { name: "Imran Abdella", truck: "881" },
-        { name: "Ramzi Mohamed", truck: "841" },
+        { name: "Ramzi Mohamed", truck: "376" },
         { name: "Samatar Yusuf", truck: "855" },
         { name: "Sharmake Hashi", truck: "672" },
         { name: "Soleh Sungkar", truck: "840" },
@@ -729,7 +730,7 @@
           .sort((a, b) => a.localeCompare(b));
         if (!drivers.length || !trucks.length) return fallbackPairs;
         const activeTruckSet = new Set(trucks);
-        return drivers.slice(0, 7)
+        return drivers
           .map((name, index) => {
             const mapped = fallbackPairs.find((item) => item.name === name)?.truck || "";
             return { name, truck: activeTruckSet.has(mapped) ? mapped : (trucks[index] || "") };
@@ -1803,7 +1804,6 @@
   </script>
 </body>
 </html>
-
 
 
 
