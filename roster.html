@@ -85,7 +85,7 @@
             <option value="672">672</option>
             <option value="840">840</option>
             <option value="841">841</option>
-            <option value="853">853</option>
+            <option value="376">376</option>
             <option value="855">855</option>
             <option value="881">881</option>
           </select>
@@ -247,7 +247,7 @@
   <script src="./supabase-client.js?v=20260413g"></script>
   <script src="./seed-data.js?v=20260507b"></script>
   <script src="./auth.js?v=20260818a"></script>
-  <script src="./roster.js?v=20260824b"></script>
+  <script src="./roster.js?v=20260924a"></script>
   <script>
     (function rosterQuickAddRecovery() {
       if (window.__OPX_ROSTER_MAIN_LOADED) return;
@@ -451,7 +451,7 @@
         ["Sydney to Newcastle", DEFAULT_ROUTE]
       ]);
       const fallbackPairs = [
-        { name: "Abdirizak Ahmed", truck: "853" },
+        { name: "Abdirizak Ahmed", truck: "" },
         { name: "Imran Abdella", truck: "881" },
         { name: "Ramzi Mohamed", truck: "376" },
         { name: "Samatar Yusuf", truck: "855" },
@@ -724,16 +724,17 @@
         });
         drivers.sort((a, b) => a.localeCompare(b));
         const trucks = readArray(TRUCKS_KEY)
-          .filter((item) => String(item.status || "").toLowerCase() !== "under repair")
+          .filter((item) => !["under repair", "retired"].includes(String(item.status || "").trim().toLowerCase()))
           .map((item) => String(item.truckNumber || "").trim())
+          .filter((number) => number !== "853")
           .filter(Boolean)
           .sort((a, b) => a.localeCompare(b));
         if (!drivers.length || !trucks.length) return fallbackPairs;
         const activeTruckSet = new Set(trucks);
         return drivers
-          .map((name, index) => {
+          .map((name) => {
             const mapped = fallbackPairs.find((item) => item.name === name)?.truck || "";
-            return { name, truck: activeTruckSet.has(mapped) ? mapped : (trucks[index] || "") };
+            return { name, truck: activeTruckSet.has(mapped) ? mapped : "" };
           })
           .filter((item) => item.name);
       }
@@ -1805,5 +1806,3 @@
   </script>
 </body>
 </html>
-
-
