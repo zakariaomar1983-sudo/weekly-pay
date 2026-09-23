@@ -735,7 +735,7 @@
             const mapped = fallbackPairs.find((item) => item.name === name)?.truck || "";
             return { name, truck: activeTruckSet.has(mapped) ? mapped : (trucks[index] || "") };
           })
-          .filter((item) => item.name && item.truck);
+          .filter((item) => item.name);
       }
 
       function activeDriverNames() {
@@ -1096,6 +1096,7 @@
 
         const templateRows = [];
         activePairs().forEach((item) => {
+          if (!item.truck) return;
           if (isAutoTemplateBlockedDriver(item.name)) return;
           if (hasDriverHistory && !establishedDriverNames.has(item.name)) return;
           weekKeys.slice(0, 5).forEach((shiftDate) => {
@@ -1804,6 +1805,5 @@
   </script>
 </body>
 </html>
-
 
 
