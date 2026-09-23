@@ -22,7 +22,7 @@ const TRUCKS_TABLE = "trucks";
 const ROSTER_SYNC_RETRY_DELAYS_MS = [2000, 5000, 10000, 30000];
 const ROSTER_PULL_INTERVAL_MS = 30000;
 const ROSTER_PULL_THROTTLE_MS = 2000;
-const TARGET_DRIVERS = 7;
+const TARGET_DRIVERS = 9;
 const TARGET_TRUCKS = 8;
 const TARGET_DAYS_PER_DRIVER = 5;
 const DAY_NAMES = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
@@ -1554,7 +1554,7 @@ function getPreferredTruckForDriver(driverName) {
 function buildWeekTemplateRows(weekKeys, actualWeekRows = []) {
   const uniqueActualRows = dedupeRosterRows(actualWeekRows);
   const weekStartKey = String(weekKeys?.[0] || "").trim();
-  const activeDrivers = getActiveDrivers().slice(0, TARGET_DRIVERS);
+  const activeDrivers = getActiveDrivers();
   const establishedDriverNames = new Set(
     state.roster
       .filter((row) => row && typeof row === "object" && !row.isTemplate)
@@ -2306,7 +2306,7 @@ function buildDriverPlans(weekRows) {
   const activeDrivers = getActiveDrivers();
   const activeDriverNames = activeDrivers.map((item) => item.name).filter(Boolean);
   const namesFromRoster = [...new Set(weekRows.map((item) => item.driverName).filter(Boolean))];
-  const combined = [...new Set([...activeDriverNames, ...namesFromRoster])].slice(0, TARGET_DRIVERS);
+  const combined = [...new Set([...activeDriverNames, ...namesFromRoster])];
 
   while (combined.length < TARGET_DRIVERS) {
     combined.push(`Open Driver Slot ${combined.length + 1}`);
@@ -2389,7 +2389,7 @@ function drawStats() {
   }).length;
 
   const stats = [
-    { label: "Drivers Planned", value: `${driversPlanned}/${Math.min(activeDrivers.length || TARGET_DRIVERS, TARGET_DRIVERS)}` },
+    { label: "Drivers Planned", value: `${driversPlanned}/${activeDrivers.length}` },
     { label: "Trucks Assigned", value: `${trucksAssigned}/${Math.min(activeTrucks.length || TARGET_TRUCKS, TARGET_TRUCKS)}` },
     { label: "Drivers At 5 Days", value: String(targetHit) },
     { label: "Weekday Shifts", value: String(weekRows.filter((x) => {
@@ -2410,7 +2410,7 @@ function drawRosterModel() {
   const activeTrucks = getActiveTrucks();
 
   const items = [
-    { label: "Active drivers", value: `${Math.min(activeDrivers.length, TARGET_DRIVERS)}/${TARGET_DRIVERS}` },
+    { label: "Active drivers", value: String(activeDrivers.length) },
     { label: "Active trucks", value: `${Math.min(activeTrucks.length, TARGET_TRUCKS)}/${TARGET_TRUCKS}` },
     { label: "Driver target", value: `${TARGET_DAYS_PER_DRIVER} days` },
     { label: "Core pattern", value: "Mon-Fri" },
@@ -2543,8 +2543,8 @@ function drawDriverBoard() {
     },
     {
       label: "Driver coverage",
-      value: `${new Set(weekRows.map((item) => item.driverName).filter(Boolean)).size}/${TARGET_DRIVERS}`,
-      detail: "Use this as the live check for whether all 7 roster slots are covered."
+      value: `${new Set(weekRows.map((item) => item.driverName).filter(Boolean)).size}/${getActiveDrivers().length}`,
+      detail: "Use this as the live check for whether all roster drivers are covered."
     },
     {
       label: "Truck coverage",
