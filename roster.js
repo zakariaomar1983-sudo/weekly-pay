@@ -60,6 +60,7 @@ const FALLBACK_DRIVERS = [
   { id: "fallback-driver-2", name: "Imran Abdella", status: "Active" },
   { id: "fallback-driver-3", name: "Abdirizak Ahmed", status: "Active" },
   { id: "fallback-driver-4", name: "Ramzi Mohamed", status: "Active" },
+  { id: "fallback-driver-8", name: "Muad Warsame", status: "Active" },
   { id: "fallback-driver-5", name: "Suhen Omar", status: "Active" },
   { id: "fallback-driver-7", name: "Samatar Yusuf", status: "Active" }
 ];
@@ -75,6 +76,7 @@ const FALLBACK_TRUCKS = [
 const PRIMARY_TRUCK_BY_DRIVER = new Map([
   ["Imran Abdella", "881"],
   ["Mahmood Xabat", "841"],
+  ["Muad Warsame", "620"],
   ["Muhammed A H Siyad", "620"],
   ["Ramzi Mohamed", "376"],
   ["Samatar Yusuf", "855"],
