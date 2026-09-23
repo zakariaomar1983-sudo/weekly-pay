@@ -1961,8 +1961,8 @@ function renderRosterContactButtons(item) {
   const hasPhone = Boolean(cleanPhone(contact.phone));
   const weekKey = selectedWeekStartKey();
   return `<div class='contact-actions'>
-    <button type='button' class='contact-link contact-link-sms' data-action='sms-shift' data-id='${item.id}' ${hasPhone ? "" : "disabled"}>SMS</button>
-    <button type='button' class='contact-link contact-link-email' data-action='email-shift' data-id='${item.id}' ${contact.email ? "" : "disabled"}>Email</button>
+    <button type='button' class='contact-link contact-link-sms' data-action='sms-shift' data-id='${escapeHtml(item.id)}' ${hasPhone ? "" : "disabled"}>SMS</button>
+    <button type='button' class='contact-link contact-link-email' data-action='email-shift' data-id='${escapeHtml(item.id)}' ${contact.email ? "" : "disabled"}>Email</button>
     ${renderAcknowledgementBadge(item.driverName, weekKey, true)}
   </div>`;
 }
@@ -2464,11 +2464,11 @@ function buildBoardRowMarkup(plan, weekKeys) {
         draggable='${!item.isTemplate && auth.can("editRoster") ? "true" : "false"}'
         title='${item.isTemplate ? "Click to load this template into the form." : auth.can("editRoster") ? "Click to edit or drag to move/swap this shift." : "Shift card"}'>
         ${deleteButton}
-        <strong>${primaryLabel}</strong>
+        <strong>${escapeHtml(primaryLabel)}</strong>
         ${templateLabel}
         ${runLabel}
-        <span>${detailLabel}</span>
-        <em class='board-badge ${tone}'>${badgeLabel}</em>
+        <span>${escapeHtml(detailLabel)}</span>
+        <em class='board-badge ${tone}'>${escapeHtml(badgeLabel)}</em>
       </div>`;
     }).join("");
 
@@ -2496,8 +2496,8 @@ function buildBoardRowMarkup(plan, weekKeys) {
     markup: `<tr data-driver-key='${escapeHtml(plan.driverName)}' data-render-signature='${escapeHtml(signature)}'>
       <td class='board-driver-cell'>
         <div class='board-driver-name'>
-          <strong>${plan.driverName}</strong>
-          ${plan.isPlaceholder ? "<span class='board-slot-badge'>Open slot</span>" : `<span class='board-driver-meta'>Primary truck ${plan.truckNumber || "-"} | ${nightRuns} night run${nightRuns === 1 ? "" : "s"} | ${awayDays} away day${awayDays === 1 ? "" : "s"} | ${acknowledgementBadge}</span>`}
+          <strong>${escapeHtml(plan.driverName)}</strong>
+          ${plan.isPlaceholder ? "<span class='board-slot-badge'>Open slot</span>" : `<span class='board-driver-meta'>Primary truck ${escapeHtml(plan.truckNumber || "-")} | ${nightRuns} night run${nightRuns === 1 ? "" : "s"} | ${awayDays} away day${awayDays === 1 ? "" : "s"} | ${acknowledgementBadge}</span>`}
           ${rowActions}
         </div>
       </td>
@@ -2609,16 +2609,16 @@ function drawWeekTable() {
       const adminActions = item.isTemplate
         ? "<span class='muted'>Template</span>"
         : auth.can("editRoster")
-        ? `<div class='table-actions'><button data-action='edit' data-id='${item.id}'>Edit</button><button data-action='delete' data-id='${item.id}'>Delete</button></div>`
+        ? `<div class='table-actions'><button data-action='edit' data-id='${escapeHtml(item.id)}'>Edit</button><button data-action='delete' data-id='${escapeHtml(item.id)}'>Delete</button></div>`
         : "<span class='muted'>View only</span>";
       rows.push(`<tr class='${rowClass}'>
         <td>${rowIndex === 0 ? DAY_NAMES[idx] : ""}</td>
         <td>${rowIndex === 0 ? key : ""}</td>
-        <td>${item.driverName}</td>
+        <td>${escapeHtml(item.driverName)}</td>
         <td>${item.nightRun ? "Yes" : "-"}</td>
-        <td>${displayShiftTime(item)}</td>
-        <td>${displayRoute(item)}</td>
-        <td>${displayRosterStatus(item.status)}</td>
+        <td>${escapeHtml(displayShiftTime(item))}</td>
+        <td>${escapeHtml(displayRoute(item))}</td>
+        <td>${escapeHtml(displayRosterStatus(item.status))}</td>
         <td><div class='table-actions table-actions-stack'>${acknowledgementBadge ? `<div>${acknowledgementBadge}</div>` : ""}${rowActions}${adminActions}</div></td>
       </tr>`);
     });
