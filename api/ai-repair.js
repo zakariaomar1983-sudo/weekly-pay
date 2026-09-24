@@ -51,6 +51,7 @@ async function diagnose(client) {
     const status = String(shift.status || "").trim().toLowerCase();
     if (!date || !name) continue;
     if (status === "completed" && date > today) add("future-completed", "review", `${name} has a Completed shift dated ${date}. Check whether it was marked early.`);
+    if (status === "completed" && date <= today) continue;
     if (status === "leave" || status === "off" || status === "away") continue;
     if (inactive.has(name.toLowerCase())) add("inactive-driver-shift", "review", `${name} has a shift on ${date}. Review who will cover it.`);
     if (!truck) continue;
