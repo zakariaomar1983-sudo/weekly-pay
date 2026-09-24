@@ -32,6 +32,7 @@ const routeChecks = [
   { path: "/api/weekly-report-cron?health=1", expected: [200] },
   { path: "/api/whatsapp-receipts-webhook", expected: [401] },
   { path: "/api/roster-ack?health=1", expected: [200] },
+  { path: "/api/ai-repair", expected: [401] },
   { path: "/api/whatsapp-receipts-media", expected: [200] }
 ];
 
