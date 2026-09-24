@@ -75,7 +75,6 @@
             <option value="Samatar Yusuf">Samatar Yusuf</option>
             <option value="Sharmake Hashi">Sharmake Hashi</option>
             <option value="Soleh Sungkar">Soleh Sungkar</option>
-            <option value="Suhen Omar">Suhen Omar</option>
           </select>
         </label>
         <label>Truck Number
@@ -248,7 +247,7 @@
   <script src="./supabase-client.js?v=20260413g"></script>
   <script src="./seed-data.js?v=20260507b"></script>
   <script src="./auth.js?v=20260818a"></script>
-  <script src="./roster.js?v=20260924a"></script>
+  <script src="./roster.js?v=20260924b"></script>
   <script>
     (function rosterQuickAddRecovery() {
       if (window.__OPX_ROSTER_MAIN_LOADED) return;
@@ -310,8 +309,9 @@
         const names = rows
           .filter((row) => String(row?.status || "").toLowerCase() !== "inactive")
           .map((row) => normalizeName(row?.name))
+          .filter((name) => name.toLowerCase() !== "suhen omar")
           .filter(Boolean);
-        const fallback = rows.map((row) => normalizeName(row?.name)).filter(Boolean);
+        const fallback = rows.map((row) => normalizeName(row?.name)).filter((name) => name.toLowerCase() !== "suhen omar").filter(Boolean);
         return unique(names.length ? names : fallback);
       }
 
@@ -459,11 +459,11 @@
         { name: "Samatar Yusuf", truck: "855" },
         { name: "Sharmake Hashi", truck: "672" },
         { name: "Soleh Sungkar", truck: "840" },
-        { name: "Suhen Omar", truck: "620" }
       ];
       const REQUIRED_DRIVER_NAMES = ["Soleh Sungkar"];
       const EXCLUDED_DRIVER_NAMES = new Set([
-        normalizeDriverNameKey("Muhammed A H Siyad")
+        normalizeDriverNameKey("Muhammed A H Siyad"),
+        normalizeDriverNameKey("Suhen Omar")
       ]);
       const AUTO_TEMPLATE_BLOCKED_DRIVERS = new Set([
         normalizeDriverNameKey("Muhammed A H Siyad"),
@@ -987,7 +987,7 @@
       }
 
       function buildAllDriversWeekSummary(weekKey, weekKeys, mergedRows) {
-        const driverNames = [...new Set(activePairs().map((item) => item.name).concat(mergedRows.map((item) => item.driverName)).filter(Boolean))];
+        const driverNames = [...new Set(activePairs().map((item) => item.name).concat(mergedRows.map((item) => item.driverName)).filter((name) => name && !EXCLUDED_DRIVER_NAMES.has(normalizeDriverNameKey(name))))];
         return [
           `Onpoint Express Week View ${weekKey}`,
           "",
@@ -998,7 +998,7 @@
       function renderDispatchCards(weekKey, weekKeys, mergedRows) {
         const container = document.getElementById("rosterWhatsAppDispatch");
         if (!container) return;
-        const driverNames = [...new Set(activePairs().map((item) => item.name).concat(mergedRows.map((item) => item.driverName)).filter(Boolean))];
+        const driverNames = [...new Set(activePairs().map((item) => item.name).concat(mergedRows.map((item) => item.driverName)).filter((name) => name && !EXCLUDED_DRIVER_NAMES.has(normalizeDriverNameKey(name))))];
         if (!driverNames.length) {
           container.innerHTML = "";
           setDispatchStatus("No drivers are available for this week yet.");
@@ -1033,6 +1033,7 @@
       }
 
       function renderContactButtons(row) {
+        if (EXCLUDED_DRIVER_NAMES.has(normalizeDriverNameKey(row.driverName))) return '<span class="muted">Inactive driver — historical shift</span>';
         const contact = driverContactByName(row.driverName);
         const email = String(contact.email || "").trim();
         const phone = cleanPhone(contact.phone);
@@ -1045,6 +1046,7 @@
       }
 
       function openShiftContact(action, row) {
+        if (EXCLUDED_DRIVER_NAMES.has(normalizeDriverNameKey(row.driverName))) return;
         const contact = driverContactByName(row.driverName);
         const email = String(contact.email || "").trim();
         const phone = cleanPhone(contact.phone);
