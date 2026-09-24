@@ -21,12 +21,12 @@ const TRUCK_DEFAULTS_BY_NUMBER = new Map([
   ["840", { registration: "XW46EK", model: "ISUZU FVL  1400", capacity: 8, serviceDueDate: "2026-04-10", regoExpiryDate: "2026-04-29", status: "Available", notes: "" }],
   ["881", { registration: "XW91GW", model: "MITSO FUSO FIGHTER 10.0", capacity: 12, serviceDueDate: "2026-04-11", regoExpiryDate: "2027-04-11", status: "Available", notes: "" }],
   ["855", { registration: "XW64YE", model: "Hino GD184R-Q3", capacity: 12, serviceDueDate: "2026-04-24", regoExpiryDate: "2026-04-26", status: "Available", notes: "" }],
-  ["853", { registration: "XW40BN", model: "ISUZU FVL 1400", capacity: 12, serviceDueDate: "2026-05-14", regoExpiryDate: "2026-07-02", status: "Available", notes: "" }],
+  ["853", { registration: "XW40BN", model: "ISUZU FVL 1400", capacity: 12, serviceDueDate: "2026-05-14", regoExpiryDate: "2026-07-02", status: "Retired", notes: "" }],
   ["672", { registration: "1DK3DE", model: "MITSUBISHI FIGHTER", capacity: 6, serviceDueDate: "2026-04-30", regoExpiryDate: "2026-07-24", status: "Available", notes: "" }],
   ["620", { registration: "1KF3MA", model: "MITSUBISHI FUSO FIGHTER 6.0", capacity: 6, serviceDueDate: "2026-04-30", regoExpiryDate: "2026-09-18", status: "Available", notes: "" }],
   ["841", { registration: "XV90EH", model: "HINO", capacity: 8, serviceDueDate: "2026-07-01", regoExpiryDate: "2026-08-11", status: "Available", notes: "" }]
 ]);
-const REQUIRED_TRUCK_NUMBERS = ["853"];
+const REQUIRED_TRUCK_NUMBERS = [];
 const state = { trucks: readData() };
 let truckAttachmentStore = readTruckAttachmentStore();
 let truckSyncTimerId = 0;
@@ -131,15 +131,16 @@ function normalizeSearchValue(value) {
 }
 
 function normalizeTruckRecord(row) {
+  const truckNumber = String(row.truckNumber ?? "").trim();
   return {
     id: row.id,
-    truckNumber: String(row.truckNumber ?? "").trim(),
+    truckNumber,
     registration: String(row.registration ?? "").trim(),
     model: String(row.model ?? "").trim(),
     capacity: Number(row.capacity || 0),
     serviceDueDate: String(row.serviceDueDate ?? ""),
     regoExpiryDate: String(row.regoExpiryDate ?? ""),
-    status: String(row.status ?? ""),
+    status: truckNumber === "853" ? "Retired" : String(row.status ?? ""),
     notes: String(row.notes ?? "").trim()
   };
 }
@@ -638,6 +639,7 @@ async function hydrateTrucksFromSupabase() {
     return;
   }
   if (!Array.isArray(data)) return;
+  const retired853 = data.find((row) => String(row.truck_number || "").trim() === "853" && String(row.status || "").trim() !== "Retired");
   if (!data.length && state.trucks.length) {
     console.warn("Supabase trucks table is empty; keeping local data and seeding Supabase.");
     await syncTrucksToSupabase();
@@ -656,6 +658,14 @@ async function hydrateTrucksFromSupabase() {
   localStorage.setItem(KEY, JSON.stringify(state.trucks));
   setTrucksSyncStatus("Shared truck data loaded.", "live");
   refresh();
+  if (retired853 && auth.can("editTrucks")) {
+    const { error: retireError } = await trucksSupabaseClient.from(TRUCKS_TABLE)
+      .update({ status: "Retired" }).eq("id", retired853.id);
+    if (retireError) {
+      console.error("Could not retire truck 853 in shared storage:", retireError.message);
+      setTrucksSyncStatus("Truck 853 is retired here, but the shared record could not be updated.", "error");
+    }
+  }
 }
 
 function parseDateOnly(value) {
@@ -685,6 +695,7 @@ function buildRegoAlerts() {
   const dueSoon = [];
 
   state.trucks.forEach((truck) => {
+    if (truck.status === "Retired") return;
     const days = daysUntil(truck.regoExpiryDate);
     if (days == null) return;
     if (days < 0) {
@@ -803,10 +814,11 @@ function toCsv(rows) {
 }
 
 function drawStats() {
+  const fleet = state.trucks.filter((t) => t.status !== "Retired").length;
   const available = state.trucks.filter((t) => t.status === "Available").length;
   const repair = state.trucks.filter((t) => t.status === "Under Repair").length;
   const stats = [
-    { label: "Total Trucks", value: String(state.trucks.length) },
+    { label: "Fleet Trucks", value: String(fleet) },
     { label: "Available", value: String(available) },
     { label: "Under Repair", value: String(repair) }
   ];

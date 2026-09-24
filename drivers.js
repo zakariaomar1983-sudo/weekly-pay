@@ -150,16 +150,17 @@ function firstValue(row, keys) {
 
 function normalizeDriverRow(row) {
   const raw = row && typeof row === "object" ? row : {};
+  const name = String(firstValue(raw, ["name", "driverName", "driver", "fullName", "driver_name"]) || "");
   return {
     ...raw,
     id: String(firstValue(raw, ["id", "driverId", "driver_id"]) || ""),
-    name: String(firstValue(raw, ["name", "driverName", "driver", "fullName", "driver_name"]) || ""),
+    name,
     phone: String(firstValue(raw, ["phone", "mobile", "phoneNumber", "phone_number", "contactNumber"]) || ""),
     email: String(firstValue(raw, ["email", "emailAddress", "email_address"]) || ""),
     licenseNumber: String(firstValue(raw, ["licenseNumber", "licenceNumber", "license", "licence", "license_number"]) || ""),
     licenseExpiry: String(firstValue(raw, ["licenseExpiry", "licenceExpiry", "license_expiry", "licence_expiry"]) || ""),
     hireDate: String(firstValue(raw, ["hireDate", "startDate", "hire_date", "start_date"]) || ""),
-    status: String(firstValue(raw, ["status", "driverStatus", "driver_status"]) || "Active"),
+    status: normalizeDriverNameKey(name) === "suhen omar" ? "Inactive" : String(firstValue(raw, ["status", "driverStatus", "driver_status"]) || "Active"),
     address: String(firstValue(raw, ["address", "homeAddress", "home_address"]) || ""),
     emergencyContact: String(firstValue(raw, ["emergencyContact", "emergency", "nextOfKin", "emergency_contact"]) || "")
   };
@@ -361,7 +362,7 @@ function readData() {
     const mergedRows = mergeLegacyEmails(ensureUuidDrivers(rows)).rows;
     const withRequired = ensureRequiredDrivers(mergedRows);
     const filteredRows = filterExcludedDrivers(withRequired.rows);
-    if (filteredRows.length !== withRequired.rows.length || withRequired.changed) {
+    if (JSON.stringify(filteredRows) !== JSON.stringify(parsed)) {
       localStorage.setItem(KEY, JSON.stringify(filteredRows));
     }
 
@@ -489,6 +490,7 @@ function launchLink(url, target = "_blank") {
 }
 
 function openDriverContact(channel, item) {
+  if (item.status === "Inactive") return;
   const email = String(item.email || "").trim();
   const phone = cleanPhone(item.phone);
   const message = `Hi ${item.name}, this is Onpoint Express.`;
@@ -525,6 +527,7 @@ function openDriverContact(channel, item) {
 }
 
 function renderContactButtons(item) {
+  if (item.status === "Inactive") return "<span class='muted'>Inactive — no driver messages</span>";
   const email = String(item.email || "").trim();
   const hasPhone = Boolean(cleanPhone(item.phone));
   return `<div class='contact-actions'>
@@ -650,6 +653,7 @@ async function hydrateDriversFromSupabase() {
     return;
   }
   if (!Array.isArray(data)) return;
+  const activeSuhen = data.find((row) => normalizeDriverNameKey(row.name) === "suhen omar" && String(row.status || "").trim().toLowerCase() !== "inactive");
   if (!data.length && state.drivers.length) {
     console.warn("Supabase drivers table is empty; keeping local data and seeding Supabase.");
     await syncDriversToSupabase();
@@ -658,7 +662,7 @@ async function hydrateDriversFromSupabase() {
     return;
   }
 
-  const merged = mergeLegacyEmails(data.map(fromDbDriver));
+  const merged = mergeLegacyEmails(data.map((row) => normalizeDriverRow(fromDbDriver(row))));
   const withRequired = ensureRequiredDrivers(merged.rows);
   const filteredRows = filterExcludedDrivers(withRequired.rows);
   const removedExcluded = filteredRows.length !== withRequired.rows.length;
@@ -670,6 +674,14 @@ async function hydrateDriversFromSupabase() {
   }
   setDriversSyncStatus("Shared driver data loaded.", "live");
   refresh();
+  if (activeSuhen && canManageDrivers()) {
+    const { data: updated, error: inactiveError } = await driversSupabase.from(DRIVERS_TABLE)
+      .update({ status: "Inactive" }).eq("id", activeSuhen.id).select("id,status");
+    if (inactiveError || !updated?.some((row) => row.id === activeSuhen.id && row.status === "Inactive")) {
+      console.error("Could not mark Suhen Omar inactive in shared storage:", inactiveError?.message || "No updated row returned");
+      setDriversSyncStatus("Suhen is inactive here, but the shared record could not be updated.", "error");
+    }
+  }
 }
 
 function toCsv(rows) {
