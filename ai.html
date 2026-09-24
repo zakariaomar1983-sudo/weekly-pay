@@ -18,9 +18,17 @@
 
     <section class="panel">
       <div class="panel-head"><h2>Ask the CRM</h2></div>
-      <p class="muted">Ask about drivers, trucks, roster, finance, or reports. Answers use the current CRM records.</p>
+      <p class="muted">Ask about drivers, trucks, roster, finance, or reports. The assistant can explain findings and suggest fixes; it cannot change records through chat.</p>
       <form id="questionForm" class="form-grid"><label class="full">Your question<textarea id="question" rows="3" required placeholder="Which drivers have fewer than five roster days this week?"></textarea></label><div class="actions full"><button class="btn" type="submit">Ask AI</button></div></form>
       <div id="answer" class="ai-answer muted">No question asked yet.</div>
+    </section>
+
+    <section class="panel" id="repairPanel" hidden>
+      <div class="panel-head"><h2>System Check &amp; Repair</h2></div>
+      <p class="muted">Check shared fleet, driver, and upcoming roster records. Managers can apply specific status repairs below. Assignments and completed work require a person to review them.</p>
+      <div class="actions"><button id="runSystemCheck" class="btn" type="button">Check System</button></div>
+      <p id="systemCheckStatus" class="data-status muted">No check run yet.</p>
+      <div id="systemCheckResults" class="ai-answer muted"></div>
     </section>
 
     <section class="panel">
@@ -48,6 +56,6 @@
   <script src="./supabase-config.js?v=20260819a"></script>
   <script src="./supabase-client.js?v=20260819a"></script>
   <script src="./auth.js?v=20260820c"></script>
-  <script src="./ai.js?v=20260820e"></script>
+  <script src="./ai.js?v=20260924a"></script>
 </body>
 </html>
