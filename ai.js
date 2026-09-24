@@ -7,6 +7,7 @@
   let candidates = [];
   let receiptDraft = null;
   let receiptImageDataUrl = "";
+  let latestSystemCheck = null;
   byId("currentUserChip").textContent = `User: ${auth.user.username}`;
 
   async function getStaffToken() {
@@ -25,8 +26,39 @@
 
   byId("questionForm").addEventListener("submit", async (event) => {
     event.preventDefault(); const answer = byId("answer"); answer.textContent = "Thinking...";
-    try { const token = await getStaffToken(); const response = await fetch("./api/ai-assistant", { method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` }, body: JSON.stringify({ question: byId("question").value, context: context() }) }); const data = await response.json(); if (!response.ok) throw new Error(data.error || "AI request failed."); answer.textContent = data.answer || "No answer returned."; } catch (error) { answer.textContent = error.message || String(error); }
+    try { const token = await getStaffToken(); const response = await fetch("./api/ai-assistant", { method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` }, body: JSON.stringify({ question: byId("question").value, context: context(), diagnostics: latestSystemCheck }) }); const data = await response.json(); if (!response.ok) throw new Error(data.error || "AI request failed."); answer.textContent = data.answer || "No answer returned."; } catch (error) { answer.textContent = error.message || String(error); }
   });
+
+  if (auth.can("accessControlPanel")) {
+    byId("repairPanel").hidden = false;
+    async function systemRequest(action = "") {
+      const status = byId("systemCheckStatus");
+      const results = byId("systemCheckResults");
+      status.textContent = action ? "Applying repair and checking again..." : "Checking shared records...";
+      try {
+        const token = await getStaffToken();
+        const response = await fetch("./api/ai-repair", {
+          method: action ? "POST" : "GET",
+          headers: { Authorization: `Bearer ${token}`, ...(action ? { "Content-Type": "application/json" } : {}) },
+          ...(action ? { body: JSON.stringify({ action }) } : {})
+        });
+        const data = await response.json();
+        if (!response.ok) throw new Error(data.error || "System check failed.");
+        latestSystemCheck = data;
+        const issues = Array.isArray(data.issues) ? data.issues : [];
+        status.textContent = `${data.repaired ? `${data.repaired} ` : ""}Checked ${data.checked?.trucks || 0} trucks, ${data.checked?.drivers || 0} drivers, and ${data.checked?.upcomingShifts || 0} upcoming shifts. ${issues.length} issue(s) found${data.truncated ? " (first 100 shown)" : ""}.`;
+        results.innerHTML = issues.length ? issues.map((item) => `<div class="panel"><strong>${escapeHtml(item.severity === "review" ? "Needs review" : "Can repair")}</strong> — ${escapeHtml(item.message)} ${item.action && auth.can(item.action === "retire-853" ? "editTrucks" : "editDrivers") ? `<button type="button" class="btn btn-outline" data-system-repair="${escapeHtml(item.action)}">Apply repair</button>` : ""}</div>`).join("") : "No issues found in the checks available today.";
+      } catch (error) {
+        status.textContent = error.message || String(error);
+        results.textContent = "The shared system could not be checked. No repair was applied.";
+      }
+    }
+    byId("runSystemCheck").addEventListener("click", () => { void systemRequest(); });
+    byId("systemCheckResults").addEventListener("click", (event) => {
+      const action = event.target.closest("button[data-system-repair]")?.dataset.systemRepair;
+      if (action) void systemRequest(action);
+    });
+  }
 
   function renderReceiptDraft() {
     const container = byId("receiptDraft");
