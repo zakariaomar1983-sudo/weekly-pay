@@ -385,7 +385,8 @@
       byId("reportStatus").textContent = "Submitted reports are locked. Ask the office to make a correction.";
       return;
     }
-    ["reportId", "reportDate", "truckNumber", "shiftStart", "shiftFinish", "jobClient", "deliveryCount", "fuelUsed", "vehicleCondition", "issues", "notes"].forEach((field) => { if (byId(field)) byId(field).value = item[field] ?? ""; });
+    byId("reportId").value = item.id;
+    ["reportDate", "truckNumber", "shiftStart", "shiftFinish", "jobClient", "deliveryCount", "fuelUsed", "vehicleCondition", "issues", "notes"].forEach((field) => { if (byId(field)) byId(field).value = item[field] ?? ""; });
     if (!isReviewer) byId("reportDate").readOnly = true;
     window.scrollTo({ top: 0, behavior: "smooth" });
   }
