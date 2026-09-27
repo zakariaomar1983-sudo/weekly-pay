@@ -28,6 +28,8 @@
   let driverRows = readRows(DRIVERS_KEY);
   let selectedRosterDriver = "";
   let sharedSync = false;
+  let sharedReportIds = null;
+  const pendingReportIds = new Set();
 
   byId("currentUserChip").textContent = `User: ${auth.user.username}`;
   byId("historyTitle").textContent = isReviewer ? "Driver Reports" : "My Reports";
@@ -273,12 +275,21 @@
     return reports.filter((item) => isReviewer || item.driverUserId === auth.user.id);
   }
 
+  function isDeviceOnly(item) {
+    return sharedReportIds !== null && !sharedReportIds.has(item.id);
+  }
+
   function render() {
     const rows = visibleReports().sort((a, b) => String(b.reportDate).localeCompare(String(a.reportDate)) || String(b.updatedAt).localeCompare(String(a.updatedAt)));
     byId("reportsTableBody").innerHTML = rows.length ? rows.map((item) => {
-      const locked = !isReviewer && item.status === "Submitted";
-      const actions = locked ? "<span class='muted'>Locked</span>" : `<button class="btn btn-outline" type="button" data-action="edit" data-id="${escapeHtml(item.id)}">Edit</button> <button class="btn btn-muted" type="button" data-action="delete" data-id="${escapeHtml(item.id)}">Delete</button>`;
-      return `<tr><td>${escapeHtml(item.reportDate)}</td><td>${escapeHtml(item.truckNumber)}</td><td>${escapeHtml(item.jobClient || "-")}</td><td>${escapeHtml(item.vehicleCondition)}</td><td><span class="status-pill">${escapeHtml(item.status)}</span></td><td>${escapeHtml(new Date(item.updatedAt).toLocaleString())}</td><td>${actions}</td></tr>`;
+      const deviceOnly = isDeviceOnly(item);
+      const pending = deviceOnly || pendingReportIds.has(item.id);
+      const locked = !isReviewer && item.status === "Submitted" && !pending;
+      const id = escapeHtml(item.id);
+      const actions = locked ? "<span class='muted'>Locked</span>" : `<button class="btn btn-outline" type="button" data-action="edit" data-id="${id}">Edit</button> <button class="btn btn-muted" type="button" data-action="delete" data-id="${id}">Delete</button>`;
+      const retry = pending ? ` <button class="btn btn-outline" type="button" data-action="sync" data-id="${id}">Retry sync</button>` : "";
+      const syncLabel = deviceOnly ? " <span class='muted'>(on this device only)</span>" : pending ? " <span class='muted'>(changes not shared)</span>" : "";
+      return `<tr><td>${escapeHtml(item.reportDate)}</td><td>${escapeHtml(item.truckNumber)}</td><td>${escapeHtml(item.jobClient || "-")}</td><td>${escapeHtml(item.vehicleCondition)}</td><td><span class="status-pill">${escapeHtml(item.status)}</span>${syncLabel}</td><td>${escapeHtml(new Date(item.updatedAt).toLocaleString())}</td><td>${actions}${retry}</td></tr>`;
     }).join("") : "<tr><td colspan='7' class='muted'>No reports submitted yet.</td></tr>";
   }
 
@@ -297,6 +308,7 @@
       if (!response.ok) throw new Error(payload?.error || "Shared reports could not be loaded.");
       sharedSync = true;
       const remoteReports = (payload?.reports || []).map(fromRow);
+      sharedReportIds = new Set(remoteReports.map((item) => item.id));
       const localReports = reports.filter((item) => isReviewer || item.driverUserId === auth.user.id);
       const merged = new Map(localReports.map((item) => [item.id, item]));
       remoteReports.forEach((item) => merged.set(item.id, item));
@@ -305,7 +317,9 @@
       render();
     } catch (error) {
       sharedSync = false;
+      sharedReportIds = new Set();
       byId("reportStatus").textContent = `Shared reports could not be loaded. Local draft mode is active: ${error.message || error}`;
+      render();
     }
   }
 
@@ -319,9 +333,13 @@
       const payload = await response.json().catch(() => ({}));
       if (!response.ok) throw new Error(payload?.error || "Report could not be shared.");
       sharedSync = true;
+      if (sharedReportIds === null) sharedReportIds = new Set();
+      sharedReportIds.add(item.id);
+      pendingReportIds.delete(item.id);
       return true;
     } catch (error) {
       sharedSync = false;
+      pendingReportIds.add(item.id);
       byId("reportStatus").textContent = `Saved on this device, but not received by the office: ${error.message || error}`;
       return false;
     }
@@ -343,7 +361,7 @@
     const id = byId("reportId").value;
     const existing = reports.find((item) => item.id === id);
     if (existing && !isReviewer && existing.driverUserId !== auth.user.id) return;
-    if (existing && !isReviewer && existing.status === "Submitted") {
+    if (existing && !isReviewer && existing.status === "Submitted" && !isDeviceOnly(existing) && !pendingReportIds.has(existing.id)) {
       byId("reportStatus").textContent = "Submitted reports are locked. Ask the office to make a correction.";
       return;
     }
@@ -381,7 +399,7 @@
   }
 
   function edit(item) {
-    if (!isReviewer && item.status === "Submitted") {
+    if (!isReviewer && item.status === "Submitted" && !isDeviceOnly(item) && !pendingReportIds.has(item.id)) {
       byId("reportStatus").textContent = "Submitted reports are locked. Ask the office to make a correction.";
       return;
     }
@@ -421,7 +439,18 @@
     const item = reports.find((entry) => entry.id === button.dataset.id);
     if (!item) return;
     if (button.dataset.action === "edit") edit(item);
-    if (button.dataset.action === "delete" && (isReviewer || item.driverUserId === auth.user.id) && confirm("Delete this report?")) {
+    if (button.dataset.action === "sync") {
+      if (await syncShared(item)) byId("reportStatus").textContent = "Report received by the office.";
+      render();
+    }
+    if (button.dataset.action === "delete" && (isReviewer || item.driverUserId === auth.user.id) && confirm(isDeviceOnly(item) ? "Delete this report from this device? It has not reached the office." : "Delete this report?")) {
+      if (isDeviceOnly(item)) {
+        reports = reports.filter((entry) => entry.id !== item.id);
+        pendingReportIds.delete(item.id);
+        write(reports);
+        render();
+        return;
+      }
       const response = await window.OPXAuth.authorizedFetch("./api/driver-reports", {
         method: "DELETE",
         headers: { "Content-Type": "application/json" },
@@ -433,6 +462,8 @@
         return;
       }
       reports = reports.filter((entry) => entry.id !== item.id);
+      sharedReportIds?.delete(item.id);
+      pendingReportIds.delete(item.id);
       write(reports);
       render();
     }
